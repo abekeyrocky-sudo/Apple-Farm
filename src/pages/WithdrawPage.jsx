@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import bksImg from '../../assets/bks.png';
+import gramImg from '../../assets/gram.png';
 
-// রেফারেন্স ইমেজের হুবহু পেমেন্ট গেটওয়ে ডাটা ও ভেক্টর লোগো
+// রেফারেন্স ইমেজের হুবহু পেমেন্ট গেটওয়ে ডাটা ও লোগো
 const PAYMENT_METHODS = [
   {
     id: 'ton',
     name: 'GRAM (TON)',
     fee: 'Instant • Low Fee',
     placeholder: 'Enter TON Wallet Address (e.g. EQD...)',
-    iconBg: 'bg-gradient-to-tr from-[#0088cc] to-[#29b6f6]',
+    iconBg: '',
     icon: (
-      <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-        <path d="M12 2L2 9.5l3.5 10.5L12 22l6.5-2 3.5-10.5L12 2zm0 3.2l6.3 4.7-2.3 7-4-1.2V5.2zm-1 0v10.5l-4 1.2-2.3-7L11 5.2z" />
-      </svg>
+      <img src={gramImg} alt="GRAM" className="w-full h-full object-cover" />
     ),
   },
   {
@@ -21,11 +21,9 @@ const PAYMENT_METHODS = [
     name: 'bKash',
     fee: 'Instant • Low Fee',
     placeholder: 'Enter 11-digit bKash Number (01XXXXXXXXX)',
-    iconBg: 'bg-gradient-to-tr from-[#E2136E] to-[#F04B8D]',
+    iconBg: '',
     icon: (
-      <svg className="w-6 h-6 fill-white" viewBox="0 0 24 24">
-        <path d="M12 2L4 9l8 2 8-5-8-4zm-7 9.5L12 14v8l-7-6v-4.5zm14 0l-5 2.5V22l7-6v-4.5z" />
-      </svg>
+      <img src={bksImg} alt="bKash" className="w-full h-full object-cover" />
     ),
   },
   {
@@ -80,7 +78,7 @@ const PAYMENT_METHODS = [
 ];
 
 export default function WithdrawPage({ 
-  user = { apples: 1250, diamonds: 549.0 }, 
+  user = { apples: 0, diamonds: 0.0 }, 
   onBack,
   onWithdrawSubmit 
 }) {
@@ -187,7 +185,7 @@ export default function WithdrawPage({
             >
               {/* Left: Method Logo & Name */}
               <div className="flex items-center gap-3.5">
-                <div className={`w-11 h-11 rounded-full ${method.iconBg} flex items-center justify-center shadow-sm`}>
+                <div className={`w-11 h-11 rounded-full ${method.iconBg} flex items-center justify-center shadow-sm overflow-hidden flex-shrink-0`}>
                   {method.icon}
                 </div>
 
@@ -221,7 +219,7 @@ export default function WithdrawPage({
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full ${selectedMethod.iconBg} flex items-center justify-center text-xs scale-90`}>
+                <div className={`w-8 h-8 rounded-full ${selectedMethod.iconBg} flex items-center justify-center overflow-hidden flex-shrink-0`}>
                   {selectedMethod.icon}
                 </div>
                 <h3 className="font-black text-[#192f52] text-sm">

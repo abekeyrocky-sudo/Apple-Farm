@@ -26,14 +26,18 @@ export { db };
 // টেলিগ্রাম ইউজার ডাটাবেসে সিঙ্ক করার ফাংশন
 export const syncUserWithFirebase = async (tgUser) => {
   if (!tgUser) return null;
+  const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Farmer";
+  const photoUrl = tgUser.photo_url || null;
+
   if (!db || firebaseConfig.apiKey === "YOUR_API_KEY") {
     return {
       id: tgUser.id || 40281,
-      name: tgUser.first_name || "Rocky",
+      name: fullName,
       username: tgUser.username || "",
-      apples: 1250,
-      diamonds: 549.0,
-      level: 3,
+      photo_url: photoUrl,
+      apples: 0,
+      diamonds: 0.0,
+      level: 1,
       energy: 100,
       createdAt: new Date().toISOString()
     };
@@ -46,35 +50,44 @@ export const syncUserWithFirebase = async (tgUser) => {
     if (!userSnap.exists()) {
       const newUser = {
         id: tgUser.id,
-        name: tgUser.first_name || "Rocky",
+        name: fullName,
         username: tgUser.username || "",
-        apples: 1250,
-        diamonds: 549.0,
-        level: 3,
+        photo_url: photoUrl,
+        apples: 0,
+        diamonds: 0.0,
+        level: 1,
         energy: 100,
         createdAt: new Date().toISOString()
       };
       await setDoc(userRef, newUser);
       return newUser;
+    } else {
+      // যদি ইউজারের ফটো বা নাম আপডেট হয় তা ফায়ারস্টোরে রিফ্রেশ করা
+      const existing = userSnap.data();
+      if (photoUrl && existing.photo_url !== photoUrl) {
+        await updateDoc(userRef, { photo_url: photoUrl, name: fullName });
+      }
+      return { ...existing, photo_url: photoUrl || existing.photo_url, name: fullName || existing.name };
     }
-    return userSnap.data();
   } catch (err) {
     console.warn("Firestore sync warning (check Firestore Rules/Database status):", err);
     return {
       id: tgUser.id || 40281,
-      name: tgUser.first_name || "Rocky",
+      name: fullName,
       username: tgUser.username || "",
-      apples: 1250,
-      diamonds: 549.0,
-      level: 3,
+      photo_url: photoUrl,
+      apples: 0,
+      diamonds: 0.0,
+      level: 1,
       energy: 100,
       createdAt: new Date().toISOString()
     };
   }
 };
 
+// অ্যাপেল হার্ভেস্ট ডাটাবেসে আপডেট
 export const harvestAppleInDB = async (userId) => {
-  if (!db || firebaseConfig.apiKey === "YOUR_API_KEY") return;
+  if (!db || !userId) return;
   try {
     const userRef = doc(db, "users", userId.toString());
     await updateDoc(userRef, {
@@ -82,5 +95,16 @@ export const harvestAppleInDB = async (userId) => {
     });
   } catch (err) {
     console.error("Firebase harvest update error:", err);
+  }
+};
+
+// যে কোনো ইউজার ডাটা ফায়ারস্টোরে আপডেট
+export const updateUserInDB = async (userId, dataToUpdate) => {
+  if (!db || !userId) return;
+  try {
+    const userRef = doc(db, "users", userId.toString());
+    await updateDoc(userRef, dataToUpdate);
+  } catch (err) {
+    console.error("Firebase updateUser error:", err);
   }
 };

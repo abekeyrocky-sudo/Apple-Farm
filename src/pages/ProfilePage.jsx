@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { User, Trophy } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
+import { calculateLevel, getLevelProgress } from '../utils/levelSystem';
 
 export default function ProfilePage({ 
-  user = { name: 'Rocky', id: 40281, level: 3 }, 
+  user = { name: 'Farmer', id: null, level: 1, apples: 0 }, 
   onBack, 
   onNavigate,
   onLogout,
@@ -11,6 +13,10 @@ export default function ProfilePage({
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
+
+  // চক্রবৃদ্ধি লেভেল হিসাব
+  const progress = getLevelProgress(user.apples || 0);
+  const telegramId = user.id || window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '40281';
 
   // মেনু আইটেমের তালিকা
   const menuItems = [
@@ -22,6 +28,14 @@ export default function ProfilePage({
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
+      ),
+    },
+    {
+      id: 'leaderboard',
+      label: 'Global Ranking',
+      badge: 'Top',
+      icon: (
+        <Trophy className="w-5 h-5 text-amber-500 fill-amber-300 stroke-amber-600" />
       ),
     },
     {
@@ -89,6 +103,8 @@ export default function ProfilePage({
 
     if (id === 'redeem') {
       setShowRedeemModal(true);
+    } else if (id === 'leaderboard') {
+      onNavigate?.('leaderboard');
     } else if (id === 'transactions') {
       onNavigate?.('wallet');
     }
@@ -130,21 +146,35 @@ export default function ProfilePage({
         {/* User Info Section */}
         <div className="flex items-center gap-4 px-2 mb-5">
           {/* Avatar Container */}
-          <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-[0_4px_14px_rgba(0,140,255,0.15)] bg-gradient-to-tr from-[#38bdf8] to-[#bae6fd] flex items-center justify-center overflow-hidden">
-            <span className="text-4xl filter drop-shadow">👦🏻</span>
+          <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-[0_4px_14px_rgba(0,140,255,0.15)] bg-gradient-to-tr from-[#38bdf8] to-[#bae6fd] flex items-center justify-center overflow-hidden text-white flex-shrink-0">
+            {user.photo_url ? (
+              <img 
+                src={user.photo_url} 
+                alt={user.name || 'User'} 
+                className="w-full h-full object-cover rounded-full" 
+              />
+            ) : (
+              <div className="w-full h-full bg-[#1b4332] rounded-full flex items-center justify-center text-white font-black text-2xl shadow-inner">
+                {user.name && user.name !== 'Farmer' ? user.name.charAt(0).toUpperCase() : <User className="w-10 h-10 stroke-white" />}
+              </div>
+            )}
           </div>
 
           {/* User Details */}
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black text-[#192f52] tracking-tight">
-              {user.name || 'Rocky'}
+          <div className="space-y-1 overflow-hidden flex-1">
+            <h1 className="text-2xl font-black text-[#192f52] tracking-tight truncate">
+              {user.name || 'Farmer'}
             </h1>
-            <p className="text-xs font-bold text-[#567396]">
-              ID: {user.id || 40281}
+            <p className="text-xs font-bold text-[#567396] flex items-center gap-1">
+              <span>ID:</span>
+              <span className="font-mono text-[#192f52] font-extrabold">{telegramId}</span>
             </p>
-            <div>
-              <span className="inline-block bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white text-[11px] font-black px-3.5 py-0.5 rounded-full shadow-sm">
-                Lv.{user.level || 3}
+            <div className="flex items-center gap-2 pt-0.5">
+              <span className="inline-block bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white text-[11px] font-black px-3 py-0.5 rounded-full shadow-sm">
+                Lv.{progress.level}
+              </span>
+              <span className="text-[10px] font-bold text-slate-500">
+                Next: {progress.maxApples} Apples ({progress.percent}%)
               </span>
             </div>
           </div>
@@ -168,8 +198,13 @@ export default function ProfilePage({
                 </span>
               </div>
 
-              {/* Right: Chevron Arrow */}
-              <div className="text-[#192f52]">
+              {/* Right: Badge & Chevron Arrow */}
+              <div className="flex items-center gap-2 text-[#192f52]">
+                {item.badge && (
+                  <span className="text-[10px] font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                    {item.badge}
+                  </span>
+                )}
                 <svg className="w-4 h-4 stroke-current stroke-[2.5] fill-none" viewBox="0 0 24 24">
                   <path d="M9 5l7 7-7 7" />
                 </svg>

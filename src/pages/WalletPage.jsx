@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { Sprout } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import BottomNav from '../components/BottomNav';
 
 export default function WalletPage({ 
-  user = { apples: 1250, diamonds: 549.0 }, 
+  user = { apples: 0, diamonds: 0.0 }, 
   onBack, 
   onNavigate 
 }) {
@@ -147,7 +149,31 @@ export default function WalletPage({
 
         </div>
 
-        {/* 4. RECENT TRANSACTIONS TITLE */}
+        {/* 4. STAKING CENTER BANNER */}
+        <div 
+          onClick={() => onNavigate?.('staking')}
+          className="bg-gradient-to-r from-[#2ecc71] via-[#27ae60] to-[#1e824c] rounded-2xl p-3 px-4 shadow-md text-white flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all mb-4 border border-emerald-300"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+              <Sprout className="w-6 h-6 stroke-white stroke-[2.2]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black leading-tight">Staking Center</h3>
+                <span className="text-[10px] font-black bg-amber-300 text-amber-950 px-1.5 py-0.5 rounded-md">
+                  Up to 25% APY
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-emerald-100 mt-0.5">Stake $APPLE & items to earn daily passive yields</p>
+            </div>
+          </div>
+          <svg className="w-5 h-5 stroke-white stroke-[2.5] fill-none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+
+        {/* 5. RECENT TRANSACTIONS TITLE */}
         <h2 className="text-base font-black text-[#192f52] tracking-tight mb-2">
           Recent Transactions
         </h2>
@@ -186,50 +212,7 @@ export default function WalletPage({
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
-      <div className="bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-2.5 flex justify-between items-center z-30 border-t border-gray-100">
-        
-        {/* Home */}
-        <button 
-          onClick={() => onNavigate?.('home')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
-          <span className="text-[11px] font-bold">Home</span>
-        </button>
-
-        {/* Task */}
-        <button 
-          onClick={() => onNavigate?.('task')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-          <span className="text-[11px] font-bold">Task</span>
-        </button>
-
-        {/* Game */}
-        <button 
-          onClick={() => onNavigate?.('game')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <rect x="2" y="6" width="20" height="12" rx="6" />
-            <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" />
-          </svg>
-          <span className="text-[11px] font-bold">Game</span>
-        </button>
-
-        {/* Wallet (Active) */}
-        <button 
-          onClick={() => onNavigate?.('wallet')} 
-          className="flex flex-col items-center gap-0.5 text-[#2ecc71] transition-transform active:scale-90">
-          <svg className="w-6 h-6 fill-current stroke-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span className="text-[11px] font-black">Wallet</span>
-        </button>
-
-      </div>
+      <BottomNav currentTab="wallet" onNavigate={onNavigate} />
 
     </div>
   );

@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import spinBgImg from '../../assets/spin-screen-background.png';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import BottomNav from '../components/BottomNav';
 
 // রেফারেন্স ইমেজের হুবহু স্লাইস ডাটা
 const SLICES = [
@@ -245,50 +246,7 @@ export default function GamePage({ onNavigate, onWinReward }) {
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
-      <div className="bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-2.5 flex justify-between items-center z-30 border-t border-gray-100">
-        
-        {/* Home */}
-        <button 
-          onClick={() => onNavigate?.('home')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
-          <span className="text-[11px] font-bold">Home</span>
-        </button>
-
-        {/* Task */}
-        <button 
-          onClick={() => onNavigate?.('task')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-          <span className="text-[11px] font-bold">Task</span>
-        </button>
-
-        {/* Game (Active) */}
-        <button 
-          onClick={() => onNavigate?.('game')} 
-          className="flex flex-col items-center gap-0.5 text-[#2ecc71] transition-transform active:scale-90">
-          <svg className="w-6 h-6 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <rect x="2" y="6" width="20" height="12" rx="6" />
-            <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" />
-          </svg>
-          <span className="text-[11px] font-black">Game</span>
-        </button>
-
-        {/* Wallet */}
-        <button 
-          onClick={() => onNavigate?.('wallet')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span className="text-[11px] font-bold">Wallet</span>
-        </button>
-
-      </div>
+      <BottomNav currentTab="game" onNavigate={onNavigate} />
 
     </div>
   );

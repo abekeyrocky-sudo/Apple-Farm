@@ -3,7 +3,7 @@ import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 
 export default function WatchAdsPage({ onBack, onRewardEarned }) {
-  const [adsWatched, setAdsWatched] = useState(12);
+  const [adsWatched, setAdsWatched] = useState(0);
   const maxDailyAds = 20;
   const [isWatching, setIsWatching] = useState(false);
   const [countdown, setCountdown] = useState(3);

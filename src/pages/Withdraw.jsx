@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import bksImg from '../../assets/bks.png';
+import gramImg from '../../assets/gram.png';
 
 const GATEWAYS = [
-  { id: 'ton', name: 'GRAM (TON)', fee: 'Instant • Low Fee', icon: '💎' },
-  { id: 'bkash', name: 'bKash', fee: 'Instant • 1.5% Fee', icon: '🇧🇩' },
+  { id: 'ton', name: 'GRAM (TON)', fee: 'Instant • Low Fee', icon: <img src={gramImg} alt="GRAM" className="w-full h-full object-cover" /> },
+  { id: 'bkash', name: 'bKash', fee: 'Instant • 1.5% Fee', icon: <img src={bksImg} alt="bKash" className="w-full h-full object-cover" /> },
   { id: 'upi', name: 'UPI', fee: 'Instant • Low Fee', icon: '🇮🇳' },
   { id: 'jazzcash', name: 'JazzCash', fee: 'Instant • Low Fee', icon: '🇵🇰' },
   { id: 'esewa', name: 'eSewa', fee: 'Instant • Low Fee', icon: '🇳🇵' },
@@ -57,7 +59,9 @@ export default function Withdraw({ user, setTab }) {
             className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:border-emerald-400 active:scale-98 transition-all"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{g.icon}</span>
+              <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+                {g.icon}
+              </div>
               <div>
                 <div className="text-sm font-bold text-gray-800">{g.name}</div>
                 <div className="text-[10px] text-gray-400">{g.fee}</div>

@@ -172,6 +172,13 @@ async function startPolling() {
   console.log(`🌐 Mini App URL: ${WEBAPP_URL}`);
   console.log('---------------------------------------------------------');
 
+  // পুরানো কোনো Webhook সেট থাকলে তা মুছে ফেলে Polling ক্লিয়ার করা
+  try {
+    await callTelegram('deleteWebhook', { drop_pending_updates: false });
+  } catch (e) {
+    // ignore
+  }
+
   while (true) {
     try {
       const res = await callTelegram('getUpdates', {

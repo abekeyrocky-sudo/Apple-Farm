@@ -1,12 +1,20 @@
 import React, { useState } from 'react';
+import { User, Trophy } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
+import BottomNav from '../components/BottomNav';
+import { calculateLevel } from '../utils/levelSystem';
 
-export default function HomePage({ onNavigate, onWithdraw, onOpenProfile }) {
-  const [appleCount, setAppleCount] = useState(1250);
-  const [diamondCount] = useState(549.0);
+export default function HomePage({ 
+  user = { apples: 0, diamonds: 0.0, name: 'Farmer', level: 1 }, 
+  onHarvest,
+  onNavigate, 
+  onWithdraw, 
+  onOpenProfile 
+}) {
   const [floatingBadges, setFloatingBadges] = useState([]);
+  const currentLevel = calculateLevel(user.apples || 0);
 
   // স্ক্রিনে/গাছে ট্যাপ করলে +1 APPLE ব্যাজ অ্যানিমেশন
   const handleTreeTap = (e) => {
@@ -15,7 +23,7 @@ export default function HomePage({ onNavigate, onWithdraw, onOpenProfile }) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
     }
 
-    setAppleCount((prev) => prev + 1);
+    if (onHarvest) onHarvest();
 
     // ক্লিক করার স্থানাঙ্ক নেওয়া
     const rect = e.currentTarget.getBoundingClientRect();
@@ -46,26 +54,45 @@ export default function HomePage({ onNavigate, onWithdraw, onOpenProfile }) {
             onClick={onOpenProfile || (() => onNavigate?.('profile'))}
             className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
           >
-            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-tr from-amber-300 to-sky-300 p-0.5 flex items-center justify-center overflow-hidden">
-              {/* Avatar Icon */}
-              <div className="w-full h-full bg-[#1b4332] rounded-full flex items-center justify-center text-xl">
-                👦🏻
-              </div>
+            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-tr from-amber-300 to-sky-300 p-0.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {user.photo_url ? (
+                <img 
+                  src={user.photo_url} 
+                  alt={user.name || 'User'} 
+                  className="w-full h-full object-cover rounded-full" 
+                />
+              ) : (
+                <div className="w-full h-full bg-[#1b4332] rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
+                  {user.name && user.name !== 'Farmer' ? user.name.charAt(0).toUpperCase() : <User className="w-6 h-6 stroke-white" />}
+                </div>
+              )}
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-[#1a2f4c] leading-tight drop-shadow-sm">Rocky</h2>
-              <span className="text-xs font-bold text-[#32527b]">Lv.3</span>
+              <h2 className="text-base font-extrabold text-[#1a2f4c] leading-tight drop-shadow-sm max-w-[120px] truncate">{user.name || 'Farmer'}</h2>
+              <span className="text-xs font-bold text-[#32527b]">Lv.{currentLevel}</span>
             </div>
           </div>
 
-          {/* Diamond Pill */}
-          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-sky-100">
-            <img 
-              src={diamondImg} 
-              alt="Diamond"
-              className="w-5 h-5 object-contain filter drop-shadow"
-            />
-            <span className="text-sm font-black text-[#1c355e]">{diamondCount.toFixed(1)}</span>
+          {/* Right Area: Rank Trophy (Emerald Green Style) & Diamond Pill */}
+          <div className="flex items-center gap-2">
+            {/* Leaderboard / Rank Button */}
+            <button 
+              onClick={() => onNavigate?.('leaderboard')}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm border border-emerald-300 transition-all"
+            >
+              <Trophy className="w-3.5 h-3.5 fill-white stroke-none" />
+              <span className="leading-none">Rank</span>
+            </button>
+
+            {/* Diamond Pill */}
+            <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-sky-100">
+              <img 
+                src={diamondImg} 
+                alt="Diamond"
+                className="w-5 h-5 object-contain filter drop-shadow"
+              />
+              <span className="text-sm font-black text-[#1c355e]">{Number(user.diamonds || 0).toFixed(1)}</span>
+            </div>
           </div>
         </div>
 
@@ -80,7 +107,7 @@ export default function HomePage({ onNavigate, onWithdraw, onOpenProfile }) {
             />
             <div>
               <p className="text-[11px] font-bold text-[#5c4a32] tracking-wide">Apple Balance</p>
-              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{appleCount.toLocaleString()}</h1>
+              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{(user.apples || 0).toLocaleString()}</h1>
             </div>
           </div>
 
@@ -162,50 +189,7 @@ export default function HomePage({ onNavigate, onWithdraw, onOpenProfile }) {
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
-      <div className="bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-2.5 flex justify-between items-center z-30 border-t border-gray-100">
-        
-        {/* Home (Active) */}
-        <button 
-          onClick={() => onNavigate?.('home')} 
-          className="flex flex-col items-center gap-0.5 text-[#2ecc71] transition-transform active:scale-90">
-          <svg className="w-6 h-6 fill-current drop-shadow-sm" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
-          <span className="text-[11px] font-black">Home</span>
-        </button>
-
-        {/* Task */}
-        <button 
-          onClick={() => onNavigate?.('task')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-          <span className="text-[11px] font-bold">Task</span>
-        </button>
-
-        {/* Game */}
-        <button 
-          onClick={() => onNavigate?.('game')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <rect x="2" y="6" width="20" height="12" rx="6" />
-            <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" />
-          </svg>
-          <span className="text-[11px] font-bold">Game</span>
-        </button>
-
-        {/* Wallet */}
-        <button 
-          onClick={() => onNavigate?.('wallet')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span className="text-[11px] font-bold">Wallet</span>
-        </button>
-
-      </div>
+      <BottomNav currentTab="home" onNavigate={onNavigate} />
 
     </div>
   );

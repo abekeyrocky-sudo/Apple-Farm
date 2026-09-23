@@ -9,21 +9,28 @@ import WalletPage from './pages/WalletPage';
 import ProfilePage from './pages/ProfilePage';
 import GamePage from './pages/GamePage';
 import WithdrawPage from './pages/WithdrawPage';
-import { syncUserWithFirebase, harvestAppleInDB } from './firebase';
+import AirdropPage from './pages/AirdropPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import StakingPage from './pages/StakingPage';
+import MarketPage from './pages/MarketPage';
+import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
+import { calculateLevel } from './utils/levelSystem';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('home');
   const [user, setUser] = useState({
-    id: 40281,
-    name: 'Rocky',
-    apples: 1250,
-    diamonds: 549.0,
-    level: 3,
+    id: null,
+    name: 'Farmer',
+    apples: 0,
+    diamonds: 0.0,
+    level: 1,
+    energy: 100,
+    maxEnergy: 100,
   });
 
   useEffect(() => {
-    // টেলিগ্রাম ইনিশিয়ালাইজেশন
+    // টেলিগ্রাম ইনিশিয়ালাইজেশন ও অটো ইউজার প্রোফাইল ট্র্যাকিং
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
@@ -31,20 +38,57 @@ export default function App() {
       
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {
+        const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || 'Farmer';
+        
+        setUser((prev) => ({
+          ...prev,
+          id: tgUser.id,
+          name: fullName,
+          username: tgUser.username || '',
+          photo_url: tgUser.photo_url || null,
+        }));
+
         syncUserWithFirebase(tgUser).then((data) => {
-          if (data) setUser(data);
+          if (data) {
+            const calculatedLvl = calculateLevel(data.apples || 0);
+            setUser((prev) => ({
+              ...prev,
+              ...data,
+              level: calculatedLvl,
+              name: fullName,
+              photo_url: tgUser.photo_url || data.photo_url || null,
+            }));
+          }
         });
       }
     }
   }, []);
 
   const handleHarvestAction = () => {
-    setUser((prev) => ({ ...prev, apples: prev.apples + 1 }));
-    harvestAppleInDB(user.id);
+    setUser((prev) => {
+      const newApples = prev.apples + 1;
+      const newLevel = calculateLevel(newApples);
+      return { 
+        ...prev, 
+        apples: newApples,
+        level: newLevel
+      };
+    });
+    if (user.id) {
+      harvestAppleInDB(user.id);
+    }
   };
 
   const handleBonusWin = (amount) => {
-    setUser((prev) => ({ ...prev, apples: prev.apples + amount }));
+    setUser((prev) => {
+      const newApples = prev.apples + amount;
+      const newLevel = calculateLevel(newApples);
+      return { 
+        ...prev, 
+        apples: newApples,
+        level: newLevel
+      };
+    });
   };
 
   const handleRewardClaim = (task) => {
@@ -71,6 +115,14 @@ export default function App() {
     }
   };
 
+  const handleUpdateUserBalance = (delta) => {
+    setUser((prev) => ({
+      ...prev,
+      apples: Math.max(0, prev.apples + (delta.apples || 0)),
+      diamonds: Math.max(0, prev.diamonds + (delta.diamonds || 0))
+    }));
+  };
+
   const handleNavigate = (tab) => {
     setCurrentTab(tab);
   };
@@ -84,6 +136,8 @@ export default function App() {
   if (currentTab === 'home') {
     return (
       <HomePage 
+        user={user}
+        onHarvest={handleHarvestAction}
         onNavigate={handleNavigate}
         onWithdraw={() => setCurrentTab('withdraw')}
         onOpenProfile={() => setCurrentTab('profile')}
@@ -125,7 +179,18 @@ export default function App() {
     );
   }
 
-  // 6. Wallet Page
+  // 6. Airdrop Hub Page
+  if (currentTab === 'airdrop') {
+    return (
+      <AirdropPage 
+        user={user}
+        onBack={() => setCurrentTab('home')}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+
+  // 7. Wallet Page
   if (currentTab === 'wallet') {
     return (
       <WalletPage 
@@ -176,6 +241,41 @@ export default function App() {
         user={user}
         onBack={() => setCurrentTab('home')}
         onWithdrawSubmit={handleWithdrawDeduct}
+      />
+    );
+  }
+
+  // 11. Leaderboard / Global Ranking Page
+  if (currentTab === 'leaderboard') {
+    return (
+      <LeaderboardPage 
+        user={user}
+        onBack={() => setCurrentTab('home')}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+
+  // 12. Staking Center Page
+  if (currentTab === 'staking') {
+    return (
+      <StakingPage 
+        user={user}
+        onBack={() => setCurrentTab('wallet')}
+        onNavigate={handleNavigate}
+        onUpdateUserBalance={handleUpdateUserBalance}
+      />
+    );
+  }
+
+  // 13. Apple Market Page
+  if (currentTab === 'market') {
+    return (
+      <MarketPage 
+        user={user}
+        onBack={() => setCurrentTab('home')}
+        onNavigate={handleNavigate}
+        onUpdateUserBalance={handleUpdateUserBalance}
       />
     );
   }

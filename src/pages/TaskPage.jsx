@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { UserCheck, UserPlus, Gift, Play, CalendarCheck, Gamepad2 } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
+import BottomNav from '../components/BottomNav';
 
 export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
   const [activeTab, setActiveTab] = useState('All');
@@ -16,9 +18,7 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       iconBg: 'bg-blue-50 border-blue-200',
       icon: (
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white shadow-inner">
-          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm6 2.5v7l6-3.5-6-3.5z"/>
-          </svg>
+          <Play className="w-5 h-5 fill-white stroke-none" />
         </div>
       ),
     },
@@ -31,8 +31,8 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       status: 'Go',
       iconBg: 'bg-sky-50 border-sky-100',
       icon: (
-        <div className="w-10 h-10 rounded-full border-2 border-amber-300 bg-amber-100 flex items-center justify-center text-xl overflow-hidden shadow-sm">
-          🧑🏻
+        <div className="w-10 h-10 rounded-full border-2 border-amber-300 bg-amber-100 flex items-center justify-center text-amber-700 shadow-sm">
+          <UserCheck className="w-5 h-5 stroke-amber-700 stroke-[2.3]" />
         </div>
       ),
     },
@@ -45,8 +45,8 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       status: 'Go',
       iconBg: 'bg-indigo-50 border-indigo-100',
       icon: (
-        <div className="w-10 h-10 rounded-full border-2 border-sky-300 bg-sky-100 flex items-center justify-center text-xl overflow-hidden shadow-sm">
-          👦🏻
+        <div className="w-10 h-10 rounded-full border-2 border-sky-300 bg-sky-100 flex items-center justify-center text-sky-700 shadow-sm">
+          <UserPlus className="w-5 h-5 stroke-sky-700 stroke-[2.3]" />
         </div>
       ),
     },
@@ -59,8 +59,8 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       status: 'Go',
       iconBg: 'bg-amber-50 border-amber-100',
       icon: (
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-xl shadow-inner border border-amber-200">
-          🎁
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white shadow-inner border border-amber-200">
+          <Gift className="w-5 h-5 stroke-white stroke-[2.3]" />
         </div>
       ),
     },
@@ -87,7 +87,7 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       reward: '+50 Apples',
       rewardAmount: 50,
       type: 'Daily',
-      status: 'Claimed', // অলরেডি ক্লেইম করা
+      status: 'Go',
       iconBg: 'bg-orange-50 border-orange-100',
       icon: (
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-sm border border-amber-300">
@@ -217,52 +217,7 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
-      <div className="bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-2.5 flex justify-between items-center z-30 border-t border-gray-100">
-        
-        {/* Home */}
-        <button 
-          onClick={() => onNavigate?.('home')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
-          <span className="text-[11px] font-bold">Home</span>
-        </button>
-
-        {/* Task (Active) */}
-        <button 
-          onClick={() => onNavigate?.('task')} 
-          className="flex flex-col items-center gap-0.5 text-[#2ecc71] transition-transform active:scale-90">
-          <div className="w-6 h-6 bg-[#2ecc71] rounded-lg flex items-center justify-center text-white">
-            <svg className="w-4 h-4 stroke-white stroke-[3] fill-none" viewBox="0 0 24 24">
-              <path d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <span className="text-[11px] font-black">Task</span>
-        </button>
-
-        {/* Game */}
-        <button 
-          onClick={() => onNavigate?.('game')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <rect x="2" y="6" width="20" height="12" rx="6" />
-            <path d="M6 12h4m-2-2v4m8-2h.01m3-2h.01" />
-          </svg>
-          <span className="text-[11px] font-bold">Game</span>
-        </button>
-
-        {/* Wallet */}
-        <button 
-          onClick={() => onNavigate?.('wallet')} 
-          className="flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-transform active:scale-90">
-          <svg className="w-6 h-6 stroke-current stroke-2 fill-none" viewBox="0 0 24 24">
-            <path d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          <span className="text-[11px] font-bold">Wallet</span>
-        </button>
-
-      </div>
+      <BottomNav currentTab="task" onNavigate={onNavigate} />
 
     </div>
   );
