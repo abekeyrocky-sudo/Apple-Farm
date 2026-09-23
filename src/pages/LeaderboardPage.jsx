@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Crown, User, Award, Medal, Shield, Sparkles } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import homeBgImg from '../../assets/home-page-background.png';
+import { getAvatarSrc } from '../utils/avatars';
 
 export default function LeaderboardPage({ 
-  user = { name: 'Rocky', apples: 1250, level: 3, id: 40281 }, 
+  user = { name: 'Rocky', apples: 0, level: 1, id: null, avatar: 'avatar-1' }, 
   onBack, 
   onNavigate 
 }) {
   const [filter, setFilter] = useState('All'); // 'All' | 'Weekly'
+  const userAvatarImg = getAvatarSrc(user.avatar);
 
   // Top 3 Podium Winners
   const topPodium = {
@@ -191,8 +193,8 @@ export default function LeaderboardPage({
         <div className="p-3 bg-gradient-to-r from-[#FFF9E6] to-[#FFF4D4] border-t-2 border-[#FFE8A3] shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* User Avatar */}
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-sky-400 to-emerald-400 border-2 border-white shadow-md flex items-center justify-center text-white">
-              <User className="w-6 h-6 stroke-white" />
+            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md overflow-hidden bg-sky-100 flex items-center justify-center flex-shrink-0">
+              <img src={userAvatarImg} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-[11px] font-bold text-[#8C6B1F] leading-tight">

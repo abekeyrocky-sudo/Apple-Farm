@@ -5,9 +5,10 @@ import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import BottomNav from '../components/BottomNav';
 import { calculateLevel } from '../utils/levelSystem';
+import { getAvatarSrc } from '../utils/avatars';
 
 export default function HomePage({ 
-  user = { apples: 0, diamonds: 0.0, name: 'Farmer', level: 1 }, 
+  user = { apples: 0, diamonds: 0.0, name: 'Farmer', level: 1, avatar: 'avatar-1' }, 
   onHarvest,
   onNavigate, 
   onWithdraw, 
@@ -15,6 +16,7 @@ export default function HomePage({
 }) {
   const [floatingBadges, setFloatingBadges] = useState([]);
   const currentLevel = calculateLevel(user.apples || 0);
+  const avatarImg = getAvatarSrc(user.avatar);
 
   // স্ক্রিনে/গাছে ট্যাপ করলে +1 APPLE ব্যাজ অ্যানিমেশন
   const handleTreeTap = (e) => {
@@ -55,17 +57,11 @@ export default function HomePage({
             className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
           >
             <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-tr from-amber-300 to-sky-300 p-0.5 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {user.photo_url ? (
-                <img 
-                  src={user.photo_url} 
-                  alt={user.name || 'User'} 
-                  className="w-full h-full object-cover rounded-full" 
-                />
-              ) : (
-                <div className="w-full h-full bg-[#1b4332] rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
-                  {user.name && user.name !== 'Farmer' ? user.name.charAt(0).toUpperCase() : <User className="w-6 h-6 stroke-white" />}
-                </div>
-              )}
+              <img 
+                src={avatarImg} 
+                alt="Avatar" 
+                className="w-full h-full object-cover rounded-full" 
+              />
             </div>
             <div>
               <h2 className="text-base font-extrabold text-[#1a2f4c] leading-tight drop-shadow-sm max-w-[120px] truncate">{user.name || 'Farmer'}</h2>

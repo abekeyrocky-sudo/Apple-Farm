@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { User, Trophy } from 'lucide-react';
+import { User, Trophy, Camera, Check } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import { calculateLevel, getLevelProgress } from '../utils/levelSystem';
+import { AVATARS, getAvatarSrc } from '../utils/avatars';
 
 export default function ProfilePage({ 
-  user = { name: 'Farmer', id: null, level: 1, apples: 0 }, 
+  user = { name: 'Farmer', id: null, level: 1, apples: 0, avatar: 'avatar-1' }, 
   onBack, 
   onNavigate,
   onLogout,
-  onRedeemBonus
+  onRedeemBonus,
+  onUpdateAvatar
 }) {
   const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
 
   // চক্রবৃদ্ধি লেভেল হিসাব
   const progress = getLevelProgress(user.apples || 0);
   const telegramId = user.id || window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '40281';
+  const currentAvatarSrc = getAvatarSrc(user.avatar);
 
   // মেনু আইটেমের তালিকা
   const menuItems = [
@@ -101,7 +105,9 @@ export default function ProfilePage({
       window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
     }
 
-    if (id === 'redeem') {
+    if (id === 'profile') {
+      setShowAvatarModal(true);
+    } else if (id === 'redeem') {
       setShowRedeemModal(true);
     } else if (id === 'leaderboard') {
       onNavigate?.('leaderboard');
@@ -145,19 +151,19 @@ export default function ProfilePage({
 
         {/* User Info Section */}
         <div className="flex items-center gap-4 px-2 mb-5">
-          {/* Avatar Container */}
-          <div className="relative w-20 h-20 rounded-full border-4 border-white shadow-[0_4px_14px_rgba(0,140,255,0.15)] bg-gradient-to-tr from-[#38bdf8] to-[#bae6fd] flex items-center justify-center overflow-hidden text-white flex-shrink-0">
-            {user.photo_url ? (
-              <img 
-                src={user.photo_url} 
-                alt={user.name || 'User'} 
-                className="w-full h-full object-cover rounded-full" 
-              />
-            ) : (
-              <div className="w-full h-full bg-[#1b4332] rounded-full flex items-center justify-center text-white font-black text-2xl shadow-inner">
-                {user.name && user.name !== 'Farmer' ? user.name.charAt(0).toUpperCase() : <User className="w-10 h-10 stroke-white" />}
-              </div>
-            )}
+          {/* Avatar Container with Edit Camera Badge */}
+          <div 
+            onClick={() => setShowAvatarModal(true)}
+            className="relative w-20 h-20 rounded-full border-4 border-white shadow-[0_4px_14px_rgba(0,140,255,0.15)] bg-gradient-to-tr from-[#38bdf8] to-[#bae6fd] flex items-center justify-center cursor-pointer active:scale-95 transition-transform flex-shrink-0 group"
+          >
+            <img 
+              src={currentAvatarSrc} 
+              alt="Avatar" 
+              className="w-full h-full object-cover rounded-full" 
+            />
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-white shadow-md">
+              <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
+            </div>
           </div>
 
           {/* User Details */}
@@ -263,6 +269,61 @@ export default function ProfilePage({
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- AVATAR SELECTION MODAL ----------------- */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 border border-sky-100 animate-slide-up">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-[#192f52] text-base">Choose Your Avatar</h3>
+                <p className="text-[11px] font-bold text-slate-400">Select a character for your farm profile</p>
+              </div>
+              <button 
+                onClick={() => setShowAvatarModal(false)} 
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3.5 py-2 max-h-[60vh] overflow-y-auto">
+              {AVATARS.map((item) => {
+                const isSelected = (user.avatar || 'avatar-1') === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      if (onUpdateAvatar) onUpdateAvatar(item.id);
+                      if (window.Telegram?.WebApp?.HapticFeedback) {
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                      }
+                      setShowAvatarModal(false);
+                    }}
+                    className={`relative p-2 rounded-2xl border-2 cursor-pointer transition-all flex flex-col items-center gap-1.5 active:scale-95 ${
+                      isSelected 
+                        ? 'border-emerald-500 bg-emerald-50/80 shadow-md ring-2 ring-emerald-200' 
+                        : 'border-slate-100 hover:border-sky-200 bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-sm bg-sky-100">
+                      <img src={item.src} alt={item.name} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[10px] font-extrabold text-[#192f52] text-center leading-tight">
+                      {item.name}
+                    </span>
+                    {isSelected && (
+                      <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-xs">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

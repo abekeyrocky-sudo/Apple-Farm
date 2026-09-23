@@ -27,14 +27,13 @@ export { db };
 export const syncUserWithFirebase = async (tgUser) => {
   if (!tgUser) return null;
   const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Farmer";
-  const photoUrl = tgUser.photo_url || null;
 
   if (!db || firebaseConfig.apiKey === "YOUR_API_KEY") {
     return {
       id: tgUser.id || 40281,
       name: fullName,
       username: tgUser.username || "",
-      photo_url: photoUrl,
+      avatar: 'avatar-1',
       apples: 0,
       diamonds: 0.0,
       level: 1,
@@ -52,7 +51,7 @@ export const syncUserWithFirebase = async (tgUser) => {
         id: tgUser.id,
         name: fullName,
         username: tgUser.username || "",
-        photo_url: photoUrl,
+        avatar: 'avatar-1',
         apples: 0,
         diamonds: 0.0,
         level: 1,
@@ -62,12 +61,12 @@ export const syncUserWithFirebase = async (tgUser) => {
       await setDoc(userRef, newUser);
       return newUser;
     } else {
-      // যদি ইউজারের ফটো বা নাম আপডেট হয় তা ফায়ারস্টোরে রিফ্রেশ করা
       const existing = userSnap.data();
-      if (photoUrl && existing.photo_url !== photoUrl) {
-        await updateDoc(userRef, { photo_url: photoUrl, name: fullName });
-      }
-      return { ...existing, photo_url: photoUrl || existing.photo_url, name: fullName || existing.name };
+      return { 
+        ...existing, 
+        avatar: existing.avatar || 'avatar-1',
+        name: fullName || existing.name 
+      };
     }
   } catch (err) {
     console.warn("Firestore sync warning (check Firestore Rules/Database status):", err);
@@ -75,7 +74,7 @@ export const syncUserWithFirebase = async (tgUser) => {
       id: tgUser.id || 40281,
       name: fullName,
       username: tgUser.username || "",
-      photo_url: photoUrl,
+      avatar: 'avatar-1',
       apples: 0,
       diamonds: 0.0,
       level: 1,

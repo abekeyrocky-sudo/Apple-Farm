@@ -22,6 +22,7 @@ export default function App() {
   const [user, setUser] = useState({
     id: null,
     name: 'Farmer',
+    avatar: 'avatar-1',
     apples: 0,
     diamonds: 0.0,
     level: 1,
@@ -45,7 +46,6 @@ export default function App() {
           id: tgUser.id,
           name: fullName,
           username: tgUser.username || '',
-          photo_url: tgUser.photo_url || null,
         }));
 
         syncUserWithFirebase(tgUser).then((data) => {
@@ -56,13 +56,20 @@ export default function App() {
               ...data,
               level: calculatedLvl,
               name: fullName,
-              photo_url: tgUser.photo_url || data.photo_url || null,
+              avatar: data.avatar || prev.avatar || 'avatar-1',
             }));
           }
         });
       }
     }
   }, []);
+
+  const handleUpdateAvatar = (newAvatarId) => {
+    setUser((prev) => ({ ...prev, avatar: newAvatarId }));
+    if (user.id) {
+      updateUserInDB(user.id, { avatar: newAvatarId });
+    }
+  };
 
   const handleHarvestAction = () => {
     setUser((prev) => {
@@ -210,6 +217,7 @@ export default function App() {
         onNavigate={handleNavigate}
         onLogout={() => setCurrentTab('home')}
         onRedeemBonus={(amount) => handleBonusWin(amount)}
+        onUpdateAvatar={handleUpdateAvatar}
       />
     );
   }
