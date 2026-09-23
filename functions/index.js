@@ -12,6 +12,7 @@ import { createSpinController } from './src/controllers/spinController.js';
 import { createWithdrawController } from './src/controllers/withdrawController.js';
 import { createTaskController } from './src/controllers/taskController.js';
 import { createAdsController } from './src/controllers/adsController.js';
+import { createBotController } from './src/controllers/botController.js';
 
 dotenv.config();
 
@@ -31,6 +32,8 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://pocket-coin-app-1fsq.vercel.app';
+const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 // Controllers
 const userCtrl = createUserController(db);
@@ -39,11 +42,16 @@ const spinCtrl = createSpinController(db, adminHelper);
 const withdrawCtrl = createWithdrawController(db, adminHelper);
 const taskCtrl = createTaskController(db, adminHelper);
 const adsCtrl = createAdsController(db, adminHelper);
+const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL);
 
 // Health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
+
+// Telegram Bot Webhook Route (24/7 Cloud Handler)
+app.post('/telegram/webhook', botCtrl.handleWebhook);
+app.post('/api/telegram/webhook', botCtrl.handleWebhook);
 
 // Protected Telegram WebApp API Routes
 const apiRouter = express.Router();
