@@ -4,6 +4,7 @@ import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function MinePage({ 
   user = { apples: 0, diamonds: 0.0, level: 1, name: 'Farmer' }, 
@@ -44,10 +45,13 @@ export default function MinePage({
     >
       
       {/* ----------------- TOP HEADER AREA ----------------- */}
-      <div className="pt-3 px-4 pb-2 z-20">
+      <div className="pt-2 px-3 pb-2 z-20">
+        
+        {/* Custom Telegram Mini App Title Bar */}
+        <CustomTitleBar title="Apple Farm" />
         
         {/* User Info & Diamond Counter */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 px-1">
           {/* User Profile */}
           <div 
             onClick={onOpenProfile || (() => onNavigate?.('profile'))}

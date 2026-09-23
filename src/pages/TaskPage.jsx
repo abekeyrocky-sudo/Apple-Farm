@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserCheck, UserPlus, Gift, Play, CalendarCheck, Gamepad2 } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
   const [activeTab, setActiveTab] = useState('All');
@@ -126,8 +127,9 @@ export default function TaskPage({ onBack, onNavigate, onRewardClaim }) {
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f3f9ff] to-[#e8f5e9] flex flex-col justify-between select-none font-sans overflow-hidden">
       
       {/* ----------------- TOP BAR ----------------- */}
-      <div className="pt-3 px-4 pb-2 z-20">
-        <div className="flex items-center justify-between relative mb-4">
+      <div className="pt-2 px-4 pb-2 z-20">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="flex items-center justify-between relative mb-3 mt-1">
           {/* Back Button */}
           <button 
             onClick={onBack || (() => onNavigate?.('home'))}

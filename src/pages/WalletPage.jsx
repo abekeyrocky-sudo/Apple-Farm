@@ -3,6 +3,7 @@ import { Sprout } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function WalletPage({ 
   user = { apples: 0, diamonds: 0.0 }, 
@@ -51,8 +52,9 @@ export default function WalletPage({
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f4f9ff] to-[#e8f5e9] flex flex-col justify-between select-none font-sans overflow-hidden">
       
       {/* ----------------- TOP HEADER ----------------- */}
-      <div className="pt-3 px-4 pb-2 z-20">
-        <div className="flex items-center justify-between relative mb-3">
+      <div className="pt-2 px-4 pb-2 z-20">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="flex items-center justify-between relative mb-3 mt-1">
           {/* Back Button */}
           <button 
             onClick={onBack || (() => onNavigate?.('home'))}

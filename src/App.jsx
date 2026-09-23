@@ -13,6 +13,7 @@ import AirdropPage from './pages/AirdropPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import StakingPage from './pages/StakingPage';
 import MarketPage from './pages/MarketPage';
+import CustomPopupModal from './components/CustomPopupModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
 import { calculateLevel } from './utils/levelSystem';
 
@@ -30,12 +31,82 @@ export default function App() {
     maxEnergy: 100,
   });
 
+  // গ্লোবাল কাস্টম পপআপ মডাল স্টেট
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: 'success', // 'success' | 'warn' | 'reward' | 'error' | 'info'
+    title: '',
+    message: '',
+    rewardAmount: null,
+    rewardType: 'apple',
+    confirmText: 'Awesome',
+    cancelText: null,
+    onConfirm: null,
+  });
+
+  const showPopupModal = (opts) => {
+    setModalConfig({
+      isOpen: true,
+      type: opts.type || 'success',
+      title: opts.title || '',
+      message: opts.message || '',
+      rewardAmount: opts.rewardAmount !== undefined ? opts.rewardAmount : null,
+      rewardType: opts.rewardType || 'apple',
+      confirmText: opts.confirmText || 'Awesome',
+      cancelText: opts.cancelText || null,
+      onConfirm: opts.onConfirm || null,
+    });
+  };
+
+  const closePopupModal = () => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
   useEffect(() => {
-    // টেলিগ্রাম ইনিশিয়ালাইজেশন ও অটো ইউজার প্রোফাইল ট্র্যাকিং
+    // টেলিগ্রাম ইনিশিয়ালাইজেশন ও ফুলস্ক্রিন এক্সপান্ড
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
+      
+      // Request Fullscreen for Telegram WebApp Bot API 7.7+ & 8.0+
+      try {
+        if (typeof tg.requestFullscreen === 'function') {
+          tg.requestFullscreen();
+        }
+      } catch (err) {
+        console.warn('Telegram requestFullscreen not supported or blocked:', err);
+      }
+
+      // Disable vertical swipes to prevent accidental closing on touch drag
+      try {
+        if (typeof tg.disableVerticalSwipes === 'function') {
+          tg.disableVerticalSwipes();
+        }
+      } catch (err) {
+        console.warn('disableVerticalSwipes error:', err);
+      }
+
+      // Enable closing confirmation to prevent accidental exit
+      try {
+        if (typeof tg.enableClosingConfirmation === 'function') {
+          tg.enableClosingConfirmation();
+        }
+      } catch (err) {
+        console.warn('enableClosingConfirmation error:', err);
+      }
+
+      // Set header color & background color to blend smoothly
+      try {
+        if (typeof tg.setHeaderColor === 'function') {
+          tg.setHeaderColor('#5ec228');
+        }
+        if (typeof tg.setBackgroundColor === 'function') {
+          tg.setBackgroundColor('#5ec228');
+        }
+      } catch (err) {
+        console.warn('Theme color setup error:', err);
+      }
       
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {
@@ -69,6 +140,12 @@ export default function App() {
     if (user.id) {
       updateUserInDB(user.id, { avatar: newAvatarId });
     }
+    showPopupModal({
+      type: 'success',
+      title: 'Avatar Updated!',
+      message: 'Your farmer character has been changed successfully.',
+      confirmText: 'Great'
+    });
   };
 
   const handleHarvestAction = () => {
@@ -86,7 +163,7 @@ export default function App() {
     }
   };
 
-  const handleBonusWin = (amount) => {
+  const handleBonusWin = (amount, title = 'Bonus Claimed!') => {
     setUser((prev) => {
       const newApples = prev.apples + amount;
       const newLevel = calculateLevel(newApples);
@@ -96,11 +173,18 @@ export default function App() {
         level: newLevel
       };
     });
+    showPopupModal({
+      type: 'reward',
+      title: title,
+      message: `Congratulations! You received +${amount} Apples into your balance.`,
+      rewardAmount: amount,
+      rewardType: 'apple'
+    });
   };
 
   const handleRewardClaim = (task) => {
     if (task.rewardAmount) {
-      handleBonusWin(task.rewardAmount);
+      handleBonusWin(task.rewardAmount, 'Task Completed!');
     }
   };
 
@@ -108,8 +192,25 @@ export default function App() {
     const value = parseFloat(item.label) || 0;
     if (item.type === 'diamond') {
       setUser((prev) => ({ ...prev, diamonds: prev.diamonds + value }));
+      showPopupModal({
+        type: 'reward',
+        title: 'Lucky Spin Winner!',
+        message: `Jackpot! You won ${value} Diamonds on the wheel!`,
+        rewardAmount: value,
+        rewardType: 'diamond'
+      });
     } else {
-      setUser((prev) => ({ ...prev, apples: prev.apples + value }));
+      setUser((prev) => {
+        const newApples = prev.apples + value;
+        return { ...prev, apples: newApples, level: calculateLevel(newApples) };
+      });
+      showPopupModal({
+        type: 'reward',
+        title: 'Lucky Spin Winner!',
+        message: `Jackpot! You won ${value} Apples on the wheel!`,
+        rewardAmount: value,
+        rewardType: 'apple'
+      });
     }
   };
 
@@ -119,15 +220,25 @@ export default function App() {
         ...prev,
         apples: Math.max(0, prev.apples - data.amount)
       }));
+      showPopupModal({
+        type: 'success',
+        title: 'Withdrawal Submitted!',
+        message: `Your withdrawal request of ${data.amount} Apples has been placed successfully.`,
+        confirmText: 'Done'
+      });
     }
   };
 
   const handleUpdateUserBalance = (delta) => {
-    setUser((prev) => ({
-      ...prev,
-      apples: Math.max(0, prev.apples + (delta.apples || 0)),
-      diamonds: Math.max(0, prev.diamonds + (delta.diamonds || 0))
-    }));
+    setUser((prev) => {
+      const newApples = Math.max(0, prev.apples + (delta.apples || 0));
+      return {
+        ...prev,
+        apples: newApples,
+        diamonds: Math.max(0, prev.diamonds + (delta.diamonds || 0)),
+        level: calculateLevel(newApples)
+      };
+    });
   };
 
   const handleNavigate = (tab) => {
@@ -139,155 +250,147 @@ export default function App() {
     return <SplashScreen onLoaded={() => setIsLoading(false)} />;
   }
 
-  // 2. Home / Main Page
-  if (currentTab === 'home') {
-    return (
-      <HomePage 
-        user={user}
-        onHarvest={handleHarvestAction}
-        onNavigate={handleNavigate}
-        onWithdraw={() => setCurrentTab('withdraw')}
-        onOpenProfile={() => setCurrentTab('profile')}
-      />
-    );
-  }
+  // Active Screen Rendering
+  const renderCurrentPage = () => {
+    switch (currentTab) {
+      case 'home':
+        return (
+          <HomePage 
+            user={user}
+            onHarvest={handleHarvestAction}
+            onNavigate={handleNavigate}
+            onWithdraw={() => setCurrentTab('withdraw')}
+            onOpenProfile={() => setCurrentTab('profile')}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'mine':
+        return (
+          <MinePage 
+            user={user}
+            onHarvest={handleHarvestAction}
+            onWithdraw={() => setCurrentTab('withdraw')}
+            onNavigate={handleNavigate}
+            onOpenProfile={() => setCurrentTab('profile')}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'task':
+        return (
+          <TaskPage 
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onRewardClaim={handleRewardClaim}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'game':
+        return (
+          <GamePage 
+            onNavigate={handleNavigate}
+            onWinReward={handleGameReward}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'airdrop':
+        return (
+          <AirdropPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'wallet':
+        return (
+          <WalletPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'profile':
+        return (
+          <ProfilePage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onLogout={() => setCurrentTab('home')}
+            onRedeemBonus={(amount) => handleBonusWin(amount, 'Code Redeemed!')}
+            onUpdateAvatar={handleUpdateAvatar}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'ads':
+        return (
+          <WatchAdsPage 
+            onBack={() => setCurrentTab('home')}
+            onRewardEarned={(amount) => handleBonusWin(amount, 'Ad Reward Claimed!')}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'invite':
+        return (
+          <InviteFriendsPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'withdraw':
+        return (
+          <WithdrawPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onWithdrawSubmit={handleWithdrawDeduct}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'leaderboard':
+        return (
+          <LeaderboardPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'staking':
+        return (
+          <StakingPage 
+            user={user}
+            onBack={() => setCurrentTab('wallet')}
+            onNavigate={handleNavigate}
+            onUpdateUserBalance={handleUpdateUserBalance}
+            onShowPopup={showPopupModal}
+          />
+        );
+      case 'market':
+        return (
+          <MarketPage 
+            user={user}
+            onBack={() => setCurrentTab('home')}
+            onNavigate={handleNavigate}
+            onUpdateUserBalance={handleUpdateUserBalance}
+            onShowPopup={showPopupModal}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
-  // 3. Mine / Click to Collect Orchard Screen
-  if (currentTab === 'mine') {
-    return (
-      <MinePage 
-        user={user}
-        onHarvest={handleHarvestAction}
-        onWithdraw={() => setCurrentTab('withdraw')}
-        onNavigate={handleNavigate}
-        onOpenProfile={() => setCurrentTab('profile')}
+  return (
+    <>
+      {renderCurrentPage()}
+      
+      {/* গ্লোবাল কাস্টম ভেক্টর পপআপ মডাল */}
+      <CustomPopupModal 
+        {...modalConfig} 
+        onClose={closePopupModal} 
       />
-    );
-  }
-
-  // 4. Tasks & Rewards Page
-  if (currentTab === 'task') {
-    return (
-      <TaskPage 
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-        onRewardClaim={handleRewardClaim}
-      />
-    );
-  }
-
-  // 5. Game / Spin & Win Wheel Page
-  if (currentTab === 'game') {
-    return (
-      <GamePage 
-        onNavigate={handleNavigate}
-        onWinReward={handleGameReward}
-      />
-    );
-  }
-
-  // 6. Airdrop Hub Page
-  if (currentTab === 'airdrop') {
-    return (
-      <AirdropPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-      />
-    );
-  }
-
-  // 7. Wallet Page
-  if (currentTab === 'wallet') {
-    return (
-      <WalletPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-      />
-    );
-  }
-
-  // 7. Profile & Settings Page
-  if (currentTab === 'profile') {
-    return (
-      <ProfilePage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-        onLogout={() => setCurrentTab('home')}
-        onRedeemBonus={(amount) => handleBonusWin(amount)}
-        onUpdateAvatar={handleUpdateAvatar}
-      />
-    );
-  }
-
-  // 8. Watch Ads Page
-  if (currentTab === 'ads') {
-    return (
-      <WatchAdsPage 
-        onBack={() => setCurrentTab('home')}
-        onRewardEarned={(amount) => handleBonusWin(amount)}
-      />
-    );
-  }
-
-  // 9. Invite Friends Page
-  if (currentTab === 'invite') {
-    return (
-      <InviteFriendsPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-      />
-    );
-  }
-
-  // 10. Withdraw Page
-  if (currentTab === 'withdraw') {
-    return (
-      <WithdrawPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onWithdrawSubmit={handleWithdrawDeduct}
-      />
-    );
-  }
-
-  // 11. Leaderboard / Global Ranking Page
-  if (currentTab === 'leaderboard') {
-    return (
-      <LeaderboardPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-      />
-    );
-  }
-
-  // 12. Staking Center Page
-  if (currentTab === 'staking') {
-    return (
-      <StakingPage 
-        user={user}
-        onBack={() => setCurrentTab('wallet')}
-        onNavigate={handleNavigate}
-        onUpdateUserBalance={handleUpdateUserBalance}
-      />
-    );
-  }
-
-  // 13. Apple Market Page
-  if (currentTab === 'market') {
-    return (
-      <MarketPage 
-        user={user}
-        onBack={() => setCurrentTab('home')}
-        onNavigate={handleNavigate}
-        onUpdateUserBalance={handleUpdateUserBalance}
-      />
-    );
-  }
-
-  return null;
+    </>
+  );
 }
 

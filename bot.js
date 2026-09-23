@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBAPP_URL = process.env.MINI_APP_URL || 'https://apple-farm-tma.vercel.app';
+const WEBAPP_URL = process.env.MINI_APP_URL || 'https://pocket-coin-app-1fsq.vercel.app';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 if (!TOKEN || TOKEN === 'YOUR_BOT_TOKEN_HERE') {

@@ -4,6 +4,7 @@ import spinBgImg from '../../assets/spin-screen-background.png';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 // রেফারেন্স ইমেজের হুবহু স্লাইস ডাটা
 const SLICES = [
@@ -75,18 +76,10 @@ export default function GamePage({ onNavigate, onWinReward }) {
       className="relative w-full max-w-md mx-auto min-h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-between select-none font-sans overflow-hidden"
     >
       
-      {/* ----------------- TOP BACKGROUND LEAVES & TITLE ----------------- */}
-      <div className="pt-3 px-4 z-20 text-center relative">
-        {/* Decorative Top Left Leaf */}
-        <div className="absolute -top-2 left-0 text-4xl opacity-80 pointer-events-none transform -rotate-45">
-          🍃
-        </div>
-        {/* Decorative Top Right Leaf */}
-        <div className="absolute -top-2 right-0 text-4xl opacity-80 pointer-events-none transform rotate-45">
-          🍃
-        </div>
-
-        <h1 className="text-2xl font-black text-[#192f52] tracking-tight drop-shadow-sm mt-1">
+      {/* ----------------- TOP TITLE ----------------- */}
+      <div className="pt-2 px-4 z-20 text-center relative">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <h1 className="text-xl font-black text-[#192f52] tracking-tight drop-shadow-sm mt-1">
           Spin & Win
         </h1>
       </div>

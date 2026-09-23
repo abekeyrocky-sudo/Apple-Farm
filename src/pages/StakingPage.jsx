@@ -3,6 +3,7 @@ import { Wallet, Gift, Shield, Zap, Sparkles, Coins, LockOpen, Sprout, CheckCirc
 import { TonConnectUI } from '@tonconnect/ui';
 import confetti from 'canvas-confetti';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 
@@ -262,8 +263,9 @@ export default function StakingPage({
       )}
 
       {/* ----------------- TOP HEADER AREA ----------------- */}
-      <div className="pt-4 px-4 pb-2 z-20">
-        <div className="flex items-center justify-between relative mb-1">
+      <div className="pt-2 px-4 pb-2 z-20">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="flex items-center justify-between relative mb-1 mt-1">
           {/* Back Button */}
           <button 
             onClick={onBack || (() => onNavigate?.('wallet'))}

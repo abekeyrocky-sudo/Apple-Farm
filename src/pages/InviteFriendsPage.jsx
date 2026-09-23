@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import inviteBannerImg from '../../assets/invite-banner.png';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function InviteFriendsPage({ user = { username: 'rocky' }, onBack }) {
   const [copied, setCopied] = useState(false);
@@ -35,22 +36,25 @@ export default function InviteFriendsPage({ user = { username: 'rocky' }, onBack
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f4f9ff] to-[#e8f5e9] flex flex-col justify-between p-4 select-none font-sans overflow-hidden">
       
       {/* ----------------- TOP HEADER ----------------- */}
-      <div className="relative flex items-center justify-between pt-2 mb-3">
-        {/* Back Button */}
-        <button 
-          onClick={onBack}
-          className="w-9 h-9 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform shadow-sm">
-          <svg className="w-5 h-5 stroke-current stroke-[2.5]" viewBox="0 0 24 24" fill="none">
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+      <div>
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="relative flex items-center justify-between pt-1 mb-3">
+          {/* Back Button */}
+          <button 
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform shadow-sm">
+            <svg className="w-5 h-5 stroke-current stroke-[2.5]" viewBox="0 0 24 24" fill="none">
+              <path d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-        {/* Title */}
-        <h1 className="text-xl font-black text-[#192f52] tracking-tight">
-          Invite Friends
-        </h1>
+          {/* Title */}
+          <h1 className="text-xl font-black text-[#192f52] tracking-tight">
+            Invite Friends
+          </h1>
 
-        <div className="w-9" /> {/* Spacer */}
+          <div className="w-9" /> {/* Spacer */}
+        </div>
       </div>
 
       {/* ----------------- MAIN CONTENT ----------------- */}

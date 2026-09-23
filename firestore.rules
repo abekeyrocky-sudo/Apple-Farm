@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection: users can read their own data
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true; // In production, write permissions are controlled via Cloud Functions admin SDK
+    }
+    
+    // Withdrawals collection
+    match /withdrawals/{withdrawalId} {
+      allow read, create: if true;
+      allow update, delete: if false;
+    }
+
+    // Default catch-all
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

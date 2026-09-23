@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, CheckCircle2, Rocket } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import BottomNav from '../components/BottomNav';
+import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
 
 export default function AirdropPage({ user, onBack, onNavigate }) {
@@ -101,8 +102,9 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
       )}
 
       {/* ----------------- TOP HEADER AREA ----------------- */}
-      <div className="pt-4 px-4 pb-2 z-20">
-        <div className="flex items-center justify-between relative">
+      <div className="pt-2 px-4 pb-2 z-20">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="flex items-center justify-between relative mt-1">
           {/* Back Button */}
           <button
             onClick={onBack || (() => onNavigate?.('home'))}

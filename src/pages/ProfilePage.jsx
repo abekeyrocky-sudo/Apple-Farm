@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import { calculateLevel, getLevelProgress } from '../utils/levelSystem';
 import { AVATARS, getAvatarSrc } from '../utils/avatars';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function ProfilePage({ 
   user = { name: 'Farmer', id: null, level: 1, apples: 0, avatar: 'avatar-1' }, 
@@ -32,6 +33,14 @@ export default function ProfilePage({
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
+      ),
+    },
+    {
+      id: 'market',
+      label: 'Apple Market',
+      badge: 'Shop',
+      icon: (
+        <Store className="w-5 h-5 text-emerald-600 stroke-[2.2]" />
       ),
     },
     {
@@ -107,6 +116,8 @@ export default function ProfilePage({
 
     if (id === 'profile') {
       setShowAvatarModal(true);
+    } else if (id === 'market') {
+      onNavigate?.('market');
     } else if (id === 'redeem') {
       setShowRedeemModal(true);
     } else if (id === 'leaderboard') {
@@ -138,8 +149,9 @@ export default function ProfilePage({
       
       {/* ----------------- TOP HEADER AREA ----------------- */}
       <div>
+        <CustomTitleBar title="Apple Farm" darkText={true} />
         {/* Back Button */}
-        <div className="pt-2 mb-3">
+        <div className="pt-1 mb-3">
           <button 
             onClick={onBack}
             className="w-9 h-9 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform shadow-sm">

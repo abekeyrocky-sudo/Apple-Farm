@@ -3,6 +3,7 @@ import { Crown, User, Award, Medal, Shield, Sparkles } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import { getAvatarSrc } from '../utils/avatars';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 export default function LeaderboardPage({ 
   user = { name: 'Rocky', apples: 0, level: 1, id: null, avatar: 'avatar-1' }, 
@@ -62,8 +63,9 @@ export default function LeaderboardPage({
       <div className="absolute inset-0 bg-gradient-to-b from-[#87CEEB]/60 via-[#A8E6CF]/40 to-[#56ab2f]/70 pointer-events-none" />
 
       {/* ----------------- TOP HEADER AREA ----------------- */}
-      <div className="relative pt-4 px-4 pb-1 z-20">
-        <div className="flex items-center justify-between">
+      <div className="relative pt-2 px-4 pb-1 z-20">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
+        <div className="flex items-center justify-between mt-1">
           {/* Back Button */}
           <button
             onClick={onBack || (() => onNavigate?.('home'))}

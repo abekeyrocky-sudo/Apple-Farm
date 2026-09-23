@@ -3,6 +3,7 @@ import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import bksImg from '../../assets/bks.png';
 import gramImg from '../../assets/gram.png';
+import CustomTitleBar from '../components/CustomTitleBar';
 
 // রেফারেন্স ইমেজের হুবহু পেমেন্ট গেটওয়ে ডাটা ও লোগো
 const PAYMENT_METHODS = [
@@ -126,10 +127,10 @@ export default function WithdrawPage({
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f4f9ff] to-[#e8f5e9] flex flex-col justify-between p-4 select-none font-sans overflow-hidden">
       
       {/* ----------------- TOP HEADER AREA ----------------- */}
-      <div className="flex-1 space-y-4">
-        
+      <div className="flex-1 space-y-3">
+        <CustomTitleBar title="Apple Farm" darkText={true} />
         {/* Navigation Bar */}
-        <div className="relative flex items-center justify-between pt-2">
+        <div className="relative flex items-center justify-between pt-1">
           {/* Back Button */}
           <button 
             onClick={onBack}
