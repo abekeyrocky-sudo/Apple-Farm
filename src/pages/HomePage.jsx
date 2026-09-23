@@ -56,11 +56,11 @@ export default function HomePage({
             onClick={onOpenProfile || (() => onNavigate?.('profile'))}
             className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
           >
-            <div className="w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-tr from-amber-300 to-sky-300 p-0.5 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-12 h-12 rounded-full shadow-md overflow-hidden flex-shrink-0 flex items-center justify-center">
               <img 
                 src={avatarImg} 
                 alt="Avatar" 
-                className="w-full h-full object-cover rounded-full" 
+                className="w-full h-full object-cover" 
               />
             </div>
             <div>

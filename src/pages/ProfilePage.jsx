@@ -154,13 +154,15 @@ export default function ProfilePage({
           {/* Avatar Container with Edit Camera Badge */}
           <div 
             onClick={() => setShowAvatarModal(true)}
-            className="relative w-20 h-20 rounded-full border-4 border-white shadow-[0_4px_14px_rgba(0,140,255,0.15)] bg-gradient-to-tr from-[#38bdf8] to-[#bae6fd] flex items-center justify-center cursor-pointer active:scale-95 transition-transform flex-shrink-0 group"
+            className="relative w-20 h-20 flex-shrink-0 cursor-pointer active:scale-95 transition-transform group"
           >
-            <img 
-              src={currentAvatarSrc} 
-              alt="Avatar" 
-              className="w-full h-full object-cover rounded-full" 
-            />
+            <div className="w-full h-full rounded-full overflow-hidden shadow-md">
+              <img 
+                src={currentAvatarSrc} 
+                alt="Avatar" 
+                className="w-full h-full object-cover" 
+              />
+            </div>
             <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-white shadow-md">
               <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
