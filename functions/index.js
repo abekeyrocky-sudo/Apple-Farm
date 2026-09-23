@@ -32,7 +32,7 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://pocket-coin-app-1fsq.vercel.app';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.app';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 // Controllers
