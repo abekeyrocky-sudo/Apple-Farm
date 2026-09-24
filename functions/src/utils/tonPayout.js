@@ -1,5 +1,6 @@
 import { mnemonicToPrivateKey } from '@ton/crypto';
-import { TonClient, WalletContractV4, internal, toNano, Address } from '@ton/ton';
+import { TonClient, WalletContractV4 } from '@ton/ton';
+import { internal, toNano, Address } from '@ton/core';
 
 const TONCENTER_API_KEY = process.env.TONCENTER_API_KEY || '339b8826294c4f5a133e0300346947bb92b26d84951b3dad768f4fab85b57522';
 const MASTER_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || 'vessel tornado great just traffic august below exhaust pluck chair series deposit culture forget panther inspire phone love bulb version basket sibling this simple';

@@ -15,6 +15,7 @@
     "node": "22"
   },
   "dependencies": {
+    "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^16.3.0",
     "cors": "^2.8.5",
