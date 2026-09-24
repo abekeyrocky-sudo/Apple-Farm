@@ -250,28 +250,48 @@ export default function App() {
   };
 
   const handleWithdrawDeduct = (data) => {
-    if (data.amount) {
-      setUser((prev) => ({
-        ...prev,
-        apples: Math.max(0, prev.apples - data.amount)
-      }));
+    const appleDeduct = Number(data.amount || 0);
+    const diamondDeduct = Number(data.diamonds || 0);
+    const isGram = !!data.gramAmount;
+    const nextGramStep = data.nextGramStep !== undefined ? data.nextGramStep : (user.gramWithdrawStep || 0);
+
+    setUser((prev) => ({
+      ...prev,
+      apples: Math.max(0, prev.apples - appleDeduct),
+      diamonds: Math.max(0, prev.diamonds - diamondDeduct),
+      gramWithdrawStep: isGram ? nextGramStep : (prev.gramWithdrawStep || 0),
+      level: calculateLevel(Math.max(0, prev.apples - appleDeduct))
+    }));
+
+    if (user.id) {
+      const updatePayload = {
+        apples: Math.max(0, (user.apples || 0) - appleDeduct),
+        diamonds: Math.max(0, (user.diamonds || 0) - diamondDeduct)
+      };
+      if (isGram) {
+        updatePayload.gramWithdrawStep = nextGramStep;
+      }
+      updateUserInDB(user.id, updatePayload);
       addTransaction({
         userId: user.id,
-        title: 'Withdrawal Request',
-        subtitle: data.address ? `To: ${data.address.slice(0, 6)}...` : 'TON Payout',
-        amount: `-${data.amount}`,
+        title: isGram ? `${data.gramAmount} GRAM Payout` : 'Withdrawal Request',
+        subtitle: data.account ? `To: ${data.account.slice(0, 8)}...` : `${data.method} Payout`,
+        amount: `-${appleDeduct}`,
         currency: 'apple',
         type: 'spend',
         category: 'withdraw',
         status: 'Processing'
       });
-      showPopupModal({
-        type: 'success',
-        title: 'Withdrawal Submitted!',
-        message: `Your withdrawal request of ${data.amount} Apples has been placed successfully.`,
-        confirmText: 'Done'
-      });
     }
+
+    showPopupModal({
+      type: 'success',
+      title: 'Withdrawal Submitted!',
+      message: isGram 
+        ? `Your request for ${data.gramAmount} GRAM (${appleDeduct} Apples & ${diamondDeduct} Diamonds) has been submitted to TON network.`
+        : `Your withdrawal request of ${appleDeduct} Apples has been placed successfully via ${data.method}.`,
+      confirmText: 'Done'
+    });
   };
 
   const handleUpdateUserBalance = (delta) => {
@@ -283,6 +303,50 @@ export default function App() {
         diamonds: Math.max(0, prev.diamonds + (delta.diamonds || 0)),
         level: calculateLevel(newApples)
       };
+    });
+  };
+
+  const handleClaimReferReward = (mission) => {
+    const applesReward = mission.apples || 0;
+    const diamondsReward = mission.diamonds || 0;
+    
+    setUser((prev) => {
+      const newApples = prev.apples + applesReward;
+      const newDiamonds = prev.diamonds + diamondsReward;
+      const newClaimed = { ...(prev.claimedReferMissions || {}), [mission.id]: true };
+      return {
+        ...prev,
+        apples: newApples,
+        diamonds: newDiamonds,
+        claimedReferMissions: newClaimed,
+        level: calculateLevel(newApples)
+      };
+    });
+
+    if (user.id) {
+      updateUserInDB(user.id, {
+        [`claimedReferMissions.${mission.id}`]: true,
+        apples: (user.apples || 0) + applesReward,
+        diamonds: (user.diamonds || 0) + diamondsReward
+      });
+      addTransaction({
+        userId: user.id,
+        title: 'Referral Milestone',
+        subtitle: mission.title,
+        amount: `+${applesReward}`,
+        currency: 'apple',
+        type: 'earn',
+        category: 'invite',
+        status: 'Completed'
+      });
+    }
+
+    showPopupModal({
+      type: 'reward',
+      title: 'Mission Reward Claimed!',
+      message: `You earned +${applesReward} Apples${diamondsReward > 0 ? ` & +${diamondsReward} Diamonds` : ''} for ${mission.title}!`,
+      rewardAmount: applesReward,
+      rewardType: 'apple'
     });
   };
 
@@ -343,6 +407,10 @@ export default function App() {
             user={user}
             onBack={() => setCurrentTab('home')}
             onNavigate={handleNavigate}
+            onUpdateUser={(updatedData) => {
+              setUser((prev) => ({ ...prev, ...updatedData }));
+              if (user.id) updateUserInDB(user.id, updatedData);
+            }}
             onShowPopup={showPopupModal}
           />
         );
@@ -380,6 +448,7 @@ export default function App() {
           <InviteFriendsPage 
             user={user}
             onBack={() => setCurrentTab('home')}
+            onClaimReward={handleClaimReferReward}
             onShowPopup={showPopupModal}
           />
         );

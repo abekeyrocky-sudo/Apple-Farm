@@ -20,6 +20,8 @@ export default function ProfilePage({
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
 
@@ -154,6 +156,10 @@ export default function ProfilePage({
       setShowHistoryModal(true);
     } else if (id === 'settings') {
       setShowSettingsModal(true);
+    } else if (id === 'about') {
+      setShowAboutModal(true);
+    } else if (id === 'support') {
+      setShowSupportModal(true);
     }
   };
 
@@ -464,6 +470,157 @@ export default function ProfilePage({
               className="w-full py-3 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white font-black text-sm rounded-2xl shadow-md active:scale-95 transition-all"
             >
               Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- ABOUT US MODAL ----------------- */}
+      {showAboutModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-gradient-to-b from-[#f8fcff] to-[#edf7ee] w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 border border-sky-100 animate-slide-up max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-sm">
+                  <img src={appleImg} alt="Apple" className="w-6 h-6 object-contain" />
+                </div>
+                <div>
+                  <h3 className="font-black text-[#192f52] text-base">About Apple Farm</h3>
+                  <p className="text-[10px] font-bold text-emerald-600">Web3 Farming Mini App on TON</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAboutModal(false)} 
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200 active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Overview Box */}
+            <div className="p-3 bg-white/95 rounded-2xl border border-slate-100 shadow-xs space-y-1.5">
+              <h4 className="text-xs font-black text-[#192f52]">🌾 What is Apple Farm?</h4>
+              <p className="text-[11px] font-medium text-slate-600 leading-relaxed">
+                Apple Farm is an interactive Web3 Play-to-Earn farm ecosystem on Telegram, powered by the <strong className="text-sky-600 font-bold">TON Blockchain</strong>. Plant, harvest, mine diamonds, and convert your hard work into real crypto payouts.
+              </p>
+            </div>
+
+            {/* Features Breakdown */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#192f52] px-1">✨ Core Features & Guides</h4>
+
+              <div className="grid grid-cols-1 gap-2 text-[11px]">
+                {/* 1. Harvest & Level */}
+                <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
+                  </div>
+                  <div>
+                    <h5 className="font-black text-[#192f52]">Harvest & Level Up</h5>
+                    <p className="text-slate-500 text-[10px]">Tap to harvest fresh apples. Increasing levels multiplies your yield per tap.</p>
+                  </div>
+                </div>
+
+                {/* 2. Diamonds & Wheel */}
+                <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs">💎</span>
+                  </div>
+                  <div>
+                    <h5 className="font-black text-[#192f52]">Diamonds & Lucky Spin</h5>
+                    <p className="text-slate-500 text-[10px]">Win rare diamonds from daily wheel spins, needed for high-tier GRAM payouts.</p>
+                  </div>
+                </div>
+
+                {/* 3. Staking */}
+                <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs">🏦</span>
+                  </div>
+                  <div>
+                    <h5 className="font-black text-[#192f52]">Staking Vault (APY)</h5>
+                    <p className="text-slate-500 text-[10px]">Lock your apples in high-yield vaults to earn compound interest automatically.</p>
+                  </div>
+                </div>
+
+                {/* 4. Automated Payouts */}
+                <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs">⚡</span>
+                  </div>
+                  <div>
+                    <h5 className="font-black text-[#192f52]">Instant TON Withdrawals</h5>
+                    <p className="text-slate-500 text-[10px]">Fast on-chain automated payouts directly to your connected Tonkeeper / Telegram wallet.</p>
+                  </div>
+                </div>
+
+                {/* 5. Airdrop */}
+                <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs">🪂</span>
+                  </div>
+                  <div>
+                    <h5 className="font-black text-[#192f52]">$APPLE Airdrop Hub</h5>
+                    <p className="text-slate-500 text-[10px]">Complete the 5 milestone tasks and reserve your exclusive token allocation.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Version & Security */}
+            <div className="pt-2 text-center border-t border-slate-100">
+              <span className="text-[10px] font-extrabold text-slate-400">
+                Apple Farm Mini App • v1.0.4 • Secured on TON
+              </span>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowAboutModal(false)}
+              className="w-full py-2.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white font-black text-xs rounded-xl shadow-md active:scale-95"
+            >
+              Got It!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- HELP & SUPPORT MODAL ----------------- */}
+      {showSupportModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 border border-sky-100 animate-slide-up">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-[#192f52] text-base">Help & Support</h3>
+                <p className="text-[11px] font-bold text-slate-400">Contact community support & FAQ</p>
+              </div>
+              <button 
+                onClick={() => setShowSupportModal(false)} 
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200 active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 space-y-1">
+                <h4 className="font-black text-sky-900">💬 Official Telegram Support</h4>
+                <p className="text-[11px] text-sky-700">Join our 24/7 community group for quick help, announcements, and guides.</p>
+                <button
+                  onClick={() => window.open('https://t.me/AppleFarmCommunity', '_blank')}
+                  className="mt-2 w-full py-2 bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <span>Open Telegram Support Group</span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSupportModal(false)}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl active:scale-95"
+            >
+              Close
             </button>
           </div>
         </div>

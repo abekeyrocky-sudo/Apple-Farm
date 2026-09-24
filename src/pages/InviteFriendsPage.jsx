@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Gift, Users, CheckCircle2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Gift, Users, CheckCircle2, Sparkles, UserPlus } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import inviteBannerImg from '../../assets/invite-banner.png';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
+import { getAvatarSrc } from '../utils/avatars';
 
 // 🎁 রেফারেল মিশন ডেটা
 const REFER_MISSIONS = [
@@ -17,18 +18,27 @@ const REFER_MISSIONS = [
 ];
 
 export default function InviteFriendsPage({ 
-  user = { username: 'rocky', id: '40281', invitedFriends: [] }, 
+  user = { username: 'Farmer', id: null, invitedFriends: [], claimedReferMissions: {} }, 
   onBack,
   onClaimReward
 }) {
   const [copied, setCopied] = useState(false);
-  const [claimedMissions, setClaimedMissions] = useState({ 1: true }); // Default first one or from user state
+  const [claimedMissions, setClaimedMissions] = useState(user?.claimedReferMissions || {});
+  
+  useEffect(() => {
+    if (user?.claimedReferMissions) {
+      setClaimedMissions(user.claimedReferMissions);
+    }
+  }, [user?.claimedReferMissions]);
+
   const botUsername = 'AppleFarmOfficialBot';
   const appShortName = 'App';
   const refCode = user?.id || user?.username || '40281';
   const referralLink = `t.me/${botUsername}/${appShortName}?startapp=${refCode}`;
 
-  const invitedCount = user?.invitedFriends?.length || 2; // বর্তমান রেফার সংখ্যা
+  // রিয়েল ইনভাইট সংখ্যা (কোনো ডামি ডিফল্ট ডাটা নেই)
+  const invitedFriendsList = Array.isArray(user?.invitedFriends) ? user.invitedFriends : [];
+  const invitedCount = invitedFriendsList.length || user?.referralsCount || 0;
 
   // লিংক কপি করার ফাংশন
   const handleCopyLink = () => {
@@ -76,7 +86,7 @@ export default function InviteFriendsPage({
     setClaimedMissions(prev => ({ ...prev, [mission.id]: true }));
 
     if (onClaimReward) {
-      onClaimReward({ apples: mission.apples, diamonds: mission.diamonds });
+      onClaimReward(mission);
     }
   };
 
@@ -171,21 +181,21 @@ export default function InviteFriendsPage({
           </div>
         )}
 
-        {/* 4. 🎁 REFER MISSIONS & MILESTONES */}
+        {/* 4. 🎁 REAL REFER MISSIONS & MILESTONES */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#192f52] tracking-tight flex items-center gap-1.5">
               <Gift className="w-4 h-4 text-emerald-600" />
               <span>Referral Missions</span>
             </h3>
-            <span className="text-[11px] font-black text-[#38587f] bg-sky-100/70 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-black text-[#38587f] bg-sky-100/70 px-2.5 py-0.5 rounded-full">
               {invitedCount} Invited
             </span>
           </div>
 
           <div className="space-y-2">
             {REFER_MISSIONS.map((mission) => {
-              const isClaimed = claimedMissions[mission.id];
+              const isClaimed = !!claimedMissions[mission.id];
               const isReady = !isClaimed && invitedCount >= mission.target;
               const progressRatio = Math.min(1, invitedCount / mission.target);
               const progressPercent = Math.round(progressRatio * 100);
@@ -265,6 +275,54 @@ export default function InviteFriendsPage({
               );
             })}
           </div>
+        </div>
+
+        {/* 5. 👥 REAL INVITED FRIENDS LIST */}
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-[#192f52] tracking-tight flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-sky-600" />
+              <span>Your Friends List</span>
+            </h3>
+            <span className="text-[11px] font-bold text-slate-400">
+              {invitedCount} {invitedCount === 1 ? 'Friend' : 'Friends'}
+            </span>
+          </div>
+
+          {invitedFriendsList.length === 0 ? (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 text-center border border-slate-100 py-5">
+              <p className="text-xs font-bold text-slate-500">No friends joined yet</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Share your referral link with friends to earn instant rewards!</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {invitedFriendsList.map((friend, idx) => (
+                <div 
+                  key={friend.id || idx}
+                  className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 px-3 border border-slate-100 shadow-xs flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-sky-100 border border-sky-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <img src={getAvatarSrc(friend.avatar || 'avatar-1')} alt={friend.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-[#192f52] leading-tight">
+                        {friend.name || 'Friend'}
+                      </h4>
+                      <p className="text-[10px] font-medium text-slate-400">
+                        Joined {friend.date || 'Recently'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                    <img src={appleImg} alt="Apple" className="w-3 h-3 object-contain" />
+                    +100
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

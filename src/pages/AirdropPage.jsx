@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle2, Rocket } from 'lucide-react';
+import { Users, CheckCircle2, Rocket, Lock, Wallet, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { TonConnectUI } from '@tonconnect/ui';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
+import { soundManager } from '../utils/soundManager';
 
-export default function AirdropPage({ user, onBack, onNavigate }) {
+// 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
+const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const WALLET_VERIFY_FEE_NANO = '190000000'; // 0.19 TON (in Nanotons)
+
+export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, onShowPopup }) {
   // Live ticking countdown: 08:09:17 style
   const [timeLeft, setTimeLeft] = useState({
     hours: 8,
@@ -15,19 +21,68 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
 
   const currentApples = user?.apples || 0;
   const is50kReached = currentApples >= 50000;
-  const invitedCount = user?.invitedFriends?.length || 2; // Default 2/5 or real data
+  const invitedCount = user?.referrals?.length || user?.invitedFriends?.length || user?.referralCount || 0;
 
-  // Task completion states
+  // Real task completion states from user DB
   const [tasks, setTasks] = useState({
-    wallet: true,       // 1. Verify Wallet
-    followX: false,     // 2. Follow on X
-    joinTg: false,      // 3. Join Community
-    reach50kApples: is50kReached, // 4. Reach 50,000 APPLE
-    inviteFriends: invitedCount,  // 5. Invite 5 Friends
+    followX: !!user?.airdropTasks?.followX,
+    joinTg: !!user?.airdropTasks?.joinTg,
+    reach50kApples: is50kReached,
+    inviteFriends: invitedCount >= 5,
+    wallet: !!user?.airdropTasks?.walletVerified,
   });
 
-  const [claimed, setClaimed] = useState(false);
+  const [claimed, setClaimed] = useState(!!user?.airdropClaimed);
   const [toastMsg, setToastMsg] = useState('');
+  const [isVerifyingWallet, setIsVerifyingWallet] = useState(false);
+
+  // TON Connect State
+  const [tonConnectUI, setTonConnectUI] = useState(null);
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+
+  // TON Connect ইনিশিয়ালাইজেশন
+  useEffect(() => {
+    try {
+      const manifest = window.location.origin + '/tonconnect-manifest.json';
+      const tc = window.__tonConnectUI || new TonConnectUI({ manifestUrl: manifest });
+      window.__tonConnectUI = tc;
+      setTonConnectUI(tc);
+
+      if (tc.wallet) {
+        setIsWalletConnected(true);
+        setWalletAddress(tc.wallet.account.address);
+      }
+
+      const unsubscribe = tc.onStatusChange((wallet) => {
+        if (wallet) {
+          setIsWalletConnected(true);
+          setWalletAddress(wallet.account.address);
+        } else {
+          setIsWalletConnected(false);
+          setWalletAddress('');
+        }
+      });
+
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    } catch (e) {
+      console.warn('TonConnectUI init in AirdropPage:', e);
+    }
+  }, []);
+
+  // Update tasks if user props update
+  useEffect(() => {
+    setTasks(prev => ({
+      ...prev,
+      followX: !!user?.airdropTasks?.followX,
+      joinTg: !!user?.airdropTasks?.joinTg,
+      reach50kApples: currentApples >= 50000,
+      inviteFriends: invitedCount >= 5,
+      wallet: !!user?.airdropTasks?.walletVerified,
+    }));
+  }, [user, currentApples, invitedCount]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -48,52 +103,146 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
 
   const showToast = (msg) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 2500);
+    setTimeout(() => setToastMsg(''), 3000);
   };
 
+  // প্রথম ৪টি টাস্ক কমপ্লিট কি না চেক
+  const first4TasksDone = tasks.followX && tasks.joinTg && is50kReached && (invitedCount >= 5);
+
   const handleTaskClick = (key) => {
+    soundManager.playClickSound();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
     if (key === 'followX') {
+      if (tasks.followX) return;
       window.open('https://x.com', '_blank');
       setTimeout(() => {
+        const updated = { ...user?.airdropTasks, followX: true };
         setTasks(prev => ({ ...prev, followX: true }));
-        showToast('Follow on X verified!');
-      }, 1200);
+        onUpdateUser?.({ airdropTasks: updated });
+        showToast('✓ Follow on X verified!');
+      }, 1500);
     } else if (key === 'joinTg') {
+      if (tasks.joinTg) return;
       window.open('https://t.me/AppleFarmCommunity', '_blank');
       setTimeout(() => {
+        const updated = { ...user?.airdropTasks, joinTg: true };
         setTasks(prev => ({ ...prev, joinTg: true }));
-        showToast('Joined Community verified!');
-      }, 1200);
-    } else if (key === 'invite') {
-      onNavigate?.('invite');
+        onUpdateUser?.({ airdropTasks: updated });
+        showToast('✓ Joined Community verified!');
+      }, 1500);
     } else if (key === 'harvest') {
       onNavigate?.('home');
+    } else if (key === 'invite') {
+      onNavigate?.('invite');
+    }
+  };
+
+  // 💎 ৫ নম্বর টাস্ক: ওয়ালেট ভেরিফাই (0.19 TON ফি সহ)
+  const handleVerifyWalletTask = async () => {
+    soundManager.playClickSound();
+
+    // ১. আগে ৪টি টাস্ক পূরণ হয়েছে কি না যাচাই
+    if (!first4TasksDone) {
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+      }
+      showToast('⚠️ Please complete the first 4 tasks before verifying wallet!');
+      return;
+    }
+
+    if (tasks.wallet) {
+      showToast('✓ Wallet is already verified!');
+      return;
+    }
+
+    // ২. ওয়ালেট কানেক্ট না থাকলে কানেক্ট প্রম্পট
+    if (!isWalletConnected || !tonConnectUI?.wallet) {
+      try {
+        await tonConnectUI.openModal();
+      } catch (e) {
+        console.error('Wallet modal error:', e);
+      }
+      return;
+    }
+
+    // ৩. ওয়ালেট কানেক্ট থাকলে 0.19 TON ট্রানজেকশন প্রম্পট
+    setIsVerifyingWallet(true);
+
+    try {
+      const transaction = {
+        validUntil: Math.floor(Date.now() / 1000) + 360,
+        messages: [
+          {
+            address: MASTER_WALLET_ADDRESS,
+            amount: WALLET_VERIFY_FEE_NANO, // 0.19 TON
+          },
+        ],
+      };
+
+      const txResult = await tonConnectUI.sendTransaction(transaction);
+      console.log('[Airdrop Wallet Verify Fee Success]:', txResult);
+
+      soundManager.playSuccessSound();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+
+      const updated = { 
+        ...user?.airdropTasks, 
+        walletVerified: true, 
+        verifiedAddress: walletAddress || tonConnectUI.wallet.account.address 
+      };
+
+      setTasks(prev => ({ ...prev, wallet: true }));
+      onUpdateUser?.({ airdropTasks: updated });
+
+      confetti({
+        particleCount: 70,
+        spread: 60,
+        origin: { y: 0.6 }
+      });
+
+      setIsVerifyingWallet(false);
+      showToast('🎉 Wallet Verified Successfully! Airdrop Ready.');
+    } catch (err) {
+      console.warn('[Airdrop Wallet Verify Failed/Rejected]:', err);
+      setIsVerifyingWallet(false);
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+      }
+      showToast('❌ Task Failed: Insufficient TON balance or transaction rejected.');
     }
   };
 
   // Calculate completed count
   const appleScore = is50kReached ? 1 : Math.min(1, currentApples / 50000);
-  const inviteScore = tasks.inviteFriends >= 5 ? 1 : tasks.inviteFriends / 5;
+  const inviteScore = invitedCount >= 5 ? 1 : invitedCount / 5;
   const completedCount = 
-    (tasks.wallet ? 1 : 0) +
     (tasks.followX ? 1 : 0) +
     (tasks.joinTg ? 1 : 0) +
     appleScore +
-    inviteScore;
+    inviteScore +
+    (tasks.wallet ? 1 : 0);
 
   const progressPercent = Math.min(100, Math.round((completedCount / 5) * 100));
 
   const handleClaim = () => {
+    if (!first4TasksDone || !tasks.wallet) {
+      showToast('⚠️ Complete all 5 tasks including Wallet Verification first!');
+      return;
+    }
+
+    soundManager.playSuccessSound();
     confetti({
-      particleCount: 80,
-      spread: 70,
+      particleCount: 100,
+      spread: 80,
       origin: { y: 0.6 }
     });
     setClaimed(true);
+    onUpdateUser?.({ airdropClaimed: true });
     showToast('🎉 $APPLE Airdrop slot reserved successfully!');
   };
 
@@ -104,7 +253,7 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
       
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#1c324f] text-white text-xs font-black px-4 py-2.5 rounded-full shadow-2xl border border-white/20 animate-bounce">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#1c324f] text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl border border-white/20 animate-fade-in text-center max-w-[90%]">
           {toastMsg}
         </div>
       )}
@@ -173,28 +322,10 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
             </p>
           </div>
 
-          {/* Checklist Items (Pixel-perfect icon spacing and alignment) */}
+          {/* Checklist Items (Sequential & Dynamic Real Data) */}
           <div className="flex flex-col gap-2.5 flex-1">
             
-            {/* 1. Verify Wallet */}
-            <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 shadow-xs">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-xs flex-shrink-0">
-                  <svg className="w-5 h-5 stroke-white stroke-[3] fill-none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Verify Wallet</h3>
-                  <p className="text-xs font-bold text-emerald-600">Connected</p>
-                </div>
-              </div>
-              <span className="bg-emerald-50 text-emerald-600 text-xs font-black px-3 py-1.5 rounded-xl border border-emerald-200">
-                Connected
-              </span>
-            </div>
-
-            {/* 2. Follow on X */}
+            {/* 🌟 1. Follow on X 🌟 */}
             <div 
               onClick={() => handleTaskClick('followX')}
               className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
@@ -225,7 +356,7 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
               )}
             </div>
 
-            {/* 3. Join Community */}
+            {/* 🌟 2. Join Community 🌟 */}
             <div 
               onClick={() => handleTaskClick('joinTg')}
               className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
@@ -256,7 +387,7 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
               )}
             </div>
 
-            {/* 4. Reach 50,000 APPLE */}
+            {/* 🌟 3. Reach 50,000 APPLE (Real Dynamic Balance) 🌟 */}
             <div 
               onClick={() => handleTaskClick('harvest')}
               className="p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
@@ -294,7 +425,7 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
               </div>
             </div>
 
-            {/* 5. Invite 5 Friends */}
+            {/* 🌟 4. Invite 5 Friends (Real Dynamic Referrals) 🌟 */}
             <div 
               onClick={() => handleTaskClick('invite')}
               className="p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
@@ -306,12 +437,12 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
                   </div>
                   <div>
                     <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Invite 5 Friends</h3>
-                    <p className={`text-xs font-bold ${tasks.inviteFriends >= 5 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {tasks.inviteFriends >= 5 ? 'Completed' : `${tasks.inviteFriends}/5 Friends`}
+                    <p className={`text-xs font-bold ${invitedCount >= 5 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {invitedCount >= 5 ? 'Completed' : `${invitedCount}/5 Friends`}
                     </p>
                   </div>
                 </div>
-                {tasks.inviteFriends >= 5 ? (
+                {invitedCount >= 5 ? (
                   <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
                     <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -319,7 +450,7 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
                   </div>
                 ) : (
                   <span className="text-sm font-black text-slate-700 flex-shrink-0">
-                    {tasks.inviteFriends}/5
+                    {invitedCount}/5
                   </span>
                 )}
               </div>
@@ -327,9 +458,82 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
               <div className="w-full bg-slate-100 rounded-full h-2 mt-2.5 p-0.5 overflow-hidden">
                 <div 
                   className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (tasks.inviteFriends / 5) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (invitedCount / 5) * 100)}%` }}
                 ></div>
               </div>
+            </div>
+
+            {/* 🌟 5. Verify Wallet (MUST BE LAST & LOCKED UNTIL FIRST 4 TASKS ARE DONE) 🌟 */}
+            <div 
+              onClick={handleVerifyWalletTask}
+              className={`flex items-center justify-between p-3.5 px-4 rounded-2xl border transition-all cursor-pointer ${
+                tasks.wallet
+                  ? 'bg-emerald-50/50 border-emerald-200 shadow-xs'
+                  : first4TasksDone
+                  ? 'bg-white border-sky-300 shadow-md ring-2 ring-sky-100 active:scale-[0.98]'
+                  : 'bg-slate-50/80 border-slate-200 opacity-60'
+              }`}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-xs flex-shrink-0 ${
+                  tasks.wallet 
+                    ? 'bg-emerald-500' 
+                    : first4TasksDone 
+                    ? 'bg-[#0098EA]' 
+                    : 'bg-slate-300'
+                }`}>
+                  {tasks.wallet ? (
+                    <svg className="w-5 h-5 stroke-white stroke-[3] fill-none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : first4TasksDone ? (
+                    <Wallet className="w-5 h-5" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-slate-600" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Verify Wallet</h3>
+                    {!first4TasksDone && (
+                      <span className="text-[9px] font-black bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded-md">
+                        Locked
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-xs font-bold ${
+                    tasks.wallet 
+                      ? 'text-emerald-600' 
+                      : first4TasksDone 
+                      ? 'text-sky-600' 
+                      : 'text-slate-400'
+                  }`}>
+                    {tasks.wallet 
+                      ? 'Connected & Verified' 
+                      : first4TasksDone 
+                      ? (isWalletConnected ? 'Tap to Verify (0.19 TON)' : 'Connect Wallet to Verify') 
+                      : 'Complete 4 tasks above first'}
+                  </p>
+                </div>
+              </div>
+
+              {tasks.wallet ? (
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                  <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : isVerifyingWallet ? (
+                <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              ) : first4TasksDone ? (
+                <span className="bg-sky-50 text-sky-700 text-xs font-black px-3 py-1.5 rounded-xl border border-sky-200 flex-shrink-0">
+                  {isWalletConnected ? 'Verify' : 'Connect'}
+                </span>
+              ) : (
+                <span className="bg-slate-100 text-slate-400 text-xs font-bold px-2.5 py-1 rounded-xl border border-slate-200 flex-shrink-0">
+                  Locked
+                </span>
+              )}
             </div>
 
           </div>
@@ -343,16 +547,18 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
             {/* Claim / Pre-register Airdrop Button */}
             <button
               onClick={handleClaim}
-              disabled={claimed}
+              disabled={claimed || !first4TasksDone || !tasks.wallet}
               className={`mt-3 w-full py-3 rounded-2xl font-black text-sm transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
                 claimed
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
+                  ? 'bg-emerald-100 text-emerald-700 cursor-not-allowed shadow-none border border-emerald-200'
+                  : (!first4TasksDone || !tasks.wallet)
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                   : 'bg-gradient-to-b from-[#2ecc71] to-[#1e824c] hover:brightness-105 text-white shadow-[0_4px_0_#145a32]'
               }`}
             >
               {claimed ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 stroke-gray-500" />
+                  <CheckCircle2 className="w-4 h-4 stroke-emerald-700" />
                   <span>Airdrop Slot Reserved</span>
                 </>
               ) : (

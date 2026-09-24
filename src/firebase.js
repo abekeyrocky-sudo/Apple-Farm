@@ -6,6 +6,7 @@ import {
   setDoc, 
   updateDoc, 
   increment,
+  arrayUnion,
   collection,
   addDoc,
   getDocs,
@@ -41,6 +42,7 @@ export { db };
 export const syncUserWithFirebase = async (tgUser) => {
   if (!tgUser) return null;
   const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Farmer";
+  const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
 
   if (!db || firebaseConfig.apiKey === "YOUR_API_KEY") {
     return {
@@ -52,6 +54,8 @@ export const syncUserWithFirebase = async (tgUser) => {
       diamonds: 0.0,
       level: 1,
       energy: 100,
+      invitedFriends: [],
+      claimedReferMissions: {},
       createdAt: new Date().toISOString()
     };
   }
@@ -70,16 +74,43 @@ export const syncUserWithFirebase = async (tgUser) => {
         diamonds: 0.0,
         level: 1,
         energy: 100,
+        referredBy: startParam || null,
+        invitedFriends: [],
+        claimedReferMissions: {},
         createdAt: new Date().toISOString()
       };
       await setDoc(userRef, newUser);
+
+      // যদি কোনো রেফারেল প্যারামিটার থাকে, রেফারকারী ইউজারের ডাটাবেস আপডেট
+      if (startParam && startParam !== tgUser.id.toString()) {
+        try {
+          const referrerRef = doc(db, "users", startParam.toString());
+          const refSnap = await getDoc(referrerRef);
+          if (refSnap.exists()) {
+            await updateDoc(referrerRef, {
+              invitedFriends: arrayUnion({
+                id: tgUser.id,
+                name: fullName,
+                avatar: 'avatar-1',
+                date: new Date().toLocaleDateString()
+              }),
+              apples: increment(100) // Instant 100 Apples Referral Reward
+            });
+          }
+        } catch (rErr) {
+          console.warn("Referral tracking error:", rErr);
+        }
+      }
+
       return newUser;
     } else {
       const existing = userSnap.data();
       return { 
         ...existing, 
         avatar: existing.avatar || 'avatar-1',
-        name: fullName || existing.name 
+        name: fullName || existing.name,
+        invitedFriends: existing.invitedFriends || [],
+        claimedReferMissions: existing.claimedReferMissions || {}
       };
     }
   } catch (err) {
@@ -93,6 +124,8 @@ export const syncUserWithFirebase = async (tgUser) => {
       diamonds: 0.0,
       level: 1,
       energy: 100,
+      invitedFriends: [],
+      claimedReferMissions: {},
       createdAt: new Date().toISOString()
     };
   }
