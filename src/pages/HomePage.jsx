@@ -1,12 +1,32 @@
-import React, { useState } from 'react';
-import { User, Trophy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Trophy, Volume2, VolumeX } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
+import FallingLeaves from '../components/FallingLeaves';
 import { calculateLevel } from '../utils/levelSystem';
 import { getAvatarSrc } from '../utils/avatars';
+import { soundManager } from '../utils/soundManager';
+
+// 🍎 Tree Apples Coordinates & Sizes
+const TREE_APPLES = [
+  { id: 1, left: '38%', top: '16%', size: 'w-7 h-7' },
+  { id: 2, left: '60%', top: '21%', size: 'w-7 h-7' },
+  { id: 3, left: '22%', top: '30%', size: 'w-7 h-7' },
+  { id: 4, left: '39%', top: '33%', size: 'w-7 h-7' },
+  { id: 5, left: '53%', top: '38%', size: 'w-7 h-7' },
+  { id: 6, left: '73%', top: '32%', size: 'w-7 h-7' },
+  { id: 7, left: '16%', top: '44%', size: 'w-7 h-7' },
+  { id: 8, left: '81%', top: '43%', size: 'w-7 h-7' },
+  { id: 9, left: '26%', top: '50%', size: 'w-7 h-7' },
+  { id: 10, left: '35%', top: '57%', size: 'w-6 h-6' },
+  { id: 11, left: '69%', top: '53%', size: 'w-7 h-7' },
+  { id: 12, left: '20%', top: '57%', size: 'w-6 h-6' },
+  { id: 13, left: '84%', top: '55%', size: 'w-6 h-6' },
+  { id: 14, left: '75%', top: '59%', size: 'w-6 h-6' },
+];
 
 export default function HomePage({ 
   user = { apples: 0, diamonds: 0.0, name: 'Farmer', level: 1, avatar: 'avatar-1' }, 
@@ -16,30 +36,90 @@ export default function HomePage({
   onOpenProfile,
   onShowPopup
 }) {
-  const [floatingBadges, setFloatingBadges] = useState([]);
+  const [harvestedApples, setHarvestedApples] = useState({}); // { [appleId]: true }
+  const [fallingApples, setFallingApples] = useState([]); // [{ id, left, top, size }]
+  const [newlyGrownApples, setNewlyGrownApples] = useState(new Set());
+  const [isMuted, setIsMuted] = useState(soundManager.isMuted);
+
   const currentLevel = calculateLevel(user.apples || 0);
   const avatarImg = getAvatarSrc(user.avatar);
 
-  // স্ক্রিনে/গাছে ট্যাপ করলে +1 APPLE ব্যাজ অ্যানিমেশন
-  const handleTreeTap = (e) => {
-    // Telegram Mini App Haptic Feedback
+  const toggleSound = () => {
+    const muted = soundManager.toggleMute();
+    setIsMuted(muted);
+  };
+
+  // ব্যাকগ্রাউন্ডের খালি জায়গায় ট্যাপ করলে
+  const handleTreeTap = () => {
+    // যেকোনো একটি অ্যাভেইলেবল আপেল হার্ভেস্ট করার ট্রাই করা
+    const availableApples = TREE_APPLES.filter(a => !harvestedApples[a.id]);
+    if (availableApples.length > 0) {
+      // র্যান্ডম অ্যাভেইলেবল আপেল হার্ভেস্ট
+      const targetApple = availableApples[Math.floor(Math.random() * availableApples.length)];
+      triggerAppleHarvest(targetApple);
+    } else {
+      // সব আপেল ঝরে থাকলে সাধারণ ট্যাপ
+      soundManager.playHarvestSound();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      }
+      if (onHarvest) onHarvest();
+    }
+  };
+
+  // আপেল হার্ভেস্ট ফাংশন (ট্যাপ করলে ব্যালেন্স বাড়বে, আপেল পড়বে এবং ১০ সেকেন্ড পর আবার গজাবে - কোনো পপআপ ছাড়া)
+  const triggerAppleHarvest = (apple) => {
+    if (harvestedApples[apple.id]) return; // অলরেডি ঝরে গেছে
+
+    // 🎵 রসালো আপেল হার্ভেস্ট সাউন্ড
+    soundManager.playHarvestSound();
+
     if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
+    // ব্যালেন্স বাড়ানো
     if (onHarvest) onHarvest();
 
-    // ক্লিক করার স্থানাঙ্ক নেওয়া
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left || 140 + Math.random() * 40;
-    const y = e.clientY - rect.top || 200 + Math.random() * 60;
-    const id = Date.now() + Math.random();
+    // ১. আপেলটিকে ঝরা অবস্থায় সেট করা
+    setHarvestedApples((prev) => ({ ...prev, [apple.id]: true }));
 
-    setFloatingBadges((prev) => [...prev, { id, x, y }]);
+    // ২. নিচে পড়ার ফলিং অ্যানিমেশন এলিমেন্ট তৈরি
+    const fallId = Date.now() + Math.random();
+    setFallingApples((prev) => [
+      ...prev,
+      { id: fallId, left: apple.left, top: apple.top, size: apple.size },
+    ]);
 
+    // ৩. ৮৫০ms পর ফলিং এলিমেন্ট রিমুভ
     setTimeout(() => {
-      setFloatingBadges((prev) => prev.filter((b) => b.id !== id));
-    }, 900);
+      setFallingApples((prev) => prev.filter((item) => item.id !== fallId));
+    }, 850);
+
+    // ৪. ⏳ ঠিক ১০ সেকেন্ড (10,000ms) পর নতুন আপেল ফিরে আসবে
+    setTimeout(() => {
+      setHarvestedApples((prev) => {
+        const next = { ...prev };
+        delete next[apple.id];
+        return next;
+      });
+
+      // গ্রোইং পপ অ্যানিমেশন
+      setNewlyGrownApples((prev) => new Set(prev).add(apple.id));
+      setTimeout(() => {
+        setNewlyGrownApples((prev) => {
+          const next = new Set(prev);
+          next.delete(apple.id);
+          return next;
+        });
+      }, 1000);
+    }, 10000);
+  };
+
+  // সরাসরি আপেলে ক্লিক করলে
+  const handleAppleTap = (e, apple) => {
+    e.stopPropagation();
+    triggerAppleHarvest(apple);
   };
 
   return (
@@ -47,6 +127,8 @@ export default function HomePage({
       style={{ backgroundImage: `url(${homeBgImg})` }}
       className="relative w-full max-w-md mx-auto min-h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-between select-none overflow-hidden font-sans"
     >
+      {/* 🍃 Farm Falling Leaves Animation */}
+      <FallingLeaves count={10} />
       
       {/* ----------------- TOP HEADER AREA ----------------- */}
       <div className="pt-2 px-3 pb-2 z-20">
@@ -58,7 +140,11 @@ export default function HomePage({
         <div className="flex items-center justify-between mb-3 px-1">
           {/* User Profile */}
           <div 
-            onClick={onOpenProfile || (() => onNavigate?.('profile'))}
+            onClick={() => {
+              soundManager.playClickSound();
+              if (onOpenProfile) onOpenProfile();
+              else onNavigate?.('profile');
+            }}
             className="flex items-center gap-2.5 cursor-pointer active:scale-95 transition-transform"
           >
             <div className="w-12 h-12 rounded-full shadow-md overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -74,11 +160,14 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Right Area: Rank Trophy (Emerald Green Style) & Diamond Pill */}
+          {/* Right Area: Rank Trophy & Diamond Pill */}
           <div className="flex items-center gap-2">
             {/* Leaderboard / Rank Button */}
             <button 
-              onClick={() => onNavigate?.('leaderboard')}
+              onClick={() => {
+                soundManager.playClickSound();
+                onNavigate?.('leaderboard');
+              }}
               className="flex items-center gap-1.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm border border-emerald-300 transition-all"
             >
               <Trophy className="w-3.5 h-3.5 fill-white stroke-none" />
@@ -89,7 +178,7 @@ export default function HomePage({
             <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-sky-100">
               <img 
                 src={diamondImg} 
-                alt="Diamond"
+                alt="Diamond" 
                 className="w-5 h-5 object-contain filter drop-shadow"
               />
               <span className="text-sm font-black text-[#1c355e]">{Number(user.diamonds || 0).toFixed(1)}</span>
@@ -168,25 +257,51 @@ export default function HomePage({
       {/* ----------------- CENTER INTERACTIVE TAP AREA OVER BACKGROUND ----------------- */}
       <div 
         onClick={handleTreeTap}
-        className="relative flex-1 flex flex-col items-center justify-center cursor-pointer active:brightness-105 transition-all overflow-hidden"
+        className="tree-interactive-area relative flex-1 flex flex-col items-center justify-center cursor-pointer active:brightness-105 transition-all overflow-hidden"
       >
-        {/* Floating +1 Apple Badges upon tap */}
-        {floatingBadges.map((badge) => (
+        {/* 🍎 3D Glossy Apples on Tree Branches (Clickable + 10s Regrowth) */}
+        <div className="absolute inset-0">
+          {TREE_APPLES.map((apple) => {
+            const isHarvested = harvestedApples[apple.id];
+            const isNewlyGrown = newlyGrownApples.has(apple.id);
+
+            // যদি অলরেডি ঝরে গিয়ে থাকে, তাহলে ডালে দেখাবে না
+            if (isHarvested) return null;
+
+            return (
+              <div
+                key={apple.id}
+                onClick={(e) => handleAppleTap(e, apple)}
+                style={{ left: apple.left, top: apple.top }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 ${apple.size} filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)] cursor-pointer transition-transform duration-200 hover:scale-125 active:scale-90 ${
+                  isNewlyGrown ? 'animate-apple-grow' : ''
+                }`}
+              >
+                <img 
+                  src={appleImg} 
+                  alt="Apple" 
+                  className="w-full h-full object-contain animate-apple-sway"
+                  style={{ 
+                    animationDuration: `${2.8 + (apple.id % 3) * 0.4}s`,
+                    animationDelay: `${(apple.id * 0.4) % 2}s`
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 🍂 Falling Dropped Apples Animation (ঝরে পড়া আপেল) */}
+        {fallingApples.map((apple) => (
           <div
-            key={badge.id}
-            style={{ left: badge.x, top: badge.y }}
-            className="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-[#0094FF] text-white text-xs font-black px-3 py-1 rounded-full border-2 border-white shadow-lg animate-bounce"
+            key={apple.id}
+            style={{ left: apple.left, top: apple.top }}
+            className={`absolute ${apple.size} pointer-events-none animate-apple-drop z-30 filter drop-shadow-lg`}
           >
-            <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-            <span>+1 APPLE</span>
+            <img src={appleImg} alt="Falling Apple" className="w-full h-full object-contain" />
           </div>
         ))}
 
-        {/* Ambient Click Prompt / Guide */}
-        <div className="absolute top-[45%] pointer-events-none flex items-center gap-1.5 bg-[#0094FF] text-white text-xs font-black px-3.5 py-1 rounded-full border-2 border-white shadow-md animate-pulse">
-          <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
-          <span>+1 APPLE</span>
-        </div>
       </div>
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}

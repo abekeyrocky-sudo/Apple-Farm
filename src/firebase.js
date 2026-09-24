@@ -1,5 +1,19 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  increment,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyApQV0kYECIKMW95yAmwBANNfq9N6LV4c",
@@ -105,5 +119,68 @@ export const updateUserInDB = async (userId, dataToUpdate) => {
     await updateDoc(userRef, dataToUpdate);
   } catch (err) {
     console.error("Firebase updateUser error:", err);
+  }
+};
+
+// ট্রানজ্যাকশন ফায়ারস্টোর ডাটাবেসে সেভ করা
+export const addTransactionToDB = async (userId, txData) => {
+  if (!db || !userId) return null;
+  try {
+    const txColRef = collection(db, "users", userId.toString(), "transactions");
+    const docRef = await addDoc(txColRef, {
+      ...txData,
+      createdAt: serverTimestamp(),
+      createdTime: Date.now()
+    });
+    return docRef.id;
+  } catch (err) {
+    console.error("Firebase addTransaction error:", err);
+    return null;
+  }
+};
+
+// ডাটাবেস থেকে ইউজারের রিয়েল ট্রানজ্যাকশন হিস্ট্রি ফেচ করা
+export const getUserTransactionsFromDB = async (userId) => {
+  if (!db || !userId) return [];
+  try {
+    const txColRef = collection(db, "users", userId.toString(), "transactions");
+    const q = query(txColRef, orderBy("createdTime", "desc"), limit(50));
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    return list;
+  } catch (err) {
+    console.error("Firebase getUserTransactions error:", err);
+    return [];
+  }
+};
+
+// ডাটাবেস থেকে রিয়েল গ্লোবাল লিডারবোর্ড ফেচ করা
+export const getLeaderboardFromDB = async () => {
+  if (!db) return [];
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, orderBy("apples", "desc"), limit(50));
+    const snap = await getDocs(q);
+    const list = [];
+    let rank = 1;
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        id: docSnap.id,
+        rank: rank++,
+        name: data.name || 'Farmer',
+        username: data.username || '',
+        avatar: data.avatar || 'avatar-1',
+        apples: data.apples || 0,
+        level: data.level || 1,
+      });
+    });
+    return list;
+  } catch (err) {
+    console.error("Firebase getLeaderboard error:", err);
+    return [];
   }
 };

@@ -5,6 +5,8 @@ import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
+import FallingLeaves from '../components/FallingLeaves';
+import { soundManager } from '../utils/soundManager';
 
 // রেফারেন্স ইমেজের হুবহু স্লাইস ডাটা
 const SLICES = [
@@ -21,7 +23,6 @@ export default function GamePage({ onNavigate, onWinReward }) {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winMessage, setWinMessage] = useState(null);
-  const audioContextRef = useRef(null);
 
   // স্পিন লজিক ও অ্যানিমেশন
   const handleSpin = () => {
@@ -29,10 +30,23 @@ export default function GamePage({ onNavigate, onWinReward }) {
     setSpinning(true);
     setWinMessage(null);
 
+    // Initial click sound
+    soundManager.playClickSound();
+
     // Telegram Haptic Feedback
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
+
+    // Spin Tick Sounds
+    let ticks = 0;
+    const tickInterval = setInterval(() => {
+      ticks++;
+      soundManager.playSpinTick();
+      if (ticks > 24) {
+        clearInterval(tickInterval);
+      }
+    }, 140);
 
     // র্যান্ডম রোটেশন (কমপক্ষে ৫ চক্কর + র্যান্ডম অ্যাঙ্গেল)
     const extraRounds = 5 * 360;
@@ -43,7 +57,11 @@ export default function GamePage({ onNavigate, onWinReward }) {
 
     // ৪ সেকেন্ড পর রেজাল্ট
     setTimeout(() => {
+      clearInterval(tickInterval);
       setSpinning(false);
+
+      // বিজয়ী সাউন্ড
+      soundManager.playSuccessSound();
 
       // বিজয়ী স্লাইস ক্যালকুলেশন
       const actualDeg = (totalRotation % 360);
@@ -75,6 +93,8 @@ export default function GamePage({ onNavigate, onWinReward }) {
       style={{ backgroundImage: `url(${spinBgImg})` }}
       className="relative w-full max-w-md mx-auto min-h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-between select-none font-sans overflow-hidden"
     >
+      {/* 🍃 Farm Falling Leaves Animation */}
+      <FallingLeaves count={8} />
       
       {/* ----------------- TOP TITLE ----------------- */}
       <div className="pt-2 px-4 z-20 text-center relative">

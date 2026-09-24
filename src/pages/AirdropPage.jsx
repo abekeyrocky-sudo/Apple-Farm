@@ -13,13 +13,17 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
     seconds: 17
   });
 
+  const currentApples = user?.apples || 0;
+  const is50kReached = currentApples >= 50000;
+  const invitedCount = user?.invitedFriends?.length || 2; // Default 2/5 or real data
+
   // Task completion states
   const [tasks, setTasks] = useState({
-    wallet: true,       // Verify Wallet
-    followX: false,     // Follow on X
-    joinTg: false,      // Join Telegram Group
-    reachLevel5: (user?.level || 3) >= 5, // Reach Level 5
-    inviteFriends: 2,   // 2 out of 3
+    wallet: true,       // 1. Verify Wallet
+    followX: false,     // 2. Follow on X
+    joinTg: false,      // 3. Join Community
+    reach50kApples: is50kReached, // 4. Reach 50,000 APPLE
+    inviteFriends: invitedCount,  // 5. Invite 5 Friends
   });
 
   const [claimed, setClaimed] = useState(false);
@@ -62,20 +66,24 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
       window.open('https://t.me/AppleFarmCommunity', '_blank');
       setTimeout(() => {
         setTasks(prev => ({ ...prev, joinTg: true }));
-        showToast('Joined Telegram Group verified!');
+        showToast('Joined Community verified!');
       }, 1200);
     } else if (key === 'invite') {
       onNavigate?.('invite');
+    } else if (key === 'harvest') {
+      onNavigate?.('home');
     }
   };
 
   // Calculate completed count
+  const appleScore = is50kReached ? 1 : Math.min(1, currentApples / 50000);
+  const inviteScore = tasks.inviteFriends >= 5 ? 1 : tasks.inviteFriends / 5;
   const completedCount = 
     (tasks.wallet ? 1 : 0) +
     (tasks.followX ? 1 : 0) +
     (tasks.joinTg ? 1 : 0) +
-    (tasks.reachLevel5 ? 1 : 0) +
-    (tasks.inviteFriends >= 3 ? 1 : 0.67);
+    appleScore +
+    inviteScore;
 
   const progressPercent = Math.min(100, Math.round((completedCount / 5) * 100));
 
@@ -139,8 +147,8 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
       </div>
 
       {/* ----------------- MAIN WHITE AIRDROP CARD ----------------- */}
-      <div className="flex-1 px-4 pt-4 pb-3 flex flex-col z-10 overflow-y-auto">
-        <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgba(30,130,76,0.12)] border border-emerald-100 flex flex-col flex-1">
+      <div className="flex-1 w-full pt-4 flex flex-col z-10 overflow-y-auto">
+        <div className="bg-white rounded-t-[32px] sm:rounded-t-[36px] p-5 shadow-[0_-8px_30px_rgba(30,130,76,0.08)] border-t border-emerald-100 flex flex-col flex-1 w-full pb-6">
           
           {/* Header & Subtitle */}
           <div className="text-center pt-2 pb-3">
@@ -165,23 +173,23 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
             </p>
           </div>
 
-          {/* Checklist Items */}
+          {/* Checklist Items (Pixel-perfect icon spacing and alignment) */}
           <div className="flex flex-col gap-2.5 flex-1">
             
             {/* 1. Verify Wallet */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-[#F8FCF9] border border-[#E1F3E5] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#2ecc71] flex items-center justify-center text-white shadow-sm">
+            <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 shadow-xs">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-xs flex-shrink-0">
                   <svg className="w-5 h-5 stroke-white stroke-[3] fill-none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Verify Wallet</h3>
-                  <p className="text-xs font-bold text-[#2ecc71]">Connected</p>
+                  <p className="text-xs font-bold text-emerald-600">Connected</p>
                 </div>
               </div>
-              <span className="bg-[#E7F8ED] text-[#27ae60] text-xs font-black px-3 py-1.5 rounded-xl border border-[#c3eed1]">
+              <span className="bg-emerald-50 text-emerald-600 text-xs font-black px-3 py-1.5 rounded-xl border border-emerald-200">
                 Connected
               </span>
             </div>
@@ -189,108 +197,137 @@ export default function AirdropPage({ user, onBack, onNavigate }) {
             {/* 2. Follow on X */}
             <div 
               onClick={() => handleTaskClick('followX')}
-              className="flex items-center justify-between p-3 rounded-2xl bg-white border border-gray-100 hover:border-gray-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+              className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white shadow-sm">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white shadow-xs flex-shrink-0">
                   <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                   </svg>
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Follow on X</h3>
-                  <p className={`text-xs font-bold ${tasks.followX ? 'text-[#2ecc71]' : 'text-gray-400'}`}>
+                  <p className={`text-xs font-bold ${tasks.followX ? 'text-emerald-600' : 'text-slate-400'}`}>
                     {tasks.followX ? 'Completed' : 'Pending'}
                   </p>
                 </div>
               </div>
               {tasks.followX ? (
-                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-[#2ecc71]">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                   <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               ) : (
-                <span className="bg-[#FEF5E7] text-[#D35400] text-xs font-black px-3 py-1.5 rounded-xl border border-[#FAD7A0]">
+                <span className="bg-amber-50 text-amber-700 text-xs font-black px-3 py-1.5 rounded-xl border border-amber-200">
                   Pending
                 </span>
               )}
             </div>
 
-            {/* 3. Join Telegram Group */}
+            {/* 3. Join Community */}
             <div 
               onClick={() => handleTaskClick('joinTg')}
-              className="flex items-center justify-between p-3 rounded-2xl bg-white border border-gray-100 hover:border-gray-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+              className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#2AABEE] flex items-center justify-center text-white shadow-sm">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-[#229ED9] flex items-center justify-center text-white shadow-xs flex-shrink-0">
                   <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/>
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Join Telegram Group</h3>
-                  <p className={`text-xs font-bold ${tasks.joinTg ? 'text-[#2ecc71]' : 'text-gray-400'}`}>
+                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Join Community</h3>
+                  <p className={`text-xs font-bold ${tasks.joinTg ? 'text-emerald-600' : 'text-slate-400'}`}>
                     {tasks.joinTg ? 'Completed' : 'Pending'}
                   </p>
                 </div>
               </div>
               {tasks.joinTg ? (
-                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-[#2ecc71]">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                   <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               ) : (
-                <span className="bg-[#FEF5E7] text-[#D35400] text-xs font-black px-3 py-1.5 rounded-xl border border-[#FAD7A0]">
+                <span className="bg-amber-50 text-amber-700 text-xs font-black px-3 py-1.5 rounded-xl border border-amber-200">
                   Pending
                 </span>
               )}
             </div>
 
-            {/* 4. Reach Level 5 */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-[#F8FCF9] border border-[#E1F3E5] shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#2ecc71] flex items-center justify-center text-white shadow-sm">
-                  <svg className="w-5 h-5 stroke-white stroke-[3] fill-none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+            {/* 4. Reach 50,000 APPLE */}
+            <div 
+              onClick={() => handleTaskClick('harvest')}
+              className="p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                    <img src={appleImg} alt="Apple" className="w-9 h-9 object-contain filter drop-shadow-md" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Reach 50,000 APPLE</h3>
+                    <p className={`text-xs font-bold ${is50kReached ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {is50kReached ? 'Completed' : `${currentApples.toLocaleString()} / 50,000`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Reach Level 5</h3>
-                  <p className="text-xs font-bold text-[#2ecc71]">Completed</p>
-                </div>
+                {is50kReached ? (
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                    <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <span className="text-xs font-black text-slate-700 flex-shrink-0">
+                    {Math.min(100, Math.round((currentApples / 50000) * 100))}%
+                  </span>
+                )}
               </div>
-              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-[#2ecc71]">
-                <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              {/* Mini progress bar */}
+              <div className="w-full bg-slate-100 rounded-full h-2 mt-2.5 p-0.5 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (currentApples / 50000) * 100)}%` }}
+                ></div>
               </div>
             </div>
 
-            {/* 5. Invite 3 Friends */}
+            {/* 5. Invite 5 Friends */}
             <div 
               onClick={() => handleTaskClick('invite')}
-              className="p-3 rounded-2xl bg-white border border-gray-100 hover:border-gray-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
+              className="p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white shadow-sm border border-amber-200">
-                    <Users className="w-5 h-5 stroke-white" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-xs flex-shrink-0">
+                    <Users className="w-5 h-5 stroke-white stroke-[2.2]" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Invite 3 Friends</h3>
+                    <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Invite 5 Friends</h3>
+                    <p className={`text-xs font-bold ${tasks.inviteFriends >= 5 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {tasks.inviteFriends >= 5 ? 'Completed' : `${tasks.inviteFriends}/5 Friends`}
+                    </p>
                   </div>
                 </div>
-                <span className="text-sm font-black text-[#1a2f4c]">
-                  {tasks.inviteFriends}/3
-                </span>
+                {tasks.inviteFriends >= 5 ? (
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                    <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <span className="text-sm font-black text-slate-700 flex-shrink-0">
+                    {tasks.inviteFriends}/5
+                  </span>
+                )}
               </div>
               {/* Mini progress bar */}
-              <div className="w-full bg-gray-100 rounded-full h-2 p-0.5">
+              <div className="w-full bg-slate-100 rounded-full h-2 mt-2.5 p-0.5 overflow-hidden">
                 <div 
-                  className="bg-[#2ecc71] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${(tasks.inviteFriends / 3) * 100}%` }}
+                  className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (tasks.inviteFriends / 5) * 100)}%` }}
                 ></div>
               </div>
             </div>

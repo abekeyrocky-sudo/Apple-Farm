@@ -16,6 +16,8 @@ import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
 import { calculateLevel } from './utils/levelSystem';
+import { soundManager } from './utils/soundManager';
+import { addTransaction } from './utils/transactionHistory';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +65,9 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 🎵 Sound & Background Music Listener
+    soundManager.initUserGestureListeners();
+
     // টেলিগ্রাম ইনিশিয়ালাইজেশন ও ফুলস্ক্রিন এক্সপান্ড
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
@@ -173,6 +178,16 @@ export default function App() {
         level: newLevel
       };
     });
+    addTransaction({
+      userId: user.id,
+      title: title,
+      subtitle: 'Apple Farm Reward',
+      amount: `+${amount}`,
+      currency: 'apple',
+      type: 'earn',
+      category: 'task',
+      status: 'Completed'
+    });
     showPopupModal({
       type: 'reward',
       title: title,
@@ -184,7 +199,7 @@ export default function App() {
 
   const handleRewardClaim = (task) => {
     if (task.rewardAmount) {
-      handleBonusWin(task.rewardAmount, 'Task Completed!');
+      handleBonusWin(task.rewardAmount, task.title || 'Task Completed!');
     }
   };
 
@@ -192,6 +207,16 @@ export default function App() {
     const value = parseFloat(item.label) || 0;
     if (item.type === 'diamond') {
       setUser((prev) => ({ ...prev, diamonds: prev.diamonds + value }));
+      addTransaction({
+        userId: user.id,
+        title: 'Lucky Wheel Spin',
+        subtitle: 'Wheel Jackpot Prize',
+        amount: `+${value}`,
+        currency: 'diamond',
+        type: 'earn',
+        category: 'spin',
+        status: 'Completed'
+      });
       showPopupModal({
         type: 'reward',
         title: 'Lucky Spin Winner!',
@@ -203,6 +228,16 @@ export default function App() {
       setUser((prev) => {
         const newApples = prev.apples + value;
         return { ...prev, apples: newApples, level: calculateLevel(newApples) };
+      });
+      addTransaction({
+        userId: user.id,
+        title: 'Lucky Wheel Spin',
+        subtitle: 'Wheel Prize',
+        amount: `+${value}`,
+        currency: 'apple',
+        type: 'earn',
+        category: 'spin',
+        status: 'Completed'
       });
       showPopupModal({
         type: 'reward',
@@ -220,6 +255,16 @@ export default function App() {
         ...prev,
         apples: Math.max(0, prev.apples - data.amount)
       }));
+      addTransaction({
+        userId: user.id,
+        title: 'Withdrawal Request',
+        subtitle: data.address ? `To: ${data.address.slice(0, 6)}...` : 'TON Payout',
+        amount: `-${data.amount}`,
+        currency: 'apple',
+        type: 'spend',
+        category: 'withdraw',
+        status: 'Processing'
+      });
       showPopupModal({
         type: 'success',
         title: 'Withdrawal Submitted!',

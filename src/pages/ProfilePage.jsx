@@ -1,22 +1,50 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check, Store } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import { calculateLevel, getLevelProgress } from '../utils/levelSystem';
 import { AVATARS, getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
+import { soundManager } from '../utils/soundManager';
+import TransactionHistoryModal from '../components/TransactionHistoryModal';
+import { addTransaction } from '../utils/transactionHistory';
 
 export default function ProfilePage({ 
   user = { name: 'Farmer', id: null, level: 1, apples: 0, avatar: 'avatar-1' }, 
   onBack, 
-  onNavigate,
-  onLogout,
-  onRedeemBonus,
+  onNavigate, 
+  onLogout, 
+  onRedeemBonus, 
   onUpdateAvatar
 }) {
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
+
+  // সাউন্ড ও হ্যাপটিক সেটিংস স্টেট
+  const [isSoundMuted, setIsSoundMuted] = useState(soundManager.isMuted);
+  const [isHapticEnabled, setIsHapticEnabled] = useState(
+    localStorage.getItem('apple_farm_haptic') !== 'false'
+  );
+
+  const toggleSound = () => {
+    const muted = soundManager.toggleMute();
+    setIsSoundMuted(muted);
+    if (!muted) {
+      soundManager.playHarvestSound();
+    }
+  };
+
+  const toggleHaptic = () => {
+    const next = !isHapticEnabled;
+    setIsHapticEnabled(next);
+    localStorage.setItem('apple_farm_haptic', next ? 'true' : 'false');
+    if (next && window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+    }
+  };
 
   // চক্রবৃদ্ধি লেভেল হিসাব
   const progress = getLevelProgress(user.apples || 0);
@@ -123,7 +151,9 @@ export default function ProfilePage({
     } else if (id === 'leaderboard') {
       onNavigate?.('leaderboard');
     } else if (id === 'transactions') {
-      onNavigate?.('wallet');
+      setShowHistoryModal(true);
+    } else if (id === 'settings') {
+      setShowSettingsModal(true);
     }
   };
 
@@ -131,6 +161,16 @@ export default function ProfilePage({
     e.preventDefault();
     if (!redeemInput) return;
     setRedeemSuccess(true);
+    addTransaction({
+      userId: user?.id,
+      title: 'Redeem Promo Code',
+      subtitle: `Code: ${redeemInput.toUpperCase()}`,
+      amount: '+500',
+      currency: 'apple',
+      type: 'earn',
+      category: 'redeem',
+      status: 'Completed'
+    });
     if (onRedeemBonus) {
       onRedeemBonus(500);
     }
@@ -341,6 +381,100 @@ export default function ProfilePage({
           </div>
         </div>
       )}
+
+      {/* ----------------- SETTINGS MODAL ----------------- */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 border border-sky-100 animate-slide-up">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-black text-[#192f52] text-lg">App Settings</h3>
+                <p className="text-[11px] font-bold text-slate-400">Manage audio & experience preferences</p>
+              </div>
+              <button 
+                onClick={() => setShowSettingsModal(false)} 
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200 active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Settings Options List */}
+            <div className="space-y-3 py-1">
+              
+              {/* 1. Master Sound Effects & Ambient Music */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${!isSoundMuted ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                    {!isSoundMuted ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-[#192f52]">Sound & Music</h4>
+                    <p className="text-[10px] font-bold text-slate-400">Harvest taps & farm background music</p>
+                  </div>
+                </div>
+
+                {/* Toggle Switch */}
+                <button
+                  onClick={toggleSound}
+                  className={`w-13 h-7 flex items-center rounded-full p-1 transition-colors duration-300 ${
+                    !isSoundMuted ? 'bg-emerald-500 justify-end' : 'bg-slate-300 justify-start'
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-300" />
+                </button>
+              </div>
+
+              {/* 2. Haptic Feedback Vibration */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isHapticEnabled ? 'bg-sky-100 text-sky-600' : 'bg-slate-200 text-slate-400'}`}>
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-[#192f52]">Haptic Vibration</h4>
+                    <p className="text-[10px] font-bold text-slate-400">Telegram touch feedback vibration</p>
+                  </div>
+                </div>
+
+                {/* Toggle Switch */}
+                <button
+                  onClick={toggleHaptic}
+                  className={`w-13 h-7 flex items-center rounded-full p-1 transition-colors duration-300 ${
+                    isHapticEnabled ? 'bg-sky-500 justify-end' : 'bg-slate-300 justify-start'
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-300" />
+                </button>
+              </div>
+
+              {/* App Info / Version */}
+              <div className="pt-2 text-center">
+                <span className="text-[11px] font-bold text-slate-400">
+                  Apple Farm Mini App • v1.0.4
+                </span>
+              </div>
+
+            </div>
+
+            {/* Done / Close Button */}
+            <button
+              onClick={() => setShowSettingsModal(false)}
+              className="w-full py-3 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white font-black text-sm rounded-2xl shadow-md active:scale-95 transition-all"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- TRANSACTION HISTORY MODAL ----------------- */}
+      <TransactionHistoryModal
+        isOpen={showHistoryModal}
+        userId={user?.id}
+        onClose={() => setShowHistoryModal(false)}
+      />
 
     </div>
   );
