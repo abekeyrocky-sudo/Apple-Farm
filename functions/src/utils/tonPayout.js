@@ -1,5 +1,5 @@
 import { mnemonicToPrivateKey } from '@ton/crypto';
-import { TonClient, WalletContractV4 } from '@ton/ton';
+import { TonClient, WalletContractV5R1 } from '@ton/ton';
 import { internal, toNano, Address } from '@ton/core';
 
 const TONCENTER_API_KEY = process.env.TONCENTER_API_KEY || '339b8826294c4f5a133e0300346947bb92b26d84951b3dad768f4fab85b57522';
@@ -31,7 +31,7 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
     const mnemonicWords = MASTER_MNEMONIC.trim().split(/\s+/);
     const keyPair = await mnemonicToPrivateKey(mnemonicWords);
 
-    const wallet = WalletContractV4.create({
+    const wallet = WalletContractV5R1.create({
       workchain: 0,
       publicKey: keyPair.publicKey,
     });

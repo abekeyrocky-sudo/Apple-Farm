@@ -249,7 +249,7 @@ export default function App() {
     }
   };
 
-  const handleWithdrawDeduct = (data) => {
+  const handleWithdrawDeduct = async (data) => {
     const appleDeduct = Number(data.amount || 0);
     const diamondDeduct = Number(data.diamonds || 0);
     const isGram = !!data.gramAmount;
@@ -280,15 +280,44 @@ export default function App() {
         currency: 'apple',
         type: 'spend',
         category: 'withdraw',
-        status: 'Processing'
+        status: isGram ? 'Processing' : 'Pending'
       });
+    }
+
+    // ⚡ Trigger Cloud Function automated on-chain TON payout
+    try {
+      const initData = window.Telegram?.WebApp?.initData || '';
+      fetch('https://api-duztzw2gwa-uc.a.run.app/api/withdraw/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-telegram-init-data': initData
+        },
+        body: JSON.stringify({
+          user: {
+            id: user.id || 40281,
+            name: user.name || 'Farmer',
+            username: user.username || ''
+          },
+          amount: appleDeduct,
+          diamonds: diamondDeduct,
+          method: data.method,
+          accountNumber: data.account,
+          gramAmount: data.gramAmount || null
+        })
+      })
+      .then(res => res.json())
+      .then(resData => console.log('[Withdrawal Backend Broadcast Result]:', resData))
+      .catch(apiErr => console.error('[Withdrawal API Error]:', apiErr));
+    } catch (e) {
+      console.error('[Withdrawal Trigger Exception]:', e);
     }
 
     showPopupModal({
       type: 'success',
       title: 'Withdrawal Submitted!',
       message: isGram 
-        ? `Your request for ${data.gramAmount} GRAM (${appleDeduct} Apples & ${diamondDeduct} Diamonds) has been submitted to TON network.`
+        ? `Your request for ${data.gramAmount} GRAM (${appleDeduct} Apples & ${diamondDeduct} Diamonds) has been sent to TON network.`
         : `Your withdrawal request of ${appleDeduct} Apples has been placed successfully via ${data.method}.`,
       confirmText: 'Done'
     });
