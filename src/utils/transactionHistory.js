@@ -13,7 +13,13 @@ export const getTransactions = (userId) => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed;
+        // Auto-mark instant on-chain GRAM payouts as Completed
+        return parsed.map(tx => {
+          if (tx.title?.includes('GRAM') && tx.status !== 'Completed') {
+            return { ...tx, status: 'Completed' };
+          }
+          return tx;
+        });
       }
     }
   } catch (e) {

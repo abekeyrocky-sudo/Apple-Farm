@@ -37,6 +37,19 @@ class SoundManager {
     return this.audioCtx;
   }
 
+  // 🔔 Generic play method for easy trigger
+  play(type = 'click') {
+    if (type === 'reward' || type === 'success') {
+      this.playSuccessSound();
+    } else if (type === 'harvest') {
+      this.playHarvestSound();
+    } else if (type === 'spin') {
+      this.playSpinTick();
+    } else {
+      this.playClickSound();
+    }
+  }
+
   // 🔊 Apple Harvest / Pluck Sound (Satisfying wooden pop & bubble)
   playHarvestSound() {
     if (this.isMuted) return;

@@ -280,7 +280,7 @@ export default function App() {
         currency: 'apple',
         type: 'spend',
         category: 'withdraw',
-        status: isGram ? 'Processing' : 'Pending'
+        status: isGram ? 'Completed' : 'Pending'
       });
     }
 
@@ -416,9 +416,14 @@ export default function App() {
       case 'task':
         return (
           <TaskPage 
+            user={user}
             onBack={() => setCurrentTab('home')}
             onNavigate={handleNavigate}
             onRewardClaim={handleRewardClaim}
+            onUpdateUser={(updatedData) => {
+              setUser((prev) => ({ ...prev, ...updatedData }));
+              if (user.id) updateUserInDB(user.id, updatedData);
+            }}
             onShowPopup={showPopupModal}
           />
         );

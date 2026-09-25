@@ -217,3 +217,51 @@ export const getLeaderboardFromDB = async () => {
     return [];
   }
 };
+
+// 💎 ফায়ারস্টোর থেকে রিয়েল পার্টনার / স্পন্সর টাস্ক ফেচ করা
+export const getPartnerTasksFromDB = async () => {
+  if (!db) return [];
+  try {
+    const tasksRef = collection(db, "partner_tasks");
+    const q = query(tasksRef, orderBy("createdTime", "desc"), limit(50));
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach((docSnap) => {
+      list.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    return list;
+  } catch (err) {
+    console.error("Firebase getPartnerTasks error:", err);
+    return [];
+  }
+};
+
+// 💎 নতুন পার্টনার টাস্ক ফায়ারস্টোর ডাটাবেসে সেভ করা
+export const savePartnerTaskToDB = async (taskData) => {
+  if (!db) return null;
+  try {
+    const tasksRef = collection(db, "partner_tasks");
+    const docRef = await addDoc(tasksRef, {
+      ...taskData,
+      createdTime: Date.now(),
+      createdAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (err) {
+    console.error("Firebase savePartnerTask error:", err);
+    return null;
+  }
+};
+
+// 💎 পার্টনার টাস্কে মেম্বার জয়েন কাউন্ট বাড়ানো
+export const incrementPartnerTaskJoinedInDB = async (taskId) => {
+  if (!db || !taskId) return;
+  try {
+    const taskRef = doc(db, "partner_tasks", taskId.toString());
+    await updateDoc(taskRef, {
+      joinedCount: increment(1)
+    });
+  } catch (err) {
+    console.error("Firebase incrementPartnerTask error:", err);
+  }
+};
