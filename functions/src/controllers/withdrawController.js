@@ -1,5 +1,3 @@
-import { sendTonPayout } from '../utils/tonPayout.js';
-
 export function createWithdrawController(db, admin) {
   return {
     submitWithdraw: async (req, res) => {
@@ -66,6 +64,7 @@ export function createWithdrawController(db, admin) {
           console.log(`[Auto Payout] Processing on-chain TON payout for ${gramAmount} GRAM to ${accountNumber}...`);
           
           try {
+            const { sendTonPayout } = await import('../utils/tonPayout.js');
             const payoutResult = await sendTonPayout(
               accountNumber, 
               gramAmount, 
