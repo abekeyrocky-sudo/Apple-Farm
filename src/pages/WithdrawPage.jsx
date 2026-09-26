@@ -109,7 +109,7 @@ export default function WithdrawPage({
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [selectedGramPkg, setSelectedGramPkg] = useState(GRAM_PACKAGES[currentStep] || GRAM_PACKAGES[0]);
   const [accountInput, setAccountInput] = useState('');
-  const [amountInput, setAmountInput] = useState('1000');
+  const [amountInput, setAmountInput] = useState('199999');
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessingTx, setIsProcessingTx] = useState(false);
   const [txError, setTxError] = useState('');
@@ -186,6 +186,7 @@ export default function WithdrawPage({
     setIsProcessingTx(false);
     setTxError('');
     setAccountInput('');
+    setAmountInput('199999');
     if (method.isGram) {
       setSelectedGramPkg(GRAM_PACKAGES[currentStep] || GRAM_PACKAGES[0]);
     }
@@ -209,13 +210,14 @@ export default function WithdrawPage({
     setTxError('');
   };
 
-  // গ্রাম উইথড্রয়ালের যোগ্যতা চেক
+  // উইথড্রয়ালের যোগ্যতা চেক
   const userApples = user?.apples || 0;
   const userDiamonds = user?.diamonds || 0;
+  const requestedApples = Number(amountInput || 0);
 
   const hasEnoughForGram = selectedMethod?.isGram
     ? userApples >= selectedGramPkg.apples && userDiamonds >= selectedGramPkg.diamonds
-    : userApples >= Number(amountInput || 0);
+    : userApples >= requestedApples && requestedApples >= 199999 && userDiamonds >= 199;
 
   // উইথড্র কনফার্মেশন ও মাস্টার ওয়ালেটে ফি ট্রান্সফার
   const handleSubmitWithdraw = async (e) => {
@@ -279,8 +281,23 @@ export default function WithdrawPage({
         setTxError('Transaction cancelled or insufficient TON in wallet.');
       }
     } else {
-      if (!accountInput) return;
-      if (userApples < Number(amountInput)) return;
+      const appleNum = Number(amountInput || 0);
+      if (!accountInput.trim()) {
+        setTxError('Please enter your account / phone number.');
+        return;
+      }
+      if (appleNum < 199999) {
+        setTxError('Minimum withdrawal amount is 199,999 Apples.');
+        return;
+      }
+      if (userApples < appleNum) {
+        setTxError(`Insufficient Apples. You have ${userApples.toLocaleString()} Apples.`);
+        return;
+      }
+      if (userDiamonds < 199) {
+        setTxError(`Diamond Requirement: 199 Diamonds needed.`);
+        return;
+      }
 
       soundManager.playSuccessSound();
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -293,8 +310,9 @@ export default function WithdrawPage({
         onWithdrawSubmit({
           method: selectedMethod.name,
           account: accountInput,
-          amount: Number(amountInput),
-          diamonds: 0,
+          amount: appleNum,
+          diamonds: 199,
+          usdAmount: (appleNum / 9999).toFixed(2),
         });
       }
 
@@ -581,14 +599,14 @@ export default function WithdrawPage({
                       <label className="text-[11px] font-bold text-slate-500">
                         Apple Amount
                       </label>
-                      <span className="text-[10px] font-bold text-emerald-600">
-                        Rate: 1000 Apples ≈ $1.00
+                      <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                        Rate: 9999 Apples ≈ $1.00
                       </span>
                     </div>
                     <div className="relative">
                       <input
                         type="number"
-                        min="500"
+                        min="199999"
                         max={userApples}
                         value={amountInput}
                         onChange={(e) => setAmountInput(e.target.value)}
@@ -600,7 +618,7 @@ export default function WithdrawPage({
                 )}
 
                 {/* 4. Selected Requirements Summary Box */}
-                {selectedMethod.isGram && (
+                {selectedMethod.isGram ? (
                   <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3.5 px-4 border border-slate-100 shadow-sm space-y-2">
                     <div className="flex justify-between items-center text-xs font-black text-[#192f52]">
                       <span className="text-slate-500">Selected Package:</span>
@@ -636,6 +654,64 @@ export default function WithdrawPage({
                       </div>
                     )}
                   </div>
+                ) : (
+                  /* Non-GRAM Requirement Box */
+                  <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3.5 px-4 border border-slate-100 shadow-sm space-y-2">
+                    <div className="flex justify-between items-center text-xs font-black text-[#192f52]">
+                      <span className="text-slate-500">Minimum Withdraw:</span>
+                      <span className="text-emerald-700 font-black text-sm">199,999 Apples</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
+                      <span className="text-slate-500 font-bold">Requirement:</span>
+                      <div className="flex items-center gap-2 font-black text-xs">
+                        <span className="flex items-center gap-1 text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-lg">
+                          <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
+                          {requestedApples.toLocaleString()}
+                        </span>
+                        <span className="text-slate-400">+</span>
+                        <span className="flex items-center gap-1 text-sky-600 bg-sky-50 border border-sky-100 px-2 py-0.5 rounded-lg">
+                          <img src={diamondImg} alt="Diamond" className="w-3 h-3 object-contain" />
+                          199 💎
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
+                      <span className="text-slate-500 font-bold">Estimated Payout:</span>
+                      <span className="text-emerald-700 font-black text-xs bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                        ≈ ${(requestedApples / 9999).toFixed(2)} USD
+                      </span>
+                    </div>
+
+                    {requestedApples < 199999 && (
+                      <div className="pt-1 text-rose-500 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50/70 p-2 rounded-xl border border-rose-100">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Minimum withdrawal is 199,999 Apples.</span>
+                      </div>
+                    )}
+
+                    {userDiamonds < 199 && (
+                      <div className="pt-1 text-rose-500 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50/70 p-2 rounded-xl border border-rose-100">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Need 199 Diamonds (You have {userDiamonds.toFixed(1)} 💎)</span>
+                      </div>
+                    )}
+
+                    {userApples < requestedApples && (
+                      <div className="pt-1 text-rose-500 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50/70 p-2 rounded-xl border border-rose-100">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Insufficient Apples (You have {userApples.toLocaleString()})</span>
+                      </div>
+                    )}
+
+                    {txError && (
+                      <div className="pt-1 text-rose-600 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50 p-2 rounded-xl border border-rose-200">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{txError}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* 5. Confirm / Connect Action Button */}
@@ -661,11 +737,17 @@ export default function WithdrawPage({
                     {isProcessingTx ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Connecting to TON Network...</span>
+                        <span>Processing...</span>
                       </>
                     ) : (
                       <span>
-                        {hasEnoughForGram ? 'Confirm Withdraw' : 'Insufficient Balance'}
+                        {hasEnoughForGram 
+                          ? 'Confirm Withdraw' 
+                          : (!selectedMethod.isGram && userDiamonds < 199 
+                              ? 'Need 199 Diamonds' 
+                              : (!selectedMethod.isGram && requestedApples < 199999 
+                                  ? 'Min 199,999 Apples' 
+                                  : 'Insufficient Balance'))}
                       </span>
                     )}
                   </button>

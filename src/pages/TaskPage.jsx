@@ -30,6 +30,7 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
 import { getPartnerTasksFromDB, savePartnerTaskToDB, incrementPartnerTaskJoinedInDB } from '../firebase';
+import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
 
 // X / Twitter SVG Component
 const TwitterIcon = ({ className = "w-5 h-5" }) => (
@@ -120,7 +121,7 @@ export default function TaskPage({
         type: 'Special',
         status: 'Go', // 'Go' | 'Verify' | 'Claim' | 'Claimed'
         iconBg: 'bg-sky-50 border-sky-200',
-        actionUrl: 'https://t.me/MangoRush_Channel',
+        actionUrl: OFFICIAL_COMMUNITY_URL,
         icon: (
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white shadow-inner">
             <Send className="w-5 h-5 fill-white stroke-none" />
@@ -221,14 +222,26 @@ export default function TaskPage({
     return defaultTasks;
   });
 
-  // রিয়েল পার্টনার টাস্ক তালিকা (ডিফল্ট ফেক ডাটা ছাড়া শুধুমাত্র রিয়েল ডাটা)
+  // রিয়েল পার্টনার টাস্ক তালিকা
   const [partnerTasks, setPartnerTasks] = useState(() => {
     try {
-      // পুরোনো ডামি ডাটা ক্লিন করা
       localStorage.removeItem('apple_farm_partner_tasks');
       localStorage.removeItem('partner_tasks');
       const saved = localStorage.getItem('apple_farm_partner_tasks_real');
-      return saved ? JSON.parse(saved) : [];
+      let savedStates = {};
+      try {
+        savedStates = JSON.parse(localStorage.getItem('apple_farm_partner_task_states') || '{}');
+      } catch (e) {}
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map(t => ({
+          ...t,
+          status: savedStates[t.id] || t.status || 'Go',
+          joinedCount: Number(t.joinedCount) || 0,
+          targetMembers: Number(t.targetMembers) || 50
+        }));
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -236,7 +249,6 @@ export default function TaskPage({
 
   // ফায়ারস্টোর ডাটাবেস থেকে রিয়েল লাইভ পার্টনার টাস্ক লোড
   useEffect(() => {
-    // পুরোনো ডামি ডাটা পুরোপুরি ক্লিয়ার
     try {
       localStorage.removeItem('apple_farm_partner_tasks');
       localStorage.removeItem('partner_tasks');
@@ -244,12 +256,24 @@ export default function TaskPage({
 
     getPartnerTasksFromDB().then((dbTasks) => {
       if (dbTasks) {
+        let savedStates = {};
+        try {
+          savedStates = JSON.parse(localStorage.getItem('apple_farm_partner_task_states') || '{}');
+        } catch (e) {}
+
         setPartnerTasks(prev => {
           const merged = dbTasks.map(dbT => {
             const local = prev.find(p => p.id === dbT.id);
+            const status = savedStates[dbT.id] || local?.status || 'Go';
+            const joinedCount = Math.max(
+              Number(dbT.joinedCount) || 0,
+              (status === 'Claimed' || local?.status === 'Claimed') ? (Number(local?.joinedCount) || Number(dbT.joinedCount) || 0) : (Number(dbT.joinedCount) || 0)
+            );
             return {
               ...dbT,
-              status: local?.status || 'Go',
+              joinedCount,
+              targetMembers: Number(dbT.targetMembers) || 50,
+              status,
               isMyTask: (user?.id && dbT.creatorId === user.id) || local?.isMyTask || false
             };
           });
@@ -293,7 +317,7 @@ export default function TaskPage({
   const totalPayableGram = (taskBudget + platformFee).toFixed(3);
 
   // স্ট্যান্ডার্ড টাস্ক হ্যান্ডলার
-  const handleStandardTaskAction = (task) => {
+  const handleStandardTaskAction = async (task) => {
     if (task.status === 'Claimed') return;
 
     soundManager.play('click');
@@ -340,18 +364,70 @@ export default function TaskPage({
       });
     } else if (task.status === 'Verify') {
       setVerifyingTaskId(task.id);
-      setTimeout(() => {
-        setVerifyingTaskId(null);
-        setStandardTasks(prev => {
-          const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claim' } : t);
-          try {
-            const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-            localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-          } catch (e) {}
-          return updated;
-        });
-        soundManager.play('click');
-      }, 1200);
+
+      // যদি টেলিগ্রাম টাস্ক হয় তবে সরাসরি Bot API getChatMember দিয়ে রিয়েল মেম্বারশিপ চেক
+      if (task.actionUrl && (task.actionUrl.includes('t.me/') || task.actionUrl.startsWith('@'))) {
+        try {
+          const verifyResult = await verifyTelegramMembership(user?.id, task.actionUrl);
+          setVerifyingTaskId(null);
+
+          if (!verifyResult.verified) {
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+            }
+            // জয়েন না করলে আবার Go স্টেটে ফিরে যাবে
+            setStandardTasks(prev => {
+              const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Go' } : t);
+              try {
+                const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+                localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+              } catch (e) {}
+              return updated;
+            });
+
+            if (onShowPopup) {
+              onShowPopup({
+                type: 'warn',
+                title: verifyResult.notAdmin ? 'Bot Admin Required 🤖' : 'Join Not Found! 📢',
+                message: verifyResult.message || 'You have not joined this channel yet! Please click Go, join the channel, and then click Verify.',
+                confirmText: 'Got It'
+              });
+            }
+            return;
+          }
+        } catch (err) {
+          console.warn('Membership check warning:', err);
+          setVerifyingTaskId(null);
+          setStandardTasks(prev => {
+            const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Go' } : t);
+            try {
+              const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+              localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+            } catch (e) {}
+            return updated;
+          });
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'warn',
+              title: 'Verification Failed ⚠️',
+              message: 'Could not verify channel membership. Please make sure you joined the channel.',
+              confirmText: 'Got It'
+            });
+          }
+          return;
+        }
+      }
+
+      setVerifyingTaskId(null);
+      setStandardTasks(prev => {
+        const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claim' } : t);
+        try {
+          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+        } catch (e) {}
+        return updated;
+      });
+      soundManager.play('click');
     } else if (task.status === 'Claim') {
       soundManager.play('reward');
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -397,13 +473,29 @@ export default function TaskPage({
   };
 
   // পার্টনার টাস্ক হ্যান্ডলার (Go -> Verify -> Claim)
-  const handlePartnerTaskAction = (task) => {
+  const handlePartnerTaskAction = async (task) => {
     if (task.status === 'Claimed') return;
 
     soundManager.play('click');
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
+
+    const setTaskStatusHelper = (statusVal, extraFields = {}) => {
+      try {
+        const currentStates = JSON.parse(localStorage.getItem('apple_farm_partner_task_states') || '{}');
+        currentStates[task.id] = statusVal;
+        localStorage.setItem('apple_farm_partner_task_states', JSON.stringify(currentStates));
+      } catch (e) {}
+
+      setPartnerTasks(prev => {
+        const updated = prev.map(t => t.id === task.id ? { ...t, status: statusVal, ...extraFields } : t);
+        try {
+          localStorage.setItem('apple_farm_partner_tasks_real', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    };
 
     if (task.status === 'Go') {
       // লিংক ওপেন ও টাইমস্ট্যাম্প রেকর্ড (ইউটিউবের জন্য ১৫ সেকেন্ড কাউন্ট শুরু)
@@ -421,10 +513,11 @@ export default function TaskPage({
         }
       }
       const now = Date.now();
-      setPartnerTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Verify', startedAt: now } : t));
+      setTaskStatusHelper('Verify', { startedAt: now });
     } 
     else if (task.status === 'Verify') {
       const isYoutube = task.platform === 'youtube' || (task.title && task.title.toLowerCase().includes('youtube'));
+      const isTelegram = task.platform === 'tg_channel' || task.platform === 'tg_group' || task.platform === 'tg_bot' || (task.link && task.link.includes('t.me/')) || (task.link && task.link.startsWith('@'));
       
       // ⏱️ শুধুমাত্র YouTube টাস্কের জন্য ১৫ সেকেন্ডের রুলস
       if (isYoutube) {
@@ -436,7 +529,7 @@ export default function TaskPage({
           }
           
           // ১৫ সেকেন্ডের আগে ক্লিক করলে ফেইলড এবং আবার 'Go' স্টেটে রিসেট হবে
-          setPartnerTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Go', startedAt: null } : t));
+          setTaskStatusHelper('Go', { startedAt: null });
           
           if (onShowPopup) {
             onShowPopup({
@@ -450,13 +543,52 @@ export default function TaskPage({
         }
       }
 
-      // ১৫ সেকেন্ড সম্পন্ন হলে বা অন্যান্য টেলিগ্রাম টাস্ক হলে ভেরিফাই সাকসেস
       setVerifyingTaskId(task.id);
-      setTimeout(() => {
-        setVerifyingTaskId(null);
-        setPartnerTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Claim' } : t));
-        soundManager.play('click');
-      }, 1500);
+
+      // 🤖 টেলিগ্রাম চ্যানেল / গ্রুপের জন্য Bot API getChatMember দিয়ে রিয়েল মেম্বারশিপ যাচাই
+      if (isTelegram && task.link) {
+        try {
+          const verifyResult = await verifyTelegramMembership(user?.id, task.link);
+          
+          if (!verifyResult.verified) {
+            setVerifyingTaskId(null);
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+            }
+            
+            // জয়েন না করলে আবার Go স্টেটে রিসেট হবে
+            setTaskStatusHelper('Go', { startedAt: null });
+            
+            if (onShowPopup) {
+              onShowPopup({
+                type: 'warn',
+                title: verifyResult.notAdmin ? 'Bot Admin Required 🤖' : 'Membership Not Found! 📢',
+                message: verifyResult.message || 'You have not joined this Telegram channel/group yet! Please click Go, join the channel, and then click Verify.',
+                confirmText: 'Got It'
+              });
+            }
+            return;
+          }
+        } catch (verifyErr) {
+          console.warn('Partner task verify exception:', verifyErr);
+          setVerifyingTaskId(null);
+          setTaskStatusHelper('Go', { startedAt: null });
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'warn',
+              title: 'Verification Failed ⚠️',
+              message: 'Could not verify membership. Please make sure you joined the channel.',
+              confirmText: 'Got It'
+            });
+          }
+          return;
+        }
+      }
+
+      // ভেরিফিকেশন পাস হলে Claim স্টেটে রূপান্তর
+      setVerifyingTaskId(null);
+      setTaskStatusHelper('Claim');
+      soundManager.play('click');
     } 
     else if (task.status === 'Claim') {
       soundManager.play('reward');
@@ -464,11 +596,8 @@ export default function TaskPage({
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       }
 
-      setPartnerTasks(prev => {
-        const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claimed', joinedCount: t.joinedCount + 1 } : t);
-        localStorage.setItem('apple_farm_partner_tasks_real', JSON.stringify(updated));
-        return updated;
-      });
+      const nextJoinedCount = (Number(task.joinedCount) || 0) + 1;
+      setTaskStatusHelper('Claimed', { joinedCount: nextJoinedCount });
 
       // ফায়ারস্টোরে জয়েন কাউন্ট বাড়ানো
       try {
@@ -1052,7 +1181,7 @@ export default function TaskPage({
             {/* Note */}
             <div className="bg-sky-50 rounded-xl p-2.5 border border-sky-100 text-[10px] leading-snug text-sky-900 flex items-start gap-1.5">
               <span className="text-sky-600 font-bold shrink-0">ℹ️ Note:</span>
-              <span>Add our bot <strong className="text-sky-950 font-black">@AppleFarmBot</strong> as Admin to your channel so it can automatically verify members!</span>
+              <span>Add our bot <strong className="text-sky-950 font-black">@AppleFarmOfficialBot</strong> as Admin to your channel so it can automatically verify members!</span>
             </div>
 
             {/* Action Buttons (Cancel & Pay & Launch) */}

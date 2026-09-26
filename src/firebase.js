@@ -227,7 +227,13 @@ export const getPartnerTasksFromDB = async () => {
     const snap = await getDocs(q);
     const list = [];
     snap.forEach((docSnap) => {
-      list.push({ id: docSnap.id, ...docSnap.data() });
+      const data = docSnap.data();
+      list.push({ 
+        ...data, 
+        id: docSnap.id,
+        joinedCount: Number(data.joinedCount) || 0,
+        targetMembers: Number(data.targetMembers) || 50
+      });
     });
     return list;
   } catch (err) {
@@ -240,9 +246,12 @@ export const getPartnerTasksFromDB = async () => {
 export const savePartnerTaskToDB = async (taskData) => {
   if (!db) return null;
   try {
+    const { id, ...dataToSave } = taskData;
     const tasksRef = collection(db, "partner_tasks");
     const docRef = await addDoc(tasksRef, {
-      ...taskData,
+      ...dataToSave,
+      joinedCount: 0,
+      targetMembers: Number(dataToSave.targetMembers) || 50,
       createdTime: Date.now(),
       createdAt: serverTimestamp()
     });
