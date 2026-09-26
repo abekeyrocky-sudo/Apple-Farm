@@ -57,6 +57,8 @@ export default function App() {
       rewardType: opts.rewardType || 'apple',
       confirmText: opts.confirmText || 'Awesome',
       cancelText: opts.cancelText || null,
+      hideClose: opts.hideClose || false,
+      isMandatory: opts.isMandatory || false,
       onConfirm: opts.onConfirm || null,
     });
   };
@@ -141,48 +143,74 @@ export default function App() {
     }
   }, []);
 
-  // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও রিকোয়ার্ড পপ-আপ
+  // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
+  const checkCommunityMembership = () => {
+    if (!user.id) return;
+    verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL).then((res) => {
+      if (res.verified) {
+        // মেম্বার থাকলে ম্যান্ডাটরি পপআপ ক্লোজ হবে
+        setModalConfig((prev) => (prev.isMandatory ? { ...prev, isOpen: false } : prev));
+      } else {
+        // জয়েন না থাকলে টাস্ক স্টেট 'Go' তে রিসেট
+        try {
+          const states = JSON.parse(localStorage.getItem('apple_farm_std_task_states') || '{}');
+          states['task_community'] = 'Go';
+          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+        } catch (e) {}
+
+        // কোনো স্কিপ বা ক্লোজ অপশন ছাড়া বাধ্যতামূলক পপ-আপ
+        showPopupModal({
+          type: 'warn',
+          title: '📢 Join Our Community!',
+          message: 'You must be a member of our official Telegram channel to play and earn rewards in Apple Farm.',
+          confirmText: 'Join Channel 🚀',
+          cancelText: null,
+          hideClose: true,
+          isMandatory: true,
+          onConfirm: () => {
+            try {
+              if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(OFFICIAL_COMMUNITY_URL);
+              } else if (window.Telegram?.WebApp?.openLink) {
+                window.Telegram.WebApp.openLink(OFFICIAL_COMMUNITY_URL);
+              } else {
+                window.open(OFFICIAL_COMMUNITY_URL, '_blank');
+              }
+            } catch (e) {
+              window.open(OFFICIAL_COMMUNITY_URL, '_blank');
+            }
+
+            // চ্যানেল ওপেন করার পর ৩ সেকেন্ড পর পুনরায় স্বয়ংক্রিয় রি-চেক
+            setTimeout(() => {
+              checkCommunityMembership();
+            }, 3000);
+          }
+        });
+      }
+    }).catch(err => {
+      console.warn('Auto community verify check error:', err);
+    });
+  };
+
   useEffect(() => {
     if (!user.id) return;
 
     const timer = setTimeout(() => {
-      verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL).then((res) => {
-        if (!res.verified) {
-          // জয়েন না থাকলে টাস্ক স্টেট 'Go' তে রিসেট
-          try {
-            const states = JSON.parse(localStorage.getItem('apple_farm_std_task_states') || '{}');
-            states['task_community'] = 'Go';
-            localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-          } catch (e) {}
+      checkCommunityMembership();
+    }, 2000);
 
-          // পপআপ শো করা
-          showPopupModal({
-            type: 'warn',
-            title: '📢 Join Our Community!',
-            message: 'You are not currently in our official Telegram channel. Please stay joined to receive rewards and updates!',
-            confirmText: 'Join Channel 🚀',
-            cancelText: 'Later',
-            onConfirm: () => {
-              try {
-                if (window.Telegram?.WebApp?.openTelegramLink) {
-                  window.Telegram.WebApp.openTelegramLink(OFFICIAL_COMMUNITY_URL);
-                } else if (window.Telegram?.WebApp?.openLink) {
-                  window.Telegram.WebApp.openLink(OFFICIAL_COMMUNITY_URL);
-                } else {
-                  window.open(OFFICIAL_COMMUNITY_URL, '_blank');
-                }
-              } catch (e) {
-                window.open(OFFICIAL_COMMUNITY_URL, '_blank');
-              }
-            }
-          });
-        }
-      }).catch(err => {
-        console.warn('Auto community verify check error:', err);
-      });
-    }, 2500);
+    const handleFocus = () => {
+      checkCommunityMembership();
+    };
 
-    return () => clearTimeout(timer);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, [user.id]);
 
   const handleUpdateAvatar = (newAvatarId) => {

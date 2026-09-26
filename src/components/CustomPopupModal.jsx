@@ -12,6 +12,8 @@ export default function CustomPopupModal({
   rewardType = 'apple', // 'apple' | 'diamond'
   confirmText = 'Awesome!',
   cancelText = null,
+  hideClose = false,
+  isMandatory = false,
   onConfirm,
   onClose,
 }) {
@@ -25,7 +27,7 @@ export default function CustomPopupModal({
       confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
     }
     if (onConfirm) onConfirm();
-    if (onClose) onClose();
+    if (onClose && !isMandatory) onClose();
   };
 
   const handleCancel = () => {
@@ -115,12 +117,14 @@ export default function CustomPopupModal({
         className={`relative w-full max-w-xs bg-white/95 backdrop-blur-md rounded-3xl p-6 text-center shadow-2xl border ${config.border} space-y-4 animate-scale-up`}
       >
         {/* Top Close Button */}
-        <button
-          onClick={handleCancel}
-          className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-xs active:scale-90 transition-all"
-        >
-          ✕
-        </button>
+        {!hideClose && !isMandatory && (
+          <button
+            onClick={handleCancel}
+            className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-xs active:scale-90 transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        )}
 
         {/* Vector Icon Badge Container */}
         <div className="flex justify-center pt-1">
