@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ChevronRight, Award } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
-import { calculateLevel, getLevelProgress } from '../utils/levelSystem';
+import { calculateLevel, getLevelProgress, LEVEL_TIERS } from '../utils/levelSystem';
 import { AVATARS, getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
@@ -16,6 +16,7 @@ export default function ProfilePage({
   onRedeemBonus, 
   onUpdateAvatar
 }) {
+  const [showLevelModal, setShowLevelModal] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -235,14 +236,55 @@ export default function ProfilePage({
               <span>ID:</span>
               <span className="font-mono text-[#192f52] font-extrabold">{telegramId}</span>
             </p>
-            <div className="flex items-center gap-2 pt-0.5">
-              <span className="inline-block bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white text-[11px] font-black px-3 py-0.5 rounded-full shadow-sm">
+            <div className="pt-0.5">
+              <span className="inline-block bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
                 Lv.{progress.level}
               </span>
-              <span className="text-[10px] font-bold text-slate-500">
-                Next: {progress.maxApples} Apples ({progress.percent}%)
-              </span>
             </div>
+          </div>
+        </div>
+
+        {/* ----------------- DEDICATED LEVEL PROGRESS CARD ----------------- */}
+        <div 
+          onClick={() => {
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+            }
+            setShowLevelModal(true);
+          }}
+          className="mb-4 bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-sky-100 shadow-[0_4px_16px_rgba(0,140,255,0.05)] cursor-pointer hover:border-emerald-300 active:scale-[0.99] transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
+                Lv.{progress.level}
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-[#192f52] leading-none">
+                  {progress.title || 'Novice Farmer'}
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 mt-1">
+                  {progress.level >= 20 
+                    ? 'Maximum Level Reached' 
+                    : `Next: ${progress.maxApples.toLocaleString()} Apples`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-emerald-600">
+              <span className="text-xs font-black">{progress.percent}%</span>
+              <svg className="w-4 h-4 stroke-current stroke-[2.5] fill-none text-slate-400 group-hover:text-emerald-500 transition-colors" viewBox="0 0 24 24">
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-400 to-green-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(5, progress.percent))}%` }}
+            />
           </div>
         </div>
 
@@ -619,6 +661,113 @@ export default function ProfilePage({
             <button
               onClick={() => setShowSupportModal(false)}
               className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl active:scale-95"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- LEVEL SYSTEM TIERS MODAL ----------------- */}
+      {showLevelModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 border border-sky-100 animate-slide-up max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3 flex-shrink-0">
+              <div>
+                <h3 className="font-black text-[#192f52] text-base">Farm Level System</h3>
+                <p className="text-[11px] font-bold text-emerald-600">
+                  Current: Lv.{progress.level} • {progress.title}
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowLevelModal(false)} 
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200 active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Level Summary Card */}
+            <div className="p-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl text-white shadow-sm flex-shrink-0">
+              <div className="flex items-center justify-between text-xs font-black">
+                <span>Lv.{progress.level} {progress.title}</span>
+                <span>{progress.percent}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-black/20 rounded-full overflow-hidden mt-1.5">
+                <div 
+                  className="h-full bg-white rounded-full" 
+                  style={{ width: `${Math.min(100, Math.max(5, progress.percent))}%` }} 
+                />
+              </div>
+              <p className="text-[10px] font-bold opacity-90 mt-1">
+                {progress.level >= 20 
+                  ? 'You have achieved the ultimate Immortal God rank!' 
+                  : `${progress.applesNeeded.toLocaleString()} more Apples needed for Lv.${progress.level + 1}`}
+              </p>
+            </div>
+
+            {/* 20 Level Tiers List */}
+            <div className="overflow-y-auto space-y-2 pr-1 flex-1 py-1">
+              {LEVEL_TIERS.map((tier) => {
+                const isCurrent = progress.level === tier.level;
+                const isPassed = progress.level > tier.level;
+
+                return (
+                  <div
+                    key={tier.level}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                      isCurrent
+                        ? 'border-emerald-500 bg-emerald-50/90 shadow-xs ring-1 ring-emerald-300'
+                        : isPassed
+                        ? 'border-slate-100 bg-slate-50/60 opacity-85'
+                        : 'border-slate-100 bg-white opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs ${
+                        isCurrent
+                          ? 'bg-emerald-500 text-white'
+                          : isPassed
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        {tier.level}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-black text-[#192f52] leading-tight">
+                            {tier.name}
+                          </h4>
+                          {isCurrent && (
+                            <span className="text-[9px] font-extrabold bg-emerald-500 text-white px-1.5 py-0.2 rounded-md">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400">
+                          {tier.required.toLocaleString()} Apples Required
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs">
+                      {isPassed ? (
+                        <span className="text-emerald-500 font-bold">✓</span>
+                      ) : isCurrent ? (
+                        <span className="text-xs font-black text-emerald-600">🎯</span>
+                      ) : (
+                        <span className="text-slate-300 text-[10px] font-bold">🔒</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowLevelModal(false)}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs rounded-xl active:scale-95 flex-shrink-0"
             >
               Close
             </button>

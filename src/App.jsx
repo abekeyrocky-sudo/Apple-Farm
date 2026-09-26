@@ -14,6 +14,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import StakingPage from './pages/StakingPage';
 import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
+import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
 import { calculateLevel } from './utils/levelSystem';
 import { soundManager } from './utils/soundManager';
@@ -23,6 +24,7 @@ import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from './utils/telegr
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('home');
+  const [isDailyRewardOpen, setIsDailyRewardOpen] = useState(false);
   const [user, setUser] = useState({
     id: null,
     name: 'Farmer',
@@ -161,9 +163,9 @@ export default function App() {
         // কোনো স্কিপ বা ক্লোজ অপশন ছাড়া বাধ্যতামূলক পপ-আপ
         showPopupModal({
           type: 'warn',
-          title: '📢 Join Our Community!',
+          title: 'Join Our Community',
           message: 'You must be a member of our official Telegram channel to play and earn rewards in Apple Farm.',
-          confirmText: 'Join Channel 🚀',
+          confirmText: 'Join Channel',
           cancelText: null,
           hideClose: true,
           isMandatory: true,
@@ -213,6 +215,53 @@ export default function App() {
     };
   }, [user.id]);
 
+  // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
+  useEffect(() => {
+    if (!isLoading) {
+      const dailyStatus = getDailyRewardStatus();
+      if (dailyStatus.canClaimToday) {
+        const timer = setTimeout(() => {
+          setIsDailyRewardOpen(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoading]);
+
+  const handleDailyRewardClaim = (reward) => {
+    const isDiamond = reward.type === 'diamond';
+    const amount = Number(reward.amount || 0);
+
+    setUser((prev) => {
+      const newApples = isDiamond ? prev.apples : prev.apples + amount;
+      const newDiamonds = isDiamond ? prev.diamonds + amount : prev.diamonds;
+      return {
+        ...prev,
+        apples: newApples,
+        diamonds: newDiamonds,
+        level: calculateLevel(newApples)
+      };
+    });
+
+    if (user.id) {
+      const updateData = isDiamond
+        ? { diamonds: (user.diamonds || 0) + amount }
+        : { apples: (user.apples || 0) + amount };
+      updateUserInDB(user.id, updateData);
+    }
+
+    addTransaction({
+      userId: user.id,
+      title: `Daily Check-in (Day ${reward.day})`,
+      subtitle: `Daily Streak (${reward.label})`,
+      amount: `+${amount}`,
+      currency: isDiamond ? 'diamond' : 'apple',
+      type: 'earn',
+      category: 'task',
+      status: 'Completed'
+    });
+  };
+
   const handleUpdateAvatar = (newAvatarId) => {
     setUser((prev) => ({ ...prev, avatar: newAvatarId }));
     if (user.id) {
@@ -220,7 +269,7 @@ export default function App() {
     }
     showPopupModal({
       type: 'success',
-      title: 'Avatar Updated!',
+      title: 'Avatar Updated',
       message: 'Your farmer character has been changed successfully.',
       confirmText: 'Great'
     });
@@ -241,7 +290,7 @@ export default function App() {
     }
   };
 
-  const handleBonusWin = (amount, title = 'Bonus Claimed!') => {
+  const handleBonusWin = (amount, title = 'Bonus Claimed') => {
     setUser((prev) => {
       const newApples = prev.apples + amount;
       const newLevel = calculateLevel(newApples);
@@ -264,7 +313,7 @@ export default function App() {
     showPopupModal({
       type: 'reward',
       title: title,
-      message: `Congratulations! You received +${amount} Apples into your balance.`,
+      message: `Congratulations. You received +${amount} Apples into your balance.`,
       rewardAmount: amount,
       rewardType: 'apple'
     });
@@ -272,7 +321,7 @@ export default function App() {
 
   const handleRewardClaim = (task) => {
     if (task.rewardAmount) {
-      handleBonusWin(task.rewardAmount, task.title || 'Task Completed!');
+      handleBonusWin(task.rewardAmount, task.title || 'Task Completed');
     }
   };
 
@@ -292,8 +341,8 @@ export default function App() {
       });
       showPopupModal({
         type: 'reward',
-        title: 'Lucky Spin Winner!',
-        message: `Jackpot! You won ${value} Diamonds on the wheel!`,
+        title: 'Lucky Spin Winner',
+        message: `Jackpot. You won ${value} Diamonds on the wheel.`,
         rewardAmount: value,
         rewardType: 'diamond'
       });
@@ -314,8 +363,8 @@ export default function App() {
       });
       showPopupModal({
         type: 'reward',
-        title: 'Lucky Spin Winner!',
-        message: `Jackpot! You won ${value} Apples on the wheel!`,
+        title: 'Lucky Spin Winner',
+        message: `Jackpot. You won ${value} Apples on the wheel.`,
         rewardAmount: value,
         rewardType: 'apple'
       });
@@ -388,7 +437,7 @@ export default function App() {
 
     showPopupModal({
       type: 'success',
-      title: 'Withdrawal Submitted!',
+      title: 'Withdrawal Submitted',
       message: isGram 
         ? `Your request for ${data.gramAmount} GRAM (${appleDeduct} Apples & ${diamondDeduct} Diamonds) has been sent to TON network.`
         : `Your withdrawal request of ${appleDeduct} Apples has been placed successfully via ${data.method}.`,
@@ -445,15 +494,20 @@ export default function App() {
 
     showPopupModal({
       type: 'reward',
-      title: 'Mission Reward Claimed!',
-      message: `You earned +${applesReward} Apples${diamondsReward > 0 ? ` & +${diamondsReward} Diamonds` : ''} for ${mission.title}!`,
+      title: 'Mission Reward Claimed',
+      message: `You earned +${applesReward} Apples${diamondsReward > 0 ? ` & +${diamondsReward} Diamonds` : ''} for ${mission.title}.`,
       rewardAmount: applesReward,
       rewardType: 'apple'
     });
   };
 
-  const handleNavigate = (tab) => {
+  const [taskInitialTab, setTaskInitialTab] = useState('All');
+
+  const handleNavigate = (tab, options = {}) => {
     setCurrentTab(tab);
+    if (tab === 'task') {
+      setTaskInitialTab(options?.taskTab || 'All');
+    }
   };
 
   // 1. Initial Cartoon Splash / Loading Screen
@@ -490,8 +544,10 @@ export default function App() {
         return (
           <TaskPage 
             user={user}
+            initialTab={taskInitialTab}
             onBack={() => setCurrentTab('home')}
             onNavigate={handleNavigate}
+            onOpenDailyReward={() => setIsDailyRewardOpen(true)}
             onRewardClaim={handleRewardClaim}
             onUpdateUser={(updatedData) => {
               setUser((prev) => ({ ...prev, ...updatedData }));
@@ -503,6 +559,7 @@ export default function App() {
       case 'game':
         return (
           <GamePage 
+            user={user}
             onNavigate={handleNavigate}
             onWinReward={handleGameReward}
             onShowPopup={showPopupModal}
@@ -606,6 +663,13 @@ export default function App() {
     <>
       {renderCurrentPage()}
       
+      {/* 🎁 ৭-দিনের ডেইলী চেক-ইন রিওয়ার্ড পপ-আপ মডাল */}
+      <DailyRewardModal
+        isOpen={isDailyRewardOpen}
+        onClose={() => setIsDailyRewardOpen(false)}
+        onClaimReward={handleDailyRewardClaim}
+      />
+
       {/* গ্লোবাল কাস্টম ভেক্টর পপআপ মডাল */}
       <CustomPopupModal 
         {...modalConfig} 

@@ -1,21 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import splashImg from '../../assets/splash.svg';
+import homeBgImg from '../../assets/home-page-background.png';
+import spinBgImg from '../../assets/spin-screen-background.png';
+import appleImg from '../../assets/apple.png';
+import diamondImg from '../../assets/daimond.png';
+import gramImg from '../../assets/gram.png';
+import bksImg from '../../assets/bks.png';
+import inviteBannerImg from '../../assets/invite-banner.png';
 
 export default function SplashScreen({ onLoaded }) {
-  const [progress, setProgress] = useState(12);
+  const [progress, setProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    // 🚀 Background Preload critical game assets
+    const preloadAssets = [
+      homeBgImg,
+      spinBgImg,
+      appleImg,
+      diamondImg,
+      gramImg,
+      bksImg,
+      inviteBannerImg,
+    ];
+
+    preloadAssets.forEach((src) => {
+      if (src) {
+        const img = new Image();
+        img.src = src;
+      }
+    });
+
+    const startTime = Date.now();
+    const DURATION = 5000; // ⏱️ Exactly 5.0 Seconds Loading
+
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          setIsReady(true);
-          return 100;
+      const elapsed = Date.now() - startTime;
+      const currentPct = Math.min(100, Math.floor((elapsed / DURATION) * 100));
+      setProgress(currentPct);
+
+      if (currentPct >= 100) {
+        clearInterval(timer);
+        setIsReady(true);
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
         }
-        return Math.min(100, prev + Math.floor(Math.random() * 12) + 6);
-      });
-    }, 130);
+      }
+    }, 40);
 
     return () => clearInterval(timer);
   }, []);

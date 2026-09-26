@@ -51,44 +51,56 @@ async function handleStartCommand(message, param) {
     ? `${WEBAPP_URL}?startapp=${encodeURIComponent(param)}` 
     : WEBAPP_URL;
 
-  const caption = `🍎 *Welcome to Apple Farm, ${firstName}!* 🍏\n\n` +
-    `🌱 *GROW • HARVEST • EARN*\n\n` +
-    `👨‍🌾 Plant apple trees and harvest fresh apples daily.\n` +
-    `💎 Earn Diamonds, spin the Lucky Wheel, and win real rewards.\n` +
-    `👥 Invite friends to earn *10% commission* on every harvest!\n\n` +
-    `👇 *Click below to start playing now:*`;
+  // রেফারকারীকে নোটিফিকেশন পাঠানো
+  if (param && param !== user.id.toString() && /^\d+$/.test(param)) {
+    callTelegram('sendMessage', {
+      chat_id: param,
+      text: `🎉 *New Referral Alert!* 🍎\n\n👤 *${firstName}* (${username}) just launched Apple Farm with your invite link!\n\n💰 *+500 Apples* has been credited to your balance. 🚀`,
+      parse_mode: 'Markdown'
+    }).catch((e) => console.warn('Bot referral notify error:', e));
+  }
+
+  const caption = `🍎 *Welcome to Apple Farm, ${firstName}!* 🍏\n` +
+    `Your virtual farm is ready. Harvest apples and start earning rewards now! 🌾\n\n` +
+    `👇 *Start playing below:*`;
 
   const inline_keyboard = [
     [
       {
         text: '🎮 Play Apple Farm 🍎',
-        web_app: { url: appUrl }
+        web_app: { url: appUrl },
+        style: 'primary'
       }
     ],
     [
       {
         text: '📢 Join Community',
-        url: CHANNEL_URL
+        url: CHANNEL_URL,
+        style: 'success'
       },
       {
         text: '📖 How to Play',
-        callback_data: 'help_info'
+        callback_data: 'help_info',
+        style: 'primary'
       }
     ]
   ];
 
-  const bannerPath = path.join(__dirname, 'assets', 'invite-banner.png');
+  const startImagePath = path.join(__dirname, 'assets', 'start-image.jpg');
+  const fallbackBannerPath = path.join(__dirname, 'assets', 'invite-banner.png');
+  const imagePath = fs.existsSync(startImagePath) ? startImagePath : fallbackBannerPath;
 
-  if (fs.existsSync(bannerPath)) {
+  if (fs.existsSync(imagePath)) {
     const formData = new FormData();
     formData.append('chat_id', chatId);
     formData.append('caption', caption);
     formData.append('parse_mode', 'Markdown');
     formData.append('reply_markup', JSON.stringify({ inline_keyboard }));
     
-    const fileBuffer = fs.readFileSync(bannerPath);
-    const blob = new Blob([fileBuffer], { type: 'image/png' });
-    formData.append('photo', blob, 'banner.png');
+    const fileBuffer = fs.readFileSync(imagePath);
+    const mimeType = imagePath.endsWith('.jpg') || imagePath.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+    const blob = new Blob([fileBuffer], { type: mimeType });
+    formData.append('photo', blob, path.basename(imagePath));
 
     const result = await callTelegram('sendPhoto', formData, true);
     if (!result.ok) {
@@ -116,7 +128,7 @@ async function handleHelpCommand(message) {
     `1. *Tap to Harvest:* Tap the apple tree to gather ripe apples.\n` +
     `2. *Watch Ads:* Watch daily ads to earn extra apples and diamonds.\n` +
     `3. *Spin & Win:* Spin the wheel daily for jackpot rewards.\n` +
-    `4. *Invite Friends:* Share your referral link and earn 10% bonus!\n` +
+    `4. *Invite Friends:* Share your referral link and earn +500 Apples bonus!\n` +
     `5. *Withdraw:* Cash out your balance directly via TON, bKash, and other wallets.\n\n` +
     `👇 Click Play to enter the farm!`;
 

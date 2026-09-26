@@ -200,7 +200,7 @@ export default function WithdrawPage({
       return;
     }
     if (idx > currentStep) {
-      setTxError(`Tier locked! Complete ${GRAM_PACKAGES[currentStep]?.label} first.`);
+      setTxError(`Tier locked. Complete ${GRAM_PACKAGES[currentStep]?.label} first.`);
       return;
     }
     if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -446,7 +446,7 @@ export default function WithdrawPage({
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-black shadow-sm">
                   ✓
                 </div>
-                <h4 className="font-black text-emerald-800 text-base">Withdrawal Submitted!</h4>
+                <h4 className="font-black text-emerald-800 text-base">Withdrawal Submitted</h4>
                 <p className="text-xs font-bold text-slate-500 px-4">
                   {selectedMethod.isGram 
                     ? `${selectedGramPkg.label} payout request placed to ${shortAddress}.`

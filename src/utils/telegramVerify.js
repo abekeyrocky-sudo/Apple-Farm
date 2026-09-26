@@ -1,5 +1,5 @@
 // Telegram Channel / Group Membership Verification
-export const OFFICIAL_COMMUNITY_URL = 'https://t.me/MangoRush_Channel';
+export const OFFICIAL_COMMUNITY_URL = 'https://t.me/AppleFarmCommunity';
 const CLOUD_FUNCTION_URL = 'https://api-duztzw2gwa-uc.a.run.app';
 const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
 
@@ -18,7 +18,7 @@ export async function verifyTelegramMembership(userId, channelLink) {
     console.warn('[Verify Telegram] No Telegram user ID detected.');
     return { 
       verified: false, 
-      message: 'Could not detect your Telegram account. Please open this app inside Telegram!' 
+      message: 'Could not detect your Telegram account. Please open this app inside Telegram.' 
     };
   }
 
@@ -40,7 +40,7 @@ export async function verifyTelegramMembership(userId, channelLink) {
       } else if (data.ok && !data.isMember) {
         return { 
           verified: false, 
-          message: data.message || 'You have not joined this channel yet! Please join first.' 
+          message: data.message || 'You have not joined this channel yet. Please join first.' 
         };
       } else if (data.notAdmin) {
         return { 
@@ -80,7 +80,7 @@ export async function verifyTelegramMembership(userId, channelLink) {
       } else {
         return { 
           verified: false, 
-          message: `You have not joined ${chatId} yet! Please click Go and join the channel first.` 
+          message: `You have not joined ${chatId} yet. Please click Go and join the channel first.` 
         };
       }
     } else {
@@ -89,7 +89,7 @@ export async function verifyTelegramMembership(userId, channelLink) {
         return {
           verified: false,
           notAdmin: true,
-          message: `Bot @AppleFarmOfficialBot must be an Admin in ${chatId} for automatic verification!`
+          message: `Bot @AppleFarmOfficialBot must be an Admin in ${chatId} for automatic verification.`
         };
       }
       return { verified: false, message: desc || 'Verification failed. Please make sure you joined.' };

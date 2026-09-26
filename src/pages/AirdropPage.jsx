@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CheckCircle2, Rocket, Lock, Wallet, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle2, Rocket, Lock, Wallet, AlertCircle, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
 import { soundManager } from '../utils/soundManager';
+import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
 
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
@@ -34,6 +35,9 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
 
   const [claimed, setClaimed] = useState(!!user?.airdropClaimed);
   const [toastMsg, setToastMsg] = useState('');
+  // Go → Verify step tracker
+  const [taskStep, setTaskStep] = useState({ followX: 'go', joinTg: 'go' });
+  const [isVerifyingTg, setIsVerifyingTg] = useState(false);
   const [isVerifyingWallet, setIsVerifyingWallet] = useState(false);
 
   // TON Connect State
@@ -109,7 +113,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
   // প্রথম ৪টি টাস্ক কমপ্লিট কি না চেক
   const first4TasksDone = tasks.followX && tasks.joinTg && is50kReached && (invitedCount >= 5);
 
-  const handleTaskClick = (key) => {
+  const handleTaskClick = async (key) => {
     soundManager.playClickSound();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
@@ -117,22 +121,81 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
 
     if (key === 'followX') {
       if (tasks.followX) return;
-      window.open('https://x.com', '_blank');
-      setTimeout(() => {
+      if (taskStep.followX === 'go') {
+        // Step 1: Go — open X profile
+        window.open('https://x.com/AppleFarmTMA', '_blank');
+        setTaskStep(prev => ({ ...prev, followX: 'verify' }));
+      } else if (taskStep.followX === 'verify') {
+        // Step 2: Verify — mark as done
         const updated = { ...user?.airdropTasks, followX: true };
         setTasks(prev => ({ ...prev, followX: true }));
         onUpdateUser?.({ airdropTasks: updated });
-        showToast('✓ Follow on X verified!');
-      }, 1500);
+        showToast('Follow on X verified');
+      }
     } else if (key === 'joinTg') {
       if (tasks.joinTg) return;
-      window.open('https://t.me/AppleFarmCommunity', '_blank');
-      setTimeout(() => {
-        const updated = { ...user?.airdropTasks, joinTg: true };
-        setTasks(prev => ({ ...prev, joinTg: true }));
-        onUpdateUser?.({ airdropTasks: updated });
-        showToast('✓ Joined Community verified!');
-      }, 1500);
+      if (taskStep.joinTg === 'go') {
+        // Step 1: Go — open Telegram channel
+        try {
+          if (window.Telegram?.WebApp?.openTelegramLink) {
+            window.Telegram.WebApp.openTelegramLink(OFFICIAL_COMMUNITY_URL);
+          } else if (window.Telegram?.WebApp?.openLink) {
+            window.Telegram.WebApp.openLink(OFFICIAL_COMMUNITY_URL);
+          } else {
+            window.open(OFFICIAL_COMMUNITY_URL, '_blank');
+          }
+        } catch (e) {
+          window.open(OFFICIAL_COMMUNITY_URL, '_blank');
+        }
+        setTaskStep(prev => ({ ...prev, joinTg: 'verify' }));
+      } else if (taskStep.joinTg === 'verify') {
+        // Step 2: Real Verify using Telegram Bot API
+        setIsVerifyingTg(true);
+        try {
+          const verifyResult = await verifyTelegramMembership(user?.id, OFFICIAL_COMMUNITY_URL);
+          setIsVerifyingTg(false);
+
+          if (verifyResult.verified) {
+            const updated = { ...user?.airdropTasks, joinTg: true };
+            setTasks(prev => ({ ...prev, joinTg: true }));
+            onUpdateUser?.({ airdropTasks: updated, communityJoined: true });
+
+            // Sync with TaskPage standard task
+            try {
+              const states = JSON.parse(localStorage.getItem('apple_farm_std_task_states') || '{}');
+              if (states['task_community'] !== 'Claimed') {
+                states['task_community'] = 'Claim';
+                localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+              }
+            } catch (e) {}
+
+            soundManager.play('reward');
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+            showToast('Joined Community verified!');
+          } else {
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+            }
+            setTaskStep(prev => ({ ...prev, joinTg: 'go' }));
+            if (onShowPopup) {
+              onShowPopup({
+                type: 'warn',
+                title: verifyResult.notAdmin ? 'Bot Admin Required' : 'Join Not Found',
+                message: verifyResult.message || 'You have not joined our Telegram channel yet. Please click Go, join the channel, and then click Verify.',
+                confirmText: 'Got It'
+              });
+            } else {
+              showToast(verifyResult.message || 'Please join channel first!');
+            }
+          }
+        } catch (err) {
+          setIsVerifyingTg(false);
+          setTaskStep(prev => ({ ...prev, joinTg: 'go' }));
+          showToast('Verification failed. Try again.');
+        }
+      }
     } else if (key === 'harvest') {
       onNavigate?.('home');
     } else if (key === 'invite') {
@@ -149,12 +212,12 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
       }
-      showToast('⚠️ Please complete the first 4 tasks before verifying wallet!');
+      showToast('Please complete the first 4 tasks before verifying wallet');
       return;
     }
 
     if (tasks.wallet) {
-      showToast('✓ Wallet is already verified!');
+      showToast('Wallet is already verified');
       return;
     }
 
@@ -206,14 +269,14 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
       });
 
       setIsVerifyingWallet(false);
-      showToast('🎉 Wallet Verified Successfully! Airdrop Ready.');
+      showToast('Wallet Verified Successfully. Airdrop Ready');
     } catch (err) {
       console.warn('[Airdrop Wallet Verify Failed/Rejected]:', err);
       setIsVerifyingWallet(false);
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
       }
-      showToast('❌ Task Failed: Insufficient TON balance or transaction rejected.');
+      showToast('Task Failed: Insufficient TON balance or transaction rejected');
     }
   };
 
@@ -231,7 +294,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
 
   const handleClaim = () => {
     if (!first4TasksDone || !tasks.wallet) {
-      showToast('⚠️ Complete all 5 tasks including Wallet Verification first!');
+      showToast('Complete all 5 tasks including Wallet Verification first');
       return;
     }
 
@@ -243,7 +306,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
     });
     setClaimed(true);
     onUpdateUser?.({ airdropClaimed: true });
-    showToast('🎉 $APPLE Airdrop slot reserved successfully!');
+    showToast('$APPLE Airdrop slot reserved successfully');
   };
 
   const pad = (n) => String(n).padStart(2, '0');
@@ -325,42 +388,8 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
           {/* Checklist Items (Sequential & Dynamic Real Data) */}
           <div className="flex flex-col gap-2.5 flex-1">
             
-            {/* 🌟 1. Follow on X 🌟 */}
-            <div 
-              onClick={() => handleTaskClick('followX')}
-              className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white shadow-xs flex-shrink-0">
-                  <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Follow on X</h3>
-                  <p className={`text-xs font-bold ${tasks.followX ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {tasks.followX ? 'Completed' : 'Pending'}
-                  </p>
-                </div>
-              </div>
-              {tasks.followX ? (
-                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                  <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              ) : (
-                <span className="bg-amber-50 text-amber-700 text-xs font-black px-3 py-1.5 rounded-xl border border-amber-200">
-                  Pending
-                </span>
-              )}
-            </div>
-
-            {/* 🌟 2. Join Community 🌟 */}
-            <div 
-              onClick={() => handleTaskClick('joinTg')}
-              className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-300 shadow-xs cursor-pointer active:scale-[0.98] transition-all"
-            >
+            {/* 🌟 1. Join Community 🌟 */}
+            <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 shadow-xs transition-all">
               <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-full bg-[#229ED9] flex items-center justify-center text-white shadow-xs flex-shrink-0">
                   <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
@@ -369,21 +398,65 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Join Community</h3>
-                  <p className={`text-xs font-bold ${tasks.joinTg ? 'text-emerald-600' : 'text-slate-400'}`}>
-                    {tasks.joinTg ? 'Completed' : 'Pending'}
-                  </p>
                 </div>
               </div>
               {tasks.joinTg ? (
-                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
                   <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
+              ) : taskStep.joinTg === 'verify' ? (
+                <button
+                  onClick={() => handleTaskClick('joinTg')}
+                  disabled={isVerifyingTg}
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-blue-500 text-white active:scale-95 transition-all flex-shrink-0 flex items-center gap-1 disabled:opacity-75"
+                >
+                  {isVerifyingTg && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isVerifyingTg ? 'Checking...' : 'Verify'}
+                </button>
               ) : (
-                <span className="bg-amber-50 text-amber-700 text-xs font-black px-3 py-1.5 rounded-xl border border-amber-200">
-                  Pending
-                </span>
+                <button
+                  onClick={() => handleTaskClick('joinTg')}
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white active:scale-95 transition-all flex-shrink-0"
+                >
+                  Go
+                </button>
+              )}
+            </div>
+
+            {/* 🌟 2. Follow on X 🌟 */}
+            <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-white border border-slate-100 shadow-xs transition-all">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center text-white shadow-xs flex-shrink-0">
+                  <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">Follow on X</h3>
+                </div>
+              </div>
+              {tasks.followX ? (
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                  <svg className="w-4 h-4 stroke-current stroke-[3] fill-none" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : taskStep.followX === 'verify' ? (
+                <button
+                  onClick={() => handleTaskClick('followX')}
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-blue-500 text-white active:scale-95 transition-all flex-shrink-0"
+                >
+                  Verify
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleTaskClick('followX')}
+                  className="text-xs font-black px-3 py-1.5 rounded-xl bg-emerald-500 text-white active:scale-95 transition-all flex-shrink-0"
+                >
+                  Go
+                </button>
               )}
             </div>
 

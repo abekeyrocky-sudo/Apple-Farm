@@ -3,6 +3,17 @@ import confetti from 'canvas-confetti';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 
+// Utility to remove all '!' and emojis from popup text
+export function sanitizePopupText(val) {
+  if (val === null || val === undefined) return '';
+  if (typeof val !== 'string') return val;
+  return val
+    .replace(/!+/g, '')
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23FF}\u{2B50}\u{20E3}\u{FE0F}\u{200D}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export default function CustomPopupModal({
   isOpen = false,
   type = 'success', // 'success' | 'warn' | 'reward' | 'error' | 'info'
@@ -10,7 +21,7 @@ export default function CustomPopupModal({
   message = '',
   rewardAmount = null,
   rewardType = 'apple', // 'apple' | 'diamond'
-  confirmText = 'Awesome!',
+  confirmText = 'Got It',
   cancelText = null,
   hideClose = false,
   isMandatory = false,
@@ -18,6 +29,11 @@ export default function CustomPopupModal({
   onClose,
 }) {
   if (!isOpen) return null;
+
+  const cleanTitle = sanitizePopupText(title || (type === 'success' ? 'Success' : type === 'warn' ? 'Attention' : 'Notification'));
+  const cleanMessage = sanitizePopupText(message);
+  const cleanConfirmText = sanitizePopupText(confirmText || 'Got It');
+  const cleanCancelText = cancelText ? sanitizePopupText(cancelText) : null;
 
   const handleConfirm = () => {
     if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -136,10 +152,10 @@ export default function CustomPopupModal({
         {/* Title & Message */}
         <div className="space-y-1.5 px-1">
           <h3 className="text-lg font-black text-[#192f52] tracking-tight leading-snug">
-            {title || (type === 'success' ? 'Success!' : type === 'warn' ? 'Attention!' : 'Notification')}
+            {cleanTitle}
           </h3>
           <p className="text-xs font-bold text-[#6483a7] leading-relaxed">
-            {message}
+            {cleanMessage}
           </p>
         </div>
 
@@ -158,13 +174,13 @@ export default function CustomPopupModal({
         )}
 
         {/* Action Buttons */}
-        <div className={`pt-2 flex gap-2 ${cancelText ? 'grid grid-cols-2' : ''}`}>
-          {cancelText && (
+        <div className={`pt-2 flex gap-2 ${cleanCancelText ? 'grid grid-cols-2' : ''}`}>
+          {cleanCancelText && (
             <button
               onClick={handleCancel}
               className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs active:scale-95 transition-all"
             >
-              {cancelText}
+              {cleanCancelText}
             </button>
           )}
 
@@ -172,7 +188,7 @@ export default function CustomPopupModal({
             onClick={handleConfirm}
             className={`w-full py-3 rounded-2xl ${config.btnBg} text-white font-black text-xs tracking-wide active:scale-95 transition-all border-t`}
           >
-            {confirmText}
+            {cleanConfirmText}
           </button>
         </div>
 

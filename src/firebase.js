@@ -38,6 +38,30 @@ try {
 
 export { db };
 
+// 📢 রেফারকারীকে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
+const sendReferralNotificationToTelegram = async (referrerChatId, friendName) => {
+  if (!referrerChatId) return;
+  try {
+    const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+    const text = `🎉 *New Referral Joined!* 🍎\n\n` +
+      `👤 *${friendName}* just joined Apple Farm using your invite link!\n\n` +
+      `💰 *Reward:* +500 Apples added to your balance.\n` +
+      `🌾 Keep inviting friends to unlock milestone rewards! 🚀`;
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: referrerChatId,
+        text: text,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch (err) {
+    console.warn('Referral Telegram notification error:', err);
+  }
+};
+
 // টেলিগ্রাম ইউজার ডাটাবেসে সিঙ্ক করার ফাংশন
 export const syncUserWithFirebase = async (tgUser) => {
   if (!tgUser) return null;
@@ -94,8 +118,11 @@ export const syncUserWithFirebase = async (tgUser) => {
                 avatar: 'avatar-1',
                 date: new Date().toLocaleDateString()
               }),
-              apples: increment(100) // Instant 100 Apples Referral Reward
+              apples: increment(500) // Instant 500 Apples Referral Reward
             });
+
+            // 📢 রেফারকারীকে টেলিগ্রামে ইনস্ট্যান্ট নোটিফিকেশন পাঠানো
+            sendReferralNotificationToTelegram(startParam, fullName);
           }
         } catch (rErr) {
           console.warn("Referral tracking error:", rErr);

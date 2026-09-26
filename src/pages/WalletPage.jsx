@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Sprout, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Sprout, ArrowDownLeft, ArrowUpRight, Coins, Wallet } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { getTransactions, fetchUserTransactions } from '../utils/transactionHistory';
+import { soundManager } from '../utils/soundManager';
 
 export default function WalletPage({
   user = { apples: 0, diamonds: 0.0, id: null },
   onBack,
   onNavigate
 }) {
-  const [selectedCurrency, setSelectedCurrency] = useState('Apple');
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [transactions, setTransactions] = useState([]);
 
@@ -27,14 +27,6 @@ export default function WalletPage({
       });
     }
   }, [user?.id]);
-
-  // ফিল্টার হ্যান্ডলার ও হ্যাপটিক্স
-  const handleTabChange = (type) => {
-    setSelectedCurrency(type);
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
-  };
 
   return (
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f4f9ff] to-[#e8f5e9] flex flex-col justify-between select-none font-sans overflow-hidden">
@@ -83,28 +75,35 @@ export default function WalletPage({
           </div>
         </div>
 
-        {/* 2. CURRENCY TOGGLE TABS (Apple / Diamond) */}
+        {/* 2. NAVIGATION TOGGLE TABS (Assets / Withdraw) */}
         <div className="flex items-center bg-[#e4eff8] p-1 rounded-full mb-3.5">
+          {/* Assets Tab (Active) */}
           <button
-            onClick={() => handleTabChange('Apple')}
-            className={`flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 shadow-sm flex items-center justify-center gap-1.5 ${selectedCurrency === 'Apple'
-                ? 'bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white shadow-md'
-                : 'text-[#506e8c] hover:text-[#192f52]'
-              }`}
+            onClick={() => {
+              soundManager.playClickSound();
+              if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.selectionChanged();
+              }
+            }}
+            className="flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 shadow-md flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#2ecc71] to-[#20a058] text-white"
           >
-            <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
-            Apple
+            <Coins className="w-3.5 h-3.5" />
+            Assets
           </button>
 
+          {/* Withdraw Tab (Redirects to Withdraw Page) */}
           <button
-            onClick={() => handleTabChange('Diamond')}
-            className={`flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 flex items-center justify-center gap-1.5 ${selectedCurrency === 'Diamond'
-                ? 'bg-gradient-to-r from-[#00A3FF] to-[#0077cc] text-white shadow-md'
-                : 'text-[#506e8c] hover:text-[#192f52]'
-              }`}
+            onClick={() => {
+              soundManager.playClickSound();
+              if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+              }
+              onNavigate?.('withdraw');
+            }}
+            className="flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 flex items-center justify-center gap-1.5 text-[#506e8c] hover:text-[#192f52] active:scale-95"
           >
-            <img src={diamondImg} alt="Diamond" className="w-3.5 h-3.5 object-contain" />
-            Diamond
+            <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
+            Withdraw
           </button>
         </div>
 

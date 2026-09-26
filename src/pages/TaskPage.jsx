@@ -65,14 +65,22 @@ export const calculateRewardDiamonds = (bidPerMember) => {
 
 export default function TaskPage({ 
   user = { apples: 0, diamonds: 0.0, level: 1, name: 'Farmer' }, 
+  initialTab = 'All',
   onBack, 
   onNavigate, 
+  onOpenDailyReward,
   onRewardClaim, 
   onUpdateUser,
   onShowPopup 
 }) {
   // ৪টি মূল ট্যাব: 'All' | 'Daily' | 'Special' | 'Partner'
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState(initialTab || 'All');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   
   // Partner ট্যাবের ভিতরের সাব-ট্যাব: 'explore' | 'my_tasks'
   const [partnerSubTab, setPartnerSubTab] = useState('explore');
@@ -194,13 +202,14 @@ export default function TaskPage({
       },
       {
         id: 'task_6',
-        title: 'Daily Login',
-        reward: '+50 Apples',
-        rewardAmount: 50,
-        rewardCurrency: 'apple',
+        title: 'Daily Check-in',
+        reward: '7-Day Bonus',
+        rewardAmount: 500,
+        rewardCurrency: 'special',
         type: 'Daily',
         status: 'Go',
         iconBg: 'bg-orange-50 border-orange-100',
+        actionUrl: 'daily_reward',
         icon: (
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-sm border border-amber-300">
             <CalendarCheck className="w-5 h-5 stroke-white" />
@@ -309,6 +318,29 @@ export default function TaskPage({
     }
   }, []);
 
+  // সিঙ্ক: যদি এয়ারড্রপ পেজ বা অন্য কোথা থেকে কমিউনিটি জয়েন ভেরিফাই হয়ে থাকে
+  useEffect(() => {
+    if (user?.airdropTasks?.joinTg || user?.communityJoined) {
+      setStandardTasks(prev => {
+        let changed = false;
+        const updated = prev.map(t => {
+          if (t.id === 'task_community' && t.status !== 'Claimed' && t.status !== 'Claim') {
+            changed = true;
+            return { ...t, status: 'Claim' };
+          }
+          return t;
+        });
+        if (changed) {
+          try {
+            const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+            localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+          } catch (e) {}
+        }
+        return changed ? updated : prev;
+      });
+    }
+  }, [user?.airdropTasks?.joinTg, user?.communityJoined]);
+
   // ক্যালকুলেশন: বাজেট + ৮% প্ল্যাটফর্ম ফি
   const targetNum = Math.max(0, Number(postForm.targetMembers) || 0);
   const bidNum = Math.max(0, Number(postForm.bidPerMember) || 0);
@@ -346,6 +378,11 @@ export default function TaskPage({
           } catch (e) {}
           return updated;
         });
+        return;
+      }
+
+      if (task.actionUrl === 'daily_reward') {
+        if (onOpenDailyReward) onOpenDailyReward();
         return;
       }
 
@@ -388,8 +425,8 @@ export default function TaskPage({
             if (onShowPopup) {
               onShowPopup({
                 type: 'warn',
-                title: verifyResult.notAdmin ? 'Bot Admin Required 🤖' : 'Join Not Found! 📢',
-                message: verifyResult.message || 'You have not joined this channel yet! Please click Go, join the channel, and then click Verify.',
+                title: verifyResult.notAdmin ? 'Bot Admin Required' : 'Join Not Found',
+                message: verifyResult.message || 'You have not joined this channel yet. Please click Go, join the channel, and then click Verify.',
                 confirmText: 'Got It'
               });
             }
@@ -409,7 +446,7 @@ export default function TaskPage({
           if (onShowPopup) {
             onShowPopup({
               type: 'warn',
-              title: 'Verification Failed ⚠️',
+              title: 'Verification Failed',
               message: 'Could not verify channel membership. Please make sure you joined the channel.',
               confirmText: 'Got It'
             });
@@ -427,6 +464,14 @@ export default function TaskPage({
         } catch (e) {}
         return updated;
       });
+
+      if (task.id === 'task_community' || (task.actionUrl && task.actionUrl.includes('AppleFarmCommunity'))) {
+        onUpdateUser?.({
+          airdropTasks: { ...(user?.airdropTasks || {}), joinTg: true },
+          communityJoined: true,
+        });
+      }
+
       soundManager.play('click');
     } else if (task.status === 'Claim') {
       soundManager.play('reward');
@@ -443,10 +488,24 @@ export default function TaskPage({
         return updated;
       });
 
+      const isCommunityTask = task.id === 'task_community' || (task.actionUrl && task.actionUrl.includes('AppleFarmCommunity'));
+
       if (onRewardClaim) {
         onRewardClaim(task);
+        if (isCommunityTask) {
+          onUpdateUser?.({
+            airdropTasks: { ...(user?.airdropTasks || {}), joinTg: true },
+            communityJoined: true,
+          });
+        }
       } else if (onUpdateUser) {
-        onUpdateUser({ apples: (user.apples || 0) + task.rewardAmount });
+        onUpdateUser({ 
+          apples: (user.apples || 0) + task.rewardAmount,
+          ...(isCommunityTask ? { 
+            airdropTasks: { ...(user?.airdropTasks || {}), joinTg: true },
+            communityJoined: true 
+          } : {})
+        });
       }
 
       addTransaction({
@@ -463,8 +522,8 @@ export default function TaskPage({
       if (onShowPopup) {
         onShowPopup({
           type: 'reward',
-          title: 'Apples Earned! 🍎',
-          message: `Congratulations! You received +${task.rewardAmount} Apples for completing ${task.title}.`,
+          title: 'Apples Earned',
+          message: `Congratulations. You received +${task.rewardAmount} Apples for completing ${task.title}.`,
           rewardAmount: task.rewardAmount,
           rewardType: 'apple'
         });
@@ -534,8 +593,8 @@ export default function TaskPage({
           if (onShowPopup) {
             onShowPopup({
               type: 'warn',
-              title: 'Verification Failed! ⏳',
-              message: `You must watch & subscribe on YouTube for at least 15 seconds! (Remaining: ${remainingSec}s). Please click 'Go' and complete the task again.`,
+              title: 'Verification Failed',
+              message: `You must watch & subscribe on YouTube for at least 15 seconds. (Remaining: ${remainingSec}s). Please click 'Go' and complete the task again.`,
               confirmText: 'Try Again'
             });
           }
@@ -562,8 +621,8 @@ export default function TaskPage({
             if (onShowPopup) {
               onShowPopup({
                 type: 'warn',
-                title: verifyResult.notAdmin ? 'Bot Admin Required 🤖' : 'Membership Not Found! 📢',
-                message: verifyResult.message || 'You have not joined this Telegram channel/group yet! Please click Go, join the channel, and then click Verify.',
+                title: verifyResult.notAdmin ? 'Bot Admin Required' : 'Membership Not Found',
+                message: verifyResult.message || 'You have not joined this Telegram channel/group yet. Please click Go, join the channel, and then click Verify.',
                 confirmText: 'Got It'
               });
             }
@@ -576,7 +635,7 @@ export default function TaskPage({
           if (onShowPopup) {
             onShowPopup({
               type: 'warn',
-              title: 'Verification Failed ⚠️',
+              title: 'Verification Failed',
               message: 'Could not verify membership. Please make sure you joined the channel.',
               confirmText: 'Got It'
             });
@@ -629,8 +688,8 @@ export default function TaskPage({
       if (onShowPopup) {
         onShowPopup({
           type: 'reward',
-          title: 'Diamonds Earned! 💎',
-          message: `Congratulations! You earned +${rewardDiamonds} Diamond${rewardDiamonds > 1 ? 's' : ''} for completing this partner task!`,
+          title: 'Diamonds Earned',
+          message: `Congratulations. You earned +${rewardDiamonds} Diamond${rewardDiamonds > 1 ? 's' : ''} for completing this partner task.`,
           rewardAmount: rewardDiamonds,
           rewardType: 'diamond'
         });
@@ -663,7 +722,7 @@ export default function TaskPage({
       if (tonConnectUI) {
         tonConnectUI.openModal();
       } else {
-        alert('Please connect your TON wallet first!');
+        alert('Please connect your TON wallet first.');
       }
       return;
     }
@@ -721,7 +780,7 @@ export default function TaskPage({
       if (onShowPopup) {
         onShowPopup({
           type: 'success',
-          title: '🎉 Partner Task Created!',
+          title: 'Partner Task Created',
           message: `Your campaign is now live for ${postForm.targetMembers} members.`,
           confirmText: 'Awesome'
         });

@@ -133,7 +133,7 @@ export default function InviteFriendsPage({
             Invite Your Friends
           </h2>
           <p className="text-xs font-extrabold text-[#38587f]">
-            Get 10% Apple Commission + Instant Bonus
+            Get +500 Apples Instant Bonus
           </p>
         </div>
 

@@ -86,7 +86,7 @@ app.post(['/telegram/verify-member', '/api/telegram/verify-member'], async (req,
           ok: true, 
           isMember: false, 
           status,
-          message: `You have not joined ${chatId} yet! Please join the channel and click Verify.` 
+          message: `You have not joined ${chatId} yet. Please join the channel and click Verify.` 
         });
       }
     } else {
@@ -98,7 +98,7 @@ app.post(['/telegram/verify-member', '/api/telegram/verify-member'], async (req,
         return res.json({
           ok: false,
           notAdmin: true,
-          error: `Bot @AppleFarmOfficialBot must be added as an Admin to ${chatId} for automatic verification!`
+          error: `Bot @AppleFarmOfficialBot must be added as an Admin to ${chatId} for automatic verification.`
         });
       }
 

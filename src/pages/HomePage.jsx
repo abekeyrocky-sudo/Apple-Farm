@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Trophy, Volume2, VolumeX } from 'lucide-react';
+import { User, Volume2, VolumeX } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
@@ -28,6 +28,26 @@ const TREE_APPLES = [
   { id: 14, left: '75%', top: '59%', size: 'w-6 h-6' },
 ];
 
+const STORAGE_KEY = 'apple_farm_tree_harvested_apples';
+
+const getStoredHarvests = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const now = Date.now();
+    const valid = {};
+    for (const [id, regrowAt] of Object.entries(parsed)) {
+      if (Number(regrowAt) > now) {
+        valid[id] = Number(regrowAt);
+      }
+    }
+    return valid;
+  } catch (e) {
+    return {};
+  }
+};
+
 export default function HomePage({ 
   user = { apples: 0, diamonds: 0.0, name: 'Farmer', level: 1, avatar: 'avatar-1' }, 
   onHarvest, 
@@ -36,7 +56,14 @@ export default function HomePage({
   onOpenProfile,
   onShowPopup
 }) {
-  const [harvestedApples, setHarvestedApples] = useState({}); // { [appleId]: true }
+  const [harvestedApples, setHarvestedApples] = useState(() => {
+    const stored = getStoredHarvests();
+    const initial = {};
+    for (const id of Object.keys(stored)) {
+      initial[Number(id)] = true;
+    }
+    return initial;
+  });
   const [fallingApples, setFallingApples] = useState([]); // [{ id, left, top, size }]
   const [newlyGrownApples, setNewlyGrownApples] = useState(new Set());
   const [isMuted, setIsMuted] = useState(soundManager.isMuted);
@@ -49,6 +76,47 @@ export default function HomePage({
     setIsMuted(muted);
   };
 
+  // পেজে ব্যাক আসলে বাকি সময়ের জন্য রিগ্রোথ টাইমার সক্রিয় রাখা
+  useEffect(() => {
+    const stored = getStoredHarvests();
+    const now = Date.now();
+    const timers = [];
+
+    for (const [appleIdStr, regrowAt] of Object.entries(stored)) {
+      const appleId = Number(appleIdStr);
+      const remainingMs = Math.max(0, regrowAt - now);
+      
+      const timer = setTimeout(() => {
+        setHarvestedApples((prev) => {
+          const next = { ...prev };
+          delete next[appleId];
+          return next;
+        });
+
+        try {
+          const current = getStoredHarvests();
+          delete current[appleId];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {}
+
+        setNewlyGrownApples((prev) => new Set(prev).add(appleId));
+        setTimeout(() => {
+          setNewlyGrownApples((prev) => {
+            const next = new Set(prev);
+            next.delete(appleId);
+            return next;
+          });
+        }, 1000);
+      }, remainingMs);
+
+      timers.push(timer);
+    }
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, []);
+
   // ব্যাকগ্রাউন্ডের খালি জায়গায় ট্যাপ করলে
   const handleTreeTap = () => {
     // যেকোনো একটি অ্যাভেইলেবল আপেল হার্ভেস্ট করার ট্রাই করা
@@ -58,12 +126,10 @@ export default function HomePage({
       const targetApple = availableApples[Math.floor(Math.random() * availableApples.length)];
       triggerAppleHarvest(targetApple);
     } else {
-      // সব আপেল ঝরে থাকলে সাধারণ ট্যাপ
-      soundManager.playHarvestSound();
+      // সব আপেল অলরেডি তোলা হয়ে গেলে নতুন আপেল না আসা পর্যন্ত কোনো পয়েন্ট বাড়বে না
       if (window.Telegram?.WebApp?.HapticFeedback) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
       }
-      if (onHarvest) onHarvest();
     }
   };
 
@@ -81,8 +147,14 @@ export default function HomePage({
     // ব্যালেন্স বাড়ানো
     if (onHarvest) onHarvest();
 
-    // ১. আপেলটিকে ঝরা অবস্থায় সেট করা
+    // ১. আপেলটিকে ঝরা অবস্থায় স্টেট ও লোকালস্টোরেজে সেভ করা (১০ সেকেন্ড পারসিস্টিং)
     setHarvestedApples((prev) => ({ ...prev, [apple.id]: true }));
+    const regrowAt = Date.now() + 10000;
+    try {
+      const current = getStoredHarvests();
+      current[apple.id] = regrowAt;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    } catch (e) {}
 
     // ২. নিচে পড়ার ফলিং অ্যানিমেশন এলিমেন্ট তৈরি
     const fallId = Date.now() + Math.random();
@@ -103,6 +175,12 @@ export default function HomePage({
         delete next[apple.id];
         return next;
       });
+
+      try {
+        const current = getStoredHarvests();
+        delete current[apple.id];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+      } catch (e) {}
 
       // গ্রোইং পপ অ্যানিমেশন
       setNewlyGrownApples((prev) => new Set(prev).add(apple.id));
@@ -168,9 +246,8 @@ export default function HomePage({
                 soundManager.playClickSound();
                 onNavigate?.('leaderboard');
               }}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-extrabold text-xs px-3 py-1.5 rounded-full shadow-sm border border-emerald-300 transition-all"
+              className="bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-full shadow-sm border border-emerald-300 transition-all flex items-center justify-center"
             >
-              <Trophy className="w-3.5 h-3.5 fill-white stroke-none" />
               <span className="leading-none">Rank</span>
             </button>
 
@@ -213,7 +290,10 @@ export default function HomePage({
           
           {/* Daily Task */}
           <button 
-            onClick={() => onNavigate?.('task')}
+            onClick={() => {
+              soundManager.playClickSound();
+              onNavigate?.('task', { taskTab: 'Daily' });
+            }}
             className="bg-white/95 backdrop-blur-md border border-amber-100 p-2.5 rounded-2xl shadow-sm flex flex-col items-center justify-center active:scale-95 transition-transform">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-md flex items-center justify-center text-white mb-1.5">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -248,7 +328,7 @@ export default function HomePage({
               </svg>
             </div>
             <span className="text-xs font-black text-[#1c324f]">Invite</span>
-            <span className="text-[10px] font-bold text-gray-400">10%</span>
+            <span className="text-[10px] font-bold text-gray-400">+500 Apples</span>
           </button>
         </div>
 
