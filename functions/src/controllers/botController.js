@@ -34,13 +34,13 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
     }
 
     const caption = `🍎 *Welcome to Apple Farm, ${firstName}!* 🍏\n` +
-      `Your virtual farm is ready. Harvest apples and start earning rewards now! 🌾\n\n` +
+      `Your virtual farm is ready. Harvest apples and start earning rewards now!\n\n` +
       `👇 *Start playing below:*`;
 
     const inline_keyboard = [
       [
         {
-          text: '🎮 Play Apple Farm 🍎',
+          text: 'Play Apple Farm 🍎',
           web_app: { url: appUrl }
         }
       ],
@@ -105,7 +105,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
     const inline_keyboard = [
       [
         {
-          text: '🎮 Play Apple Farm 🍎',
+          text: 'Play Apple Farm 🍎',
           web_app: { url: miniAppUrl }
         }
       ]

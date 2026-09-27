@@ -61,27 +61,24 @@ async function handleStartCommand(message, param) {
   }
 
   const caption = `🍎 *Welcome to Apple Farm, ${firstName}!* 🍏\n` +
-    `Your virtual farm is ready. Harvest apples and start earning rewards now! 🌾\n\n` +
+    `Your virtual farm is ready. Harvest apples and start earning rewards now!\n\n` +
     `👇 *Start playing below:*`;
 
   const inline_keyboard = [
     [
       {
-        text: '🎮 Play Apple Farm 🍎',
-        web_app: { url: appUrl },
-        style: 'primary'
+        text: 'Play Apple Farm 🍎',
+        web_app: { url: appUrl }
       }
     ],
     [
       {
         text: '📢 Join Community',
-        url: CHANNEL_URL,
-        style: 'success'
+        url: CHANNEL_URL
       },
       {
         text: '📖 How to Play',
-        callback_data: 'help_info',
-        style: 'primary'
+        callback_data: 'help_info'
       }
     ]
   ];
@@ -159,7 +156,7 @@ async function handleHelpCommand(message) {
   const inline_keyboard = [
     [
       {
-        text: '🎮 Play Apple Farm 🍎',
+        text: 'Play Apple Farm 🍎',
         web_app: { url: WEBAPP_URL }
       }
     ]
