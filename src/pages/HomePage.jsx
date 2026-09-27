@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Volume2, VolumeX } from 'lucide-react';
+import { User, Volume2, VolumeX, Bot, Zap, Sparkles } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
@@ -10,6 +10,7 @@ import { calculateLevel } from '../utils/levelSystem';
 import { getAvatarSrc } from '../utils/avatars';
 import { soundManager } from '../utils/soundManager';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
+import { getAutoBotState, updateLastActiveTime, formatBotTimeRemaining } from '../utils/autoBotManager';
 
 // 🍎 Tree Apples Coordinates & Sizes
 const TREE_APPLES = [
@@ -56,6 +57,7 @@ export default function HomePage({
   onOpenProfile,
   onShowPopup
 }) {
+  const botState = getAutoBotState(user);
   const [harvestedApples, setHarvestedApples] = useState(() => {
     const stored = getStoredHarvests(user?.id);
     const initial = {};
@@ -70,6 +72,34 @@ export default function HomePage({
 
   const currentLevel = calculateLevel(user.apples || 0);
   const avatarImg = getAvatarSrc(user.avatar);
+
+  // হার্টবিট: ইউজারের লাস্ট অ্যাক্টিভ টাইম রেকর্ড
+  useEffect(() => {
+    if (!user?.id) return;
+    updateLastActiveTime(user.id);
+    const interval = setInterval(() => {
+      updateLastActiveTime(user.id);
+    }, 15000);
+    return () => {
+      clearInterval(interval);
+      updateLastActiveTime(user.id);
+    };
+  }, [user?.id]);
+
+  // 🤖 অনলাইন অটো-হার্ভেস্ট লুপ: বট অ্যাক্টিভ থাকলে স্বয়ংক্রিয়ভাবে পাকা আপেল তোলা হবে
+  useEffect(() => {
+    if (!botState.active) return;
+
+    const autoHarvestInterval = setInterval(() => {
+      const availableApples = TREE_APPLES.filter(a => !harvestedApples[a.id]);
+      if (availableApples.length > 0) {
+        const target = availableApples[Math.floor(Math.random() * availableApples.length)];
+        triggerAppleHarvest(target);
+      }
+    }, 7000); // প্রতি ৭ সেকেন্ডে স্বয়ংক্রিয় ১টি আপেল সংগ্রহ
+
+    return () => clearInterval(autoHarvestInterval);
+  }, [botState.active, harvestedApples]);
 
   const toggleSound = () => {
     const muted = soundManager.toggleMute();
@@ -381,6 +411,44 @@ export default function HomePage({
             <img src={appleImg} alt="Falling Apple" className="w-full h-full object-contain" />
           </div>
         ))}
+
+        {/* 🤖 Floating Auto-Harvest Bot Assistant Widget */}
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate?.('market');
+          }}
+          className="absolute bottom-2.5 right-3 z-40 cursor-pointer active:scale-95 transition-transform"
+        >
+          {botState.active ? (
+            <div className="bg-slate-900/90 backdrop-blur-md border border-sky-400/50 rounded-2xl p-2 px-3 shadow-[0_8px_20px_rgba(0,0,0,0.35)] flex items-center gap-2.5">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md">
+                <Bot className="w-5 h-5 animate-pulse" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-slate-900 animate-ping" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-slate-900" />
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-1 text-[11px] font-black text-sky-300">
+                  <span>Auto-Farmer Bot</span>
+                  <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
+                </div>
+                <div className="text-[10px] font-bold text-emerald-400">
+                  {formatBotTimeRemaining(botState.expiresAt)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/90 backdrop-blur-md border border-sky-200/80 rounded-2xl p-1.5 px-3 shadow-md flex items-center gap-2 hover:bg-white transition-colors">
+              <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white shadow-sm">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <div className="text-[10px] font-black text-slate-800">Auto-Farmer</div>
+                <div className="text-[9px] font-bold text-sky-600">24/7 Harvest</div>
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
 

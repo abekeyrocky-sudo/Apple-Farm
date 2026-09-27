@@ -947,7 +947,7 @@ export default function TaskPage({
                               {task.title}
                             </h3>
                             <p className="text-xs font-bold text-sky-600 flex items-center gap-1 mt-0.5">
-                              <img src={diamondImg} alt="💎" className="w-3.5 h-3.5 object-contain" />
+                              <img src={diamondImg} alt="Diamond" className="w-3.5 h-3.5 object-contain" />
                               <span>+{calculateRewardDiamonds(task.bidPerMember)} Diamond{calculateRewardDiamonds(task.bidPerMember) > 1 ? 's' : ''}</span>
                               <span className="text-[10px] text-slate-400 font-normal">({task.joinedCount}/{task.targetMembers})</span>
                             </p>
@@ -1033,8 +1033,8 @@ export default function TaskPage({
                     <div className="text-[11px] text-slate-500 flex justify-between items-center">
                       <span>{task.joinedCount} / {task.targetMembers} Joined</span>
                       <span className="font-bold text-sky-600 flex items-center gap-1">
-                        <img src={diamondImg} alt="💎" className="w-3 h-3 object-contain" />
-                        <span>+{calculateRewardDiamonds(task.bidPerMember)} 💎/worker</span>
+                        <img src={diamondImg} alt="Diamond" className="w-3 h-3 object-contain" />
+                        <span>+{calculateRewardDiamonds(task.bidPerMember)}/worker</span>
                       </span>
                     </div>
                   </div>

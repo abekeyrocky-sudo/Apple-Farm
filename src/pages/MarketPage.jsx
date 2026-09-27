@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Zap, Sparkles, CheckCircle2, Wallet, Clock, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { Bot, Zap, Sparkles, CheckCircle2, Wallet, Clock, ShieldCheck, ArrowRight, Loader2, Crown, Ticket, Star, Gift, Disc, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
@@ -16,7 +16,7 @@ import {
   formatBotTimeRemaining 
 } from '../utils/autoBotManager';
 
-// 💎 Master Wallet Address (ফি ও ফান্ডস রিসিভ করার অ্যাড্রেস)
+// Master Wallet Address (ফি ও ফান্ডস রিসিভ করার অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
 
 export default function MarketPage({ 
@@ -60,7 +60,7 @@ export default function MarketPage({
     }
   }, []);
 
-  // 🤖 GRAM দিয়ে অটো-হার্ভেস্ট বট ক্রয় করার হ্যান্ডলার
+  // GRAM দিয়ে অটো-হার্ভেস্ট বট ক্রয় করার হ্যান্ডলার
   const handleBuyAutoBot = async (pkg) => {
     soundManager.playClickSound();
     if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -145,7 +145,7 @@ export default function MarketPage({
       if (onShowPopup) {
         onShowPopup({
           type: 'reward',
-          title: 'Auto-Farmer Activated! 🤖',
+          title: 'Auto-Farmer Activated!',
           message: `Congratulations! Your ${pkg.title} is now active. It will automatically harvest your apples 24/7!`,
           confirmText: 'Awesome!'
         });
@@ -177,7 +177,7 @@ export default function MarketPage({
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-14 h-14 bg-gradient-to-b from-[#fcd34d] via-[#f59e0b] to-[#b45309] rounded-2xl border-2 border-amber-600 shadow-md flex flex-col items-center justify-center relative transform -rotate-1">
             <div className="absolute -top-1.5 w-6 h-3 bg-[#d97706] rounded-full border border-amber-700" />
-            <span className="text-xl">🍃</span>
+            <Sparkles className="w-6 h-6 text-amber-100" />
             <div className="w-8 h-1 bg-amber-800/30 rounded-full mt-0.5" />
           </div>
         </div>
@@ -194,7 +194,7 @@ export default function MarketPage({
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-13 h-14 rounded-full bg-gradient-to-b from-emerald-200 to-green-500 border-2 border-emerald-700 shadow-[0_0_12px_rgba(74,222,128,0.5)] flex flex-col items-center justify-center relative">
             <div className="absolute -top-2 w-4 h-3 bg-[#b45309] rounded-t-sm border border-amber-900" />
-            <span className="text-lg animate-pulse">✨</span>
+            <Zap className="w-6 h-6 text-emerald-950 animate-pulse" />
             <div className="absolute bottom-2 w-7 h-4 bg-emerald-400/80 rounded-full blur-[1px]" />
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function MarketPage({
           <div className="w-15 h-11 bg-gradient-to-b from-[#fde68a] to-[#d97706] rounded-full border-2 border-amber-800 shadow-md flex items-center justify-center relative">
             <div className="absolute -top-2 w-8 h-6 bg-[#f59e0b] rounded-t-full border-t border-amber-900" />
             <div className="absolute top-2 w-10 h-1.5 bg-red-500 rounded-full" />
-            <span className="text-xs absolute -top-0.5 right-3">🍎</span>
+            <Star className="w-4 h-4 text-amber-900 absolute -top-0.5 right-3" />
           </div>
         </div>
       ),
@@ -241,9 +241,7 @@ export default function MarketPage({
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-12 h-12 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-xl border-2 border-amber-600 shadow-md flex items-center justify-center relative">
-            <div className="absolute inset-y-0 w-2.5 bg-red-500" />
-            <div className="absolute inset-x-0 h-2.5 bg-red-500" />
-            <div className="absolute -top-2 text-red-600 font-black text-xs">🎀</div>
+            <Gift className="w-7 h-7 text-amber-900" />
           </div>
         </div>
       ),
@@ -270,7 +268,11 @@ export default function MarketPage({
       price: 450,
       currency: 'apple',
       description: 'Instantly refills your stamina energy bar to 100%.',
-      icon: <div className="text-3xl">⚡</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md">
+          <Zap className="w-6 h-6 fill-white" />
+        </div>
+      ),
     },
     {
       id: 8,
@@ -279,7 +281,11 @@ export default function MarketPage({
       price: 2000,
       currency: 'apple',
       description: 'Collects apples automatically every minute for 24 hours.',
-      icon: <div className="text-3xl">🤖</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md">
+          <Bot className="w-6 h-6" />
+        </div>
+      ),
     },
     {
       id: 9,
@@ -288,7 +294,11 @@ export default function MarketPage({
       price: 350.0,
       currency: 'diamond',
       description: '5 free super spins on the Lucky Wheel with guaranteed wins.',
-      icon: <div className="text-3xl">🎡</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-400 to-indigo-600 flex items-center justify-center text-white shadow-md">
+          <Disc className="w-6 h-6" />
+        </div>
+      ),
     },
 
     // ----------------- SPECIAL -----------------
@@ -299,7 +309,11 @@ export default function MarketPage({
       price: 3500.0,
       currency: 'diamond',
       description: 'A permanent mythical tree yielding pure diamond fruits.',
-      icon: <div className="text-3xl">🌟</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-yellow-300 to-amber-500 flex items-center justify-center text-white shadow-md">
+          <Star className="w-6 h-6 fill-white" />
+        </div>
+      ),
     },
     {
       id: 11,
@@ -308,7 +322,11 @@ export default function MarketPage({
       price: 8000,
       currency: 'apple',
       description: 'Exclusive golden profile badge and +50% all earnings.',
-      icon: <div className="text-3xl">👑</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-600 flex items-center justify-center text-white shadow-md">
+          <Crown className="w-6 h-6" />
+        </div>
+      ),
     },
     {
       id: 12,
@@ -317,7 +335,11 @@ export default function MarketPage({
       price: 1999.0,
       currency: 'diamond',
       description: 'VIP status with 0% withdrawal fees & instant processing.',
-      icon: <div className="text-3xl">🎟️</div>,
+      icon: (
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-400 to-cyan-600 flex items-center justify-center text-white shadow-md">
+          <Ticket className="w-6 h-6" />
+        </div>
+      ),
     },
   ];
 
@@ -434,7 +456,8 @@ export default function MarketPage({
 
       {errorMsg && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-full shadow-xl animate-shake flex items-center gap-1.5 max-w-[90%] text-center">
-          <span>⚠️ {errorMsg}</span>
+          <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
