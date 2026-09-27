@@ -51,12 +51,58 @@ async function handleStartCommand(message, param) {
     ? `${WEBAPP_URL}?startapp=${encodeURIComponent(param)}` 
     : WEBAPP_URL;
 
-  // রেফারকারীকে নোটিফিকেশন পাঠানো
+  // রেফারকারীকে ফটো ব্যানার ও বাটনসহ নোটিফিকেশন পাঠানো
   if (param && param !== user.id.toString() && /^\d+$/.test(param)) {
-    callTelegram('sendMessage', {
+    const referCaption = `🎉 *New Referral Alert!* 🍎\n\n` +
+      `👤 *${firstName}* (${username}) just launched Apple Farm with your invite link!\n\n` +
+      `💰 *Reward:* +500 Apples credited to your balance. 🚀`;
+
+    const referKeyboard = [
+      [
+        {
+          text: 'Play Apple Farm 🍎',
+          web_app: { url: WEBAPP_URL },
+          style: 'success'
+        }
+      ],
+      [
+        {
+          text: '👥 Invite More Friends',
+          url: `https://t.me/share/url?url=https://t.me/AppleFarmOfficialBot?startapp=${param}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
+          style: 'primary'
+        }
+      ]
+    ];
+
+    const referPrimaryPhoto = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+    const referFallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/refer-image.jpg';
+
+    callTelegram('sendPhoto', {
       chat_id: param,
-      text: `🎉 *New Referral Alert!* 🍎\n\n👤 *${firstName}* (${username}) just launched Apple Farm with your invite link!\n\n💰 *+500 Apples* has been credited to your balance. 🚀`,
-      parse_mode: 'Markdown'
+      photo: referPrimaryPhoto,
+      caption: referCaption,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: referKeyboard }
+    }).then(res => {
+      if (!res.ok) {
+        return callTelegram('sendPhoto', {
+          chat_id: param,
+          photo: referFallbackPhoto,
+          caption: referCaption,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: referKeyboard }
+        });
+      }
+      return res;
+    }).then(res => {
+      if (!res.ok) {
+        return callTelegram('sendMessage', {
+          chat_id: param,
+          text: referCaption,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: referKeyboard }
+        });
+      }
     }).catch((e) => console.warn('Bot referral notify error:', e));
   }
 

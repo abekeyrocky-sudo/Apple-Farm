@@ -38,25 +38,78 @@ try {
 
 export { db };
 
-// 📢 রেফারকারীকে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
+// 📢 রেফারকারীকে টেলিগ্রামে ফটো ব্যানার ও বাটনসহ নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
 const sendReferralNotificationToTelegram = async (referrerChatId, friendName) => {
   if (!referrerChatId) return;
   try {
     const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
     const text = `🎉 *New Referral Joined!* 🍎\n\n` +
       `👤 *${friendName}* just joined Apple Farm using your invite link!\n\n` +
-      `💰 *Reward:* +500 Apples added to your balance.\n` +
-      `🌾 Keep inviting friends to unlock milestone rewards! 🚀`;
+      `💰 *Reward:* +500 Apples credited to your balance. 🚀`;
 
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const inline_keyboard = [
+      [
+        {
+          text: 'Play Apple Farm 🍎',
+          web_app: { url: 'https://apple-farm-plum.vercel.app' },
+          style: 'success'
+        }
+      ],
+      [
+        {
+          text: '👥 Invite More Friends',
+          url: `https://t.me/share/url?url=https://t.me/AppleFarmOfficialBot?startapp=${referrerChatId}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
+          style: 'primary'
+        }
+      ]
+    ];
+
+    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+    const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/refer-image.jpg';
+
+    // 1. Try sending photo via CDN
+    let res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: referrerChatId,
-        text: text,
-        parse_mode: 'Markdown'
+        photo: photoUrl,
+        caption: text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard }
       })
     });
+
+    let resData = await res.json().catch(() => ({}));
+    if (!resData.ok) {
+      // 2. Fallback photo
+      res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: referrerChatId,
+          photo: fallbackPhotoUrl,
+          caption: text,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard }
+        })
+      });
+      resData = await res.json().catch(() => ({}));
+    }
+
+    if (!resData.ok) {
+      // 3. Fallback text
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: referrerChatId,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard }
+        })
+      });
+    }
   } catch (err) {
     console.warn('Referral Telegram notification error:', err);
   }
