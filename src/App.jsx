@@ -20,7 +20,7 @@ import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './fireba
 import { calculateLevel } from './utils/levelSystem';
 import { soundManager } from './utils/soundManager';
 import { addTransaction } from './utils/transactionHistory';
-import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from './utils/telegramVerify';
+import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL, OFFICIAL_PAYOUTS_URL } from './utils/telegramVerify';
 import { calculateOfflineHarvest, updateLastActiveTime, saveAutoBotState } from './utils/autoBotManager';
 
 export default function App() {
@@ -149,15 +149,13 @@ export default function App() {
     }
   }, []);
 
-  // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
-  const checkCommunityMembership = () => {
+  // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
+  const checkCommunityMembership = async () => {
     if (!user.id) return;
-    verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL).then((res) => {
-      if (res.verified) {
-        // মেম্বার থাকলে ম্যান্ডাটরি পপআপ ক্লোজ হবে
-        setModalConfig((prev) => (prev.isMandatory ? { ...prev, isOpen: false } : prev));
-      } else {
-        // জয়েন না থাকলে টাস্ক স্টেট 'Go' তে রিসেট
+    try {
+      // ১. কমিউনিটি চ্যানেল মেম্বারশিপ চেক
+      const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
+      if (!commRes.verified) {
         try {
           const key = `apple_farm_std_task_states_${user.id}`;
           const states = JSON.parse(localStorage.getItem(key) || '{}');
@@ -165,7 +163,6 @@ export default function App() {
           localStorage.setItem(key, JSON.stringify(states));
         } catch (e) {}
 
-        // কোনো স্কিপ বা ক্লোজ অপশন ছাড়া বাধ্যতামূলক পপ-আপ
         showPopupModal({
           type: 'warn',
           title: 'Join Our Community',
@@ -187,16 +184,58 @@ export default function App() {
               window.open(OFFICIAL_COMMUNITY_URL, '_blank');
             }
 
-            // চ্যানেল ওপেন করার পর ৩ সেকেন্ড পর পুনরায় স্বয়ংক্রিয় রি-চেক
             setTimeout(() => {
               checkCommunityMembership();
             }, 3000);
           }
         });
+        return;
       }
-    }).catch(err => {
-      console.warn('Auto community verify check error:', err);
-    });
+
+      // ২. পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ চেক
+      const payoutRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
+      if (!payoutRes.verified) {
+        try {
+          const key = `apple_farm_std_task_states_${user.id}`;
+          const states = JSON.parse(localStorage.getItem(key) || '{}');
+          states['task_payout_channel'] = 'Go';
+          localStorage.setItem(key, JSON.stringify(states));
+        } catch (e) {}
+
+        showPopupModal({
+          type: 'warn',
+          title: 'Join Payment Channel',
+          message: 'You must be a member of our official payment proofs channel to play and earn rewards in Apple Farm.',
+          confirmText: 'Join Channel',
+          cancelText: null,
+          hideClose: true,
+          isMandatory: true,
+          onConfirm: () => {
+            try {
+              if (window.Telegram?.WebApp?.openTelegramLink) {
+                window.Telegram.WebApp.openTelegramLink(OFFICIAL_PAYOUTS_URL);
+              } else if (window.Telegram?.WebApp?.openLink) {
+                window.Telegram.WebApp.openLink(OFFICIAL_PAYOUTS_URL);
+              } else {
+                window.open(OFFICIAL_PAYOUTS_URL, '_blank');
+              }
+            } catch (e) {
+              window.open(OFFICIAL_PAYOUTS_URL, '_blank');
+            }
+
+            setTimeout(() => {
+              checkCommunityMembership();
+            }, 3000);
+          }
+        });
+        return;
+      }
+
+      // উভয় চ্যানেলে জয়েন থাকলে ম্যান্ডাটরি পপআপ ক্লোজ
+      setModalConfig((prev) => (prev.isMandatory ? { ...prev, isOpen: false } : prev));
+    } catch (err) {
+      console.warn('Auto channels verify check error:', err);
+    }
   };
 
   useEffect(() => {

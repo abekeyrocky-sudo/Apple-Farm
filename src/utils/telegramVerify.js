@@ -1,5 +1,6 @@
 // Telegram Channel / Group Membership Verification
 export const OFFICIAL_COMMUNITY_URL = 'https://t.me/AppleFarmCommunity';
+export const OFFICIAL_PAYOUTS_URL = 'https://t.me/AppleFarmPayouts';
 const CLOUD_FUNCTION_URL = 'https://api-duztzw2gwa-uc.a.run.app';
 const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
 
