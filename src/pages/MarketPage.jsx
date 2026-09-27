@@ -202,17 +202,20 @@ export default function MarketPage({
     },
     {
       id: 3,
-      name: "Rocky's New Hat",
+      name: '50x Spin Voucher',
       category: 'Items',
-      price: 549.0,
-      currency: 'diamond',
-      description: 'Exclusive farmer straw hat. Grants +20% harvest bonus!',
+      price: 0.18,
+      priceNano: '180000000', // 0.18 TON/GRAM in nanotons
+      currency: 'gram',
+      voucherSpins: 50,
+      description: 'Get 50 Lucky Wheel spins instantly to win Apples and Diamonds!',
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
-          <div className="w-15 h-11 bg-gradient-to-b from-[#fde68a] to-[#d97706] rounded-full border-2 border-amber-800 shadow-md flex items-center justify-center relative">
-            <div className="absolute -top-2 w-8 h-6 bg-[#f59e0b] rounded-t-full border-t border-amber-900" />
-            <div className="absolute top-2 w-10 h-1.5 bg-red-500 rounded-full" />
-            <Star className="w-4 h-4 text-amber-900 absolute -top-0.5 right-3" />
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-500 shadow-md flex flex-col items-center justify-center relative">
+            <Disc className="w-7 h-7 text-amber-950" />
+            <span className="text-[9px] font-black bg-red-500 text-white px-1.5 rounded-full absolute -top-1.5 -right-1 shadow-xs">
+              50x
+            </span>
           </div>
         </div>
       ),
@@ -345,15 +348,107 @@ export default function MarketPage({
 
   const filteredItems = marketItems.filter((item) => item.category === activeTab);
 
-  // সাধারণ আইটেম ক্রয় হ্যান্ডলার
-  const handleBuyItem = (item) => {
+  // সাধারণ ও স্পেশাল আইটেম ক্রয় হ্যান্ডলার
+  const handleBuyItem = async (item) => {
+    soundManager.playClickSound();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
+    // 🪙 GRAM পেমেন্ট হ্যান্ডলার (যেমন: 50x Spin Voucher)
+    if (item.currency === 'gram') {
+      if (!tonConnectUI) {
+        setErrorMsg('Wallet system initializing. Please wait...');
+        return;
+      }
+
+      if (!tonConnectUI.wallet) {
+        try {
+          await tonConnectUI.openModal();
+        } catch (e) {
+          console.warn('Open modal error:', e);
+        }
+        return;
+      }
+
+      setIsProcessingTx(true);
+      setProcessingPkgId(item.id);
+      setErrorMsg(null);
+
+      try {
+        const transaction = {
+          validUntil: Math.floor(Date.now() / 1000) + 360, // 6 minutes
+          messages: [
+            {
+              address: MASTER_WALLET_ADDRESS,
+              amount: item.priceNano || '180000000',
+            }
+          ]
+        };
+
+        await tonConnectUI.sendTransaction(transaction);
+
+        // 50টি স্পিন ভাউচার ইউজারের অ্যাকাউন্টে যোগ করা
+        const bonusVouchers = item.voucherSpins || 50;
+        const currentVouchers = Number(user.spinVouchers || 0);
+        const nextVouchers = currentVouchers + bonusVouchers;
+
+        if (onUpdateUserBalance) {
+          onUpdateUserBalance({ spinVouchers: nextVouchers });
+        }
+        if (user?.id) {
+          updateUserInDB(user.id, { spinVouchers: nextVouchers });
+        }
+
+        // ট্রানজাকশন হিস্ট্রি রেকর্ড
+        addTransaction({
+          userId: user.id,
+          title: item.name,
+          subtitle: `${item.price} GRAM Paid`,
+          amount: `-${item.price} GRAM`,
+          currency: 'gram',
+          type: 'spend',
+          category: 'spin_voucher',
+          status: 'Completed'
+        });
+
+        soundManager.playSuccessSound();
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+
+        setPurchaseSuccess(item);
+        if (onShowPopup) {
+          onShowPopup({
+            type: 'reward',
+            title: '50 Spin Vouchers Added!',
+            message: 'You have received 50 Lucky Wheel Spins! Head to the Game page to spin now.',
+            confirmText: 'Spin Now',
+            onConfirm: () => onNavigate?.('game')
+          });
+        }
+        setTimeout(() => setPurchaseSuccess(null), 3000);
+      } catch (err) {
+        console.error('Spin voucher purchase error:', err);
+        setErrorMsg(err.message || 'Transaction was cancelled or rejected.');
+        setTimeout(() => setErrorMsg(null), 4000);
+      } finally {
+        setIsProcessingTx(false);
+        setProcessingPkgId(null);
+      }
+      return;
+    }
+
+    // 🍎 অ্যাপেল ও 💎 ডায়মন্ড আইটেম হ্যান্ডলার
     if (item.currency === 'apple') {
       if ((user.apples || 0) < item.price) {
-        setErrorMsg(`Not enough Apples! You need ${item.price.toLocaleString()} 🍎`);
+        setErrorMsg(`Not enough Apples! You need ${item.price.toLocaleString()}`);
         setTimeout(() => setErrorMsg(null), 2500);
         return;
       }
@@ -362,7 +457,7 @@ export default function MarketPage({
       }
     } else {
       if ((user.diamonds || 0) < item.price) {
-        setErrorMsg(`Not enough Diamonds! You need ${item.price.toFixed(1)} 💎`);
+        setErrorMsg(`Not enough Diamonds! You need ${item.price.toFixed(1)}`);
         setTimeout(() => setErrorMsg(null), 2500);
         return;
       }
@@ -579,22 +674,37 @@ export default function MarketPage({
                 <div className="flex items-center justify-center gap-1 my-1">
                   {item.currency === 'apple' ? (
                     <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
+                  ) : item.currency === 'gram' ? (
+                    <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain" />
                   ) : (
                     <img src={diamondImg} alt="Diamond" className="w-3.5 h-3.5 object-contain" />
                   )}
                   <span className="text-xs font-black text-[#192f52]">
                     {item.currency === 'apple' 
                       ? item.price.toLocaleString() 
+                      : item.currency === 'gram'
+                      ? item.price.toFixed(2)
                       : item.price.toFixed(1)}
                   </span>
+                  {item.currency === 'gram' && (
+                    <span className="text-[10px] font-bold text-slate-400">GRAM</span>
+                  )}
                 </div>
 
                 {/* Buy Button */}
                 <button
                   onClick={() => handleBuyItem(item)}
-                  className="w-full py-1.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all mt-0.5 cursor-pointer"
+                  disabled={isProcessingTx && processingPkgId === item.id}
+                  className="w-full py-1.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all mt-0.5 cursor-pointer flex items-center justify-center gap-1"
                 >
-                  Buy
+                  {isProcessingTx && processingPkgId === item.id ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span className="text-[10px]">Wait...</span>
+                    </>
+                  ) : (
+                    'Buy'
+                  )}
                 </button>
               </div>
             ))}

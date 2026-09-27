@@ -15,16 +15,20 @@ import StakingPage from './pages/StakingPage';
 import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
+import AutoBotClaimModal from './components/AutoBotClaimModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
 import { calculateLevel } from './utils/levelSystem';
 import { soundManager } from './utils/soundManager';
 import { addTransaction } from './utils/transactionHistory';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from './utils/telegramVerify';
+import { calculateOfflineHarvest, updateLastActiveTime, saveAutoBotState } from './utils/autoBotManager';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('home');
   const [isDailyRewardOpen, setIsDailyRewardOpen] = useState(false);
+  const [isAutoBotModalOpen, setIsAutoBotModalOpen] = useState(false);
+  const [offlineHarvest, setOfflineHarvest] = useState({ pendingApples: 0, offlineMinutes: 0 });
   const [user, setUser] = useState({
     id: null,
     name: 'Farmer',
@@ -216,18 +220,62 @@ export default function App() {
     };
   }, [user.id]);
 
-  // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
+  // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড ও অফলাইন অটো-বট পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
   useEffect(() => {
     if (!isLoading && user?.id) {
-      const dailyStatus = getDailyRewardStatus(user.id);
-      if (dailyStatus.canClaimToday) {
-        const timer = setTimeout(() => {
-          setIsDailyRewardOpen(true);
-        }, 1000);
-        return () => clearTimeout(timer);
+      // ১. অটো-বট অফলাইন হার্ভেস্ট চেক
+      const offlineData = calculateOfflineHarvest(user);
+      if (offlineData.pendingApples > 0) {
+        setOfflineHarvest(offlineData);
+        setIsAutoBotModalOpen(true);
+      } else {
+        // ২. যদি অফলাইন আর্নিং না থাকে তবে ডেইলী রিওয়ার্ড চেক
+        const dailyStatus = getDailyRewardStatus(user.id);
+        if (dailyStatus.canClaimToday) {
+          const timer = setTimeout(() => {
+            setIsDailyRewardOpen(true);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
       }
     }
   }, [isLoading, user?.id]);
+
+  // 🤖 অটো-বটের অফলাইন হার্ভেস্ট ক্লেইম হ্যান্ডলার
+  const handleAutoBotHarvestClaim = (amount) => {
+    setUser((prev) => {
+      const newApples = (prev.apples || 0) + amount;
+      return {
+        ...prev,
+        apples: newApples,
+        level: calculateLevel(newApples)
+      };
+    });
+
+    if (user.id) {
+      updateUserInDB(user.id, { apples: (user.apples || 0) + amount });
+      updateLastActiveTime(user.id);
+    }
+
+    addTransaction({
+      userId: user.id,
+      title: 'Auto-Farmer Bot Harvest',
+      subtitle: '24/7 Offline Harvest',
+      amount: `+${amount}`,
+      currency: 'apple',
+      type: 'earn',
+      category: 'harvest',
+      status: 'Completed'
+    });
+
+    // অফলাইন ক্লেইম শেষ হলে ডেইলী রিওয়ার্ড চেক
+    const dailyStatus = getDailyRewardStatus(user.id);
+    if (dailyStatus.canClaimToday) {
+      setTimeout(() => {
+        setIsDailyRewardOpen(true);
+      }, 1200);
+    }
+  };
 
   const handleDailyRewardClaim = (reward) => {
     const isDiamond = reward.type === 'diamond';
@@ -563,6 +611,10 @@ export default function App() {
             user={user}
             onNavigate={handleNavigate}
             onWinReward={handleGameReward}
+            onUpdateUser={(updatedData) => {
+              setUser((prev) => ({ ...prev, ...updatedData }));
+              if (user.id) updateUserInDB(user.id, updatedData);
+            }}
             onShowPopup={showPopupModal}
           />
         );
@@ -670,6 +722,14 @@ export default function App() {
         onClose={() => setIsDailyRewardOpen(false)}
         onClaimReward={handleDailyRewardClaim}
         user={user}
+      />
+
+      {/* 🤖 অটো-হার্ভেস্ট বট অফলাইন রিওয়ার্ড ক্লেইম মডাল */}
+      <AutoBotClaimModal
+        isOpen={isAutoBotModalOpen}
+        onClose={() => setIsAutoBotModalOpen(false)}
+        offlineHarvest={offlineHarvest}
+        onClaim={handleAutoBotHarvestClaim}
       />
 
       {/* গ্লোবাল কাস্টম ভেক্টর পপআপ মডাল */}

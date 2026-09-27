@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, UserPlus, Gift, AlertCircle } from 'lucide-react';
+import { Sparkles, UserPlus, Gift, AlertCircle, Ticket, ShoppingBag } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import spinBgImg from '../../assets/spin-screen-background.png';
 import appleImg from '../../assets/apple.png';
@@ -23,7 +23,7 @@ const SLICES = [
 
 const BASE_SPIN_KEY = 'apple_farm_spin_state_v3';
 
-export default function GamePage({ user, onNavigate, onWinReward, onShowPopup }) {
+export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, onShowPopup }) {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winMessage, setWinMessage] = useState(null);
@@ -49,6 +49,9 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
   const today = new Date().toDateString();
   const isFreeAvailable = spinData.lastFreeSpinDate !== today;
 
+  // ভাউচার স্পিন (মার্কেট থেকে কেনা)
+  const voucherSpins = Number(user?.spinVouchers || 0);
+
   // মোট রেফারেল সংখ্যা
   const totalInvited = Array.isArray(user?.invitedFriends) 
     ? user.invitedFriends.length 
@@ -56,13 +59,15 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
 
   // অতিরিক্ত রেফারেল স্পিন
   const availableInviteSpins = Math.max(0, totalInvited - (spinData.usedInviteSpins || 0));
-  const hasSpins = isFreeAvailable || availableInviteSpins > 0;
+  
+  // স্পিন অবশিষ্ট আছে কি না
+  const hasSpins = isFreeAvailable || voucherSpins > 0 || availableInviteSpins > 0;
 
   // স্পিন লজিক ও অ্যানিমেশন
   const handleSpin = () => {
     if (spinning) return;
 
-    // কোনো স্পিন না থাকলে ফ্রেন্ড ইনভাইট প্রম্পট
+    // কোনো স্পিন না থাকলে প্রম্পট
     if (!hasSpins) {
       soundManager.playClickSound();
       if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -72,14 +77,15 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
       if (onShowPopup) {
         onShowPopup({
           type: 'info',
-          title: 'Daily Free Spin Used',
-          message: 'You have used your daily free spin! Invite 1 friend to get +1 extra Lucky Spin immediately.',
-          confirmText: 'Invite 1 Friend',
-          cancelText: 'Later',
-          onConfirm: () => onNavigate?.('invite')
+          title: 'No Spins Left',
+          message: 'Get 50 extra spins voucher from Market (0.18 GRAM) or invite friends to get +1 spin per referral!',
+          confirmText: 'Get 50x Voucher',
+          cancelText: 'Invite Friends',
+          onConfirm: () => onNavigate?.('market'),
+          onCancel: () => onNavigate?.('invite')
         });
       } else {
-        onNavigate?.('invite');
+        onNavigate?.('market');
       }
       return;
     }
@@ -95,18 +101,17 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
-    // স্পিন স্টেট কনজিউম করা
-    let nextState;
+    // স্পিন স্টেট কনজিউম করা (Free -> Voucher -> Invite)
+    let nextState = { ...spinData };
     if (isFreeAvailable) {
-      nextState = {
-        ...spinData,
-        lastFreeSpinDate: today,
-      };
+      nextState.lastFreeSpinDate = today;
+    } else if (voucherSpins > 0) {
+      const nextVouchers = Math.max(0, voucherSpins - 1);
+      if (onUpdateUser) {
+        onUpdateUser({ spinVouchers: nextVouchers });
+      }
     } else {
-      nextState = {
-        ...spinData,
-        usedInviteSpins: (spinData.usedInviteSpins || 0) + 1,
-      };
+      nextState.usedInviteSpins = (spinData.usedInviteSpins || 0) + 1;
     }
 
     setSpinData(nextState);
@@ -184,6 +189,11 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
               <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400 animate-pulse" />
               <span className="text-xs font-black text-emerald-700">1 Daily Free Spin Available</span>
             </>
+          ) : voucherSpins > 0 ? (
+            <>
+              <Ticket className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+              <span className="text-xs font-black text-amber-700">{voucherSpins} Voucher Spin{voucherSpins > 1 ? 's' : ''} Left</span>
+            </>
           ) : availableInviteSpins > 0 ? (
             <>
               <UserPlus className="w-3.5 h-3.5 text-blue-500" />
@@ -191,8 +201,8 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
             </>
           ) : (
             <>
-              <Gift className="w-3.5 h-3.5 text-amber-600" />
-              <span className="text-xs font-black text-amber-800">1 Invite = 1 Spin</span>
+              <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-xs font-black text-amber-800">50x Voucher (0.18 GRAM)</span>
             </>
           )}
         </div>
@@ -291,12 +301,14 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
               className={`absolute z-20 w-16 h-16 rounded-full border-4 border-amber-300 shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex items-center justify-center text-white font-black text-xs active:scale-95 transition-transform ${
                 isFreeAvailable
                   ? 'bg-gradient-to-tr from-[#10b981] to-[#34d399]'
+                  : voucherSpins > 0
+                  ? 'bg-gradient-to-tr from-[#f59e0b] via-[#ea580c] to-[#e11d48]'
                   : hasSpins
                   ? 'bg-gradient-to-tr from-[#2563EB] to-[#60A5FA]'
                   : 'bg-gradient-to-tr from-[#f59e0b] to-[#fbbf24]'
               }`}
             >
-              {spinning ? '...' : isFreeAvailable ? 'FREE' : hasSpins ? 'SPIN' : 'INVITE'}
+              {spinning ? '...' : isFreeAvailable ? 'FREE' : hasSpins ? 'SPIN' : 'GET SPINS'}
             </button>
 
           </div>
@@ -305,7 +317,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
         {/* Win Alert Badge */}
         {winMessage && (
           <div className="absolute top-2 bg-white/95 border-2 border-emerald-400 text-emerald-800 text-xs font-black px-4 py-1.5 rounded-full shadow-lg animate-bounce flex items-center gap-1.5 z-30">
-            <span>🎉 You Won {winMessage.label}</span>
+            <span>You Won {winMessage.label}</span>
             <img 
               src={winMessage.type === 'diamond' ? diamondImg : appleImg} 
               alt={winMessage.type} 
@@ -315,47 +327,62 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
           </div>
         )}
 
-        {/* Large Action Button Below Wheel (Still & Clean Text) */}
+        {/* Large Action Button Below Wheel */}
         <button
           onClick={handleSpin}
           disabled={spinning}
-          className={`mt-6 px-14 py-3.5 rounded-2xl font-black text-base text-white shadow-[0_4px_0_rgba(0,0,0,0.25)] border-t border-white/40 transition-all flex items-center justify-center ${
+          className={`mt-6 px-12 py-3.5 rounded-2xl font-black text-sm text-white shadow-[0_4px_0_rgba(0,0,0,0.25)] border-t border-white/40 transition-all flex items-center justify-center cursor-pointer ${
             spinning
               ? 'bg-gray-400 cursor-not-allowed'
               : isFreeAvailable
               ? 'bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32]'
+              : voucherSpins > 0
+              ? 'bg-gradient-to-b from-[#f59e0b] via-[#ea580c] to-[#c2410c] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#9a3412]'
               : hasSpins
               ? 'bg-gradient-to-b from-[#3b82f6] to-[#1d4ed8] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#1e3a8a]'
-              : 'bg-gradient-to-b from-[#f59e0b] via-[#ea580c] to-[#c2410c] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#9a3412]'
+              : 'bg-gradient-to-b from-[#0098EA] to-[#0077c2] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#005b94]'
           }`}
         >
           {spinning ? (
             'SPINNING...'
           ) : isFreeAvailable ? (
             'FREE SPIN'
+          ) : voucherSpins > 0 ? (
+            `SPIN (${voucherSpins} Voucher${voucherSpins > 1 ? 's' : ''} Left)`
           ) : hasSpins ? (
             `SPIN (${availableInviteSpins} Left)`
           ) : (
-            '1 Invite = 1 Spin'
+            'Get 50x Spin Voucher (0.18 GRAM)'
           )}
         </button>
 
-        {/* ----------------- INVITE FOR SPINS BANNER ----------------- */}
+        {/* ----------------- 50x VOUCHER & INVITE BANNER ----------------- */}
         <div 
-          onClick={() => onNavigate?.('invite')}
+          onClick={() => onNavigate?.(voucherSpins === 0 ? 'market' : 'invite')}
           className="w-full bg-[#FFFDF0]/95 backdrop-blur-md rounded-3xl p-3 px-4 border border-amber-200/80 shadow-[0_4px_14px_rgba(0,0,0,0.06)] flex items-center justify-between mt-4 cursor-pointer active:scale-[0.99] transition-transform"
         >
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-200 to-yellow-100 border border-amber-300 flex items-center justify-center text-2xl filter drop-shadow-sm flex-shrink-0">
-              🎁
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-200 to-yellow-100 border border-amber-300 flex items-center justify-center text-amber-700 filter drop-shadow-sm flex-shrink-0">
+              {voucherSpins > 0 ? <Ticket className="w-6 h-6" /> : <Gift className="w-6 h-6" />}
             </div>
             <div>
               <h3 className="text-sm font-black text-[#192f52] leading-tight flex items-center gap-1.5">
-                <span>Invite 1 Friend = +1 Spin</span>
-                <span className="text-[10px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">Earn More</span>
+                {voucherSpins > 0 ? (
+                  <>
+                    <span>{voucherSpins} Vouchers Available</span>
+                    <span className="text-[10px] bg-amber-500 text-white font-black px-1.5 py-0.2 rounded-full">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <span>50x Spin Voucher = 0.18 GRAM</span>
+                    <span className="text-[10px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">Best Deal</span>
+                  </>
+                )}
               </h3>
               <p className="text-xs font-bold text-[#567396] mt-0.5">
-                Invite friends for unlimited lucky spins!
+                {voucherSpins > 0 
+                  ? 'Keep spinning to win huge Diamonds and Apples!' 
+                  : 'Get 50 spins instantly or invite friends for free spins!'}
               </p>
             </div>
           </div>
