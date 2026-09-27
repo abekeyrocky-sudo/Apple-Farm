@@ -139,6 +139,22 @@ export default function TaskPage({
         ),
       },
       {
+        id: 'task_payout_channel',
+        title: 'Join Payment Channel',
+        reward: '+500 Apples',
+        rewardAmount: 500,
+        rewardCurrency: 'apple',
+        type: 'Special',
+        status: 'Go', // 'Go' | 'Verify' | 'Claim' | 'Claimed'
+        iconBg: 'bg-emerald-50 border-emerald-200',
+        actionUrl: 'https://t.me/AppleFarmPayouts',
+        icon: (
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white shadow-inner">
+            <Send className="w-5 h-5 fill-white stroke-none" />
+          </div>
+        ),
+      },
+      {
         id: 'task_2',
         title: 'Complete Profile',
         reward: '+100 Apples',
