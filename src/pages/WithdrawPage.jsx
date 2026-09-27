@@ -671,8 +671,8 @@ export default function WithdrawPage({
                         </span>
                         <span className="text-slate-400">+</span>
                         <span className="flex items-center gap-1 text-sky-600 bg-sky-50 border border-sky-100 px-2 py-0.5 rounded-lg">
-                          <img src={diamondImg} alt="Diamond" className="w-3 h-3 object-contain" />
-                          199 💎
+                          <img src={diamondImg} alt="Diamond" className="w-3.5 h-3.5 object-contain" />
+                          199
                         </span>
                       </div>
                     </div>
@@ -694,7 +694,7 @@ export default function WithdrawPage({
                     {userDiamonds < 199 && (
                       <div className="pt-1 text-rose-500 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50/70 p-2 rounded-xl border border-rose-100">
                         <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span>Need 199 Diamonds (You have {userDiamonds.toFixed(1)} 💎)</span>
+                        <span>Need 199 Diamonds (You have {userDiamonds.toFixed(1)})</span>
                       </div>
                     )}
 
