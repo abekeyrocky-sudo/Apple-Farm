@@ -86,32 +86,56 @@ async function handleStartCommand(message, param) {
     ]
   ];
 
-  const startImagePath = path.join(__dirname, 'assets', 'start-image.jpg');
-  const fallbackBannerPath = path.join(__dirname, 'assets', 'invite-banner.png');
-  const imagePath = fs.existsSync(startImagePath) ? startImagePath : fallbackBannerPath;
+  const primaryPhotoUrl = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+  const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
 
-  if (fs.existsSync(imagePath)) {
-    const formData = new FormData();
-    formData.append('chat_id', chatId);
-    formData.append('caption', caption);
-    formData.append('parse_mode', 'Markdown');
-    formData.append('reply_markup', JSON.stringify({ inline_keyboard }));
-    
-    const fileBuffer = fs.readFileSync(imagePath);
-    const mimeType = imagePath.endsWith('.jpg') || imagePath.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
-    const blob = new Blob([fileBuffer], { type: mimeType });
-    formData.append('photo', blob, path.basename(imagePath));
+  // 1. Try sending via primary CDN photo URL
+  let result = await callTelegram('sendPhoto', {
+    chat_id: chatId,
+    photo: primaryPhotoUrl,
+    caption: caption,
+    parse_mode: 'Markdown',
+    reply_markup: { inline_keyboard }
+  });
 
-    const result = await callTelegram('sendPhoto', formData, true);
-    if (!result.ok) {
-      await callTelegram('sendMessage', {
-        chat_id: chatId,
-        text: caption,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard }
-      });
+  // 2. Try sending via fallback GitHub URL if primary fails
+  if (!result.ok) {
+    console.warn('[sendPhoto CDN URL failed, trying GitHub raw URL]:', result);
+    result = await callTelegram('sendPhoto', {
+      chat_id: chatId,
+      photo: fallbackPhotoUrl,
+      caption: caption,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard }
+    });
+  }
+
+  // 3. Try sending via local file buffer if URL fails
+  if (!result.ok) {
+    console.warn('[sendPhoto URL failed, trying local file upload]:', result);
+    const startImagePath = path.join(__dirname, 'assets', 'start-image.jpg');
+    const fallbackBannerPath = path.join(__dirname, 'assets', 'invite-banner.png');
+    const imagePath = fs.existsSync(startImagePath) ? startImagePath : fallbackBannerPath;
+
+    if (fs.existsSync(imagePath)) {
+      const formData = new FormData();
+      formData.append('chat_id', chatId);
+      formData.append('caption', caption);
+      formData.append('parse_mode', 'Markdown');
+      formData.append('reply_markup', JSON.stringify({ inline_keyboard }));
+      
+      const fileBuffer = fs.readFileSync(imagePath);
+      const mimeType = imagePath.endsWith('.jpg') || imagePath.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+      const blob = new Blob([fileBuffer], { type: mimeType });
+      formData.append('photo', blob, path.basename(imagePath));
+
+      result = await callTelegram('sendPhoto', formData, true);
     }
-  } else {
+  }
+
+  // 4. Final fallback to text message if photo fails
+  if (!result.ok) {
+    console.warn('[All photo sends failed, sending text message]:', result);
     await callTelegram('sendMessage', {
       chat_id: chatId,
       text: caption,

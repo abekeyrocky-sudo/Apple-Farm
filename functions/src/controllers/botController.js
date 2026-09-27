@@ -56,17 +56,33 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
       ]
     ];
 
-    const photoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
+    const primaryPhotoUrl = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+    const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
 
-    const photoRes = await callTelegram('sendPhoto', {
+    // 1. Try sending via primary Vercel CDN image
+    let photoRes = await callTelegram('sendPhoto', {
       chat_id: chatId,
-      photo: photoUrl,
+      photo: primaryPhotoUrl,
       caption: caption,
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard }
     });
 
+    // 2. Fallback to GitHub raw URL if primary fails
     if (!photoRes.ok) {
+      console.warn('[sendPhoto primary failed, trying fallback]:', photoRes);
+      photoRes = await callTelegram('sendPhoto', {
+        chat_id: chatId,
+        photo: fallbackPhotoUrl,
+        caption: caption,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard }
+      });
+    }
+
+    // 3. Fallback to sendMessage if all photo sending fails
+    if (!photoRes.ok) {
+      console.warn('[sendPhoto fallback failed, sending text message]:', photoRes);
       await callTelegram('sendMessage', {
         chat_id: chatId,
         text: caption,
