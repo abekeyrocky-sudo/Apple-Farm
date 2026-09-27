@@ -143,29 +143,49 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
 
   async function handleHelpCommand(message) {
     const chatId = message.chat.id;
-    const helpText = `🌾 *How to play Apple Farm:*\n\n` +
-      `1. *Tap to Harvest:* Tap the apple tree to gather ripe apples.\n` +
-      `2. *Watch Ads:* Watch daily ads to earn extra apples and diamonds.\n` +
-      `3. *Spin & Win:* Spin the wheel daily for jackpot rewards.\n` +
-      `4. *Invite Friends:* Share your referral link and earn +500 Apples bonus!\n` +
-      `5. *Withdraw:* Cash out your balance directly via TON, bKash, and other wallets.\n\n` +
-      `👇 Click Play to enter the farm!`;
+    const helpCaption = `📖 *How to Play Apple Farm*\n\n` +
+      `Grow your tree, harvest apples, complete tasks & earn rewards! 🍎\n\n` +
+      `👇 *Click below to start playing:*`;
 
     const inline_keyboard = [
       [
         {
           text: 'Play Apple Farm 🍎',
-          web_app: { url: miniAppUrl }
+          web_app: { url: miniAppUrl },
+          style: 'success'
         }
       ]
     ];
 
-    await callTelegram('sendMessage', {
+    const primaryPhoto = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+    const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
+
+    let res = await callTelegram('sendPhoto', {
       chat_id: chatId,
-      text: helpText,
+      photo: primaryPhoto,
+      caption: helpCaption,
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard }
     });
+
+    if (!res.ok) {
+      res = await callTelegram('sendPhoto', {
+        chat_id: chatId,
+        photo: fallbackPhoto,
+        caption: helpCaption,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard }
+      });
+    }
+
+    if (!res.ok) {
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: helpCaption,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard }
+      });
+    }
   }
 
   async function handleCallbackQuery(cq) {
@@ -173,22 +193,49 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
     if (cq.data === 'help_info') {
       await callTelegram('answerCallbackQuery', { callback_query_id: cq.id });
       
-      const helpText = `🌾 *Quick Farm Guide:*\n\n` +
-        `• Tap your screen to harvest apples.\n` +
-        `• Level up your farm to unlock bigger daily rewards.\n` +
-        `• Complete daily tasks & spin the lucky wheel!\n\n` +
-        `Ready? Launch the game below! 🚀`;
+      const helpCaption = `📖 *How to Play Apple Farm*\n\n` +
+        `Grow your tree, harvest apples, complete tasks & earn rewards! 🍎\n\n` +
+        `👇 *Click below to start playing:*`;
 
-      await callTelegram('sendMessage', {
+      const inline_keyboard = [
+        [
+          {
+            text: 'Play Apple Farm 🍎',
+            web_app: { url: miniAppUrl },
+            style: 'success'
+          }
+        ]
+      ];
+
+      const primaryPhoto = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+      const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
+
+      let res = await callTelegram('sendPhoto', {
         chat_id: chatId,
-        text: helpText,
+        photo: primaryPhoto,
+        caption: helpCaption,
         parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🎮 Open Mini App', web_app: { url: miniAppUrl } }]
-          ]
-        }
+        reply_markup: { inline_keyboard }
       });
+
+      if (!res.ok) {
+        res = await callTelegram('sendPhoto', {
+          chat_id: chatId,
+          photo: fallbackPhoto,
+          caption: helpCaption,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard }
+        });
+      }
+
+      if (!res.ok) {
+        await callTelegram('sendMessage', {
+          chat_id: chatId,
+          text: helpCaption,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard }
+        });
+      }
     }
   }
 
