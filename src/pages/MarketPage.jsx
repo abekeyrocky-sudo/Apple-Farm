@@ -397,7 +397,7 @@ export default function MarketPage({
         {/* ----------------- CATEGORY TABS (Auto-Bot / Items / Boosts / Special) ----------------- */}
         <div className="flex items-center justify-between gap-1.5 px-0.5 mb-2">
           {[
-            { id: 'Auto-Bot', label: '🤖 Auto-Bot' },
+            { id: 'Auto-Bot', label: 'Auto-Bot' },
             { id: 'Items', label: 'Items' },
             { id: 'Boosts', label: 'Boosts' },
             { id: 'Special', label: 'Special' },
@@ -412,7 +412,7 @@ export default function MarketPage({
                     window.Telegram.WebApp.HapticFeedback.selectionChanged();
                   }
                 }}
-                className={`flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 shadow-sm cursor-pointer ${
+                className={`flex-1 py-2 rounded-full font-black text-xs transition-all duration-200 shadow-sm cursor-pointer whitespace-nowrap ${
                   isActive
                     ? 'bg-gradient-to-r from-[#0098EA] to-[#0077c2] text-white shadow-md scale-102'
                     : 'bg-white/90 text-[#4c678a] hover:bg-white'
@@ -486,13 +486,6 @@ export default function MarketPage({
                     key={pkg.id}
                     className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 border border-sky-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-between text-center transition-transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden"
                   >
-                    {/* Badge */}
-                    <div className="absolute top-1.5 right-1.5 z-10">
-                      <span className={`text-[8px] font-black text-white px-1.5 py-0.2 rounded-full ${pkg.badgeColor}`}>
-                        {pkg.badge}
-                      </span>
-                    </div>
-
                     {/* Icon Frame */}
                     <div className="w-full h-18 bg-[#f8fbfe] rounded-xl flex items-center justify-center p-1 border border-slate-100/80 mb-1.5 relative">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md relative">
@@ -512,7 +505,6 @@ export default function MarketPage({
                       <span className="text-xs font-black text-[#192f52]">
                         {pkg.priceGram}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-400">GRAM</span>
                     </div>
 
                     {/* Standard Green Buy Button */}
