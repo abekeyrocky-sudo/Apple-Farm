@@ -155,9 +155,10 @@ export default function App() {
       } else {
         // জয়েন না থাকলে টাস্ক স্টেট 'Go' তে রিসেট
         try {
-          const states = JSON.parse(localStorage.getItem('apple_farm_std_task_states') || '{}');
+          const key = `apple_farm_std_task_states_${user.id}`;
+          const states = JSON.parse(localStorage.getItem(key) || '{}');
           states['task_community'] = 'Go';
-          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
+          localStorage.setItem(key, JSON.stringify(states));
         } catch (e) {}
 
         // কোনো স্কিপ বা ক্লোজ অপশন ছাড়া বাধ্যতামূলক পপ-আপ
@@ -217,8 +218,8 @@ export default function App() {
 
   // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
   useEffect(() => {
-    if (!isLoading) {
-      const dailyStatus = getDailyRewardStatus();
+    if (!isLoading && user?.id) {
+      const dailyStatus = getDailyRewardStatus(user.id);
       if (dailyStatus.canClaimToday) {
         const timer = setTimeout(() => {
           setIsDailyRewardOpen(true);
@@ -226,7 +227,7 @@ export default function App() {
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoading]);
+  }, [isLoading, user?.id]);
 
   const handleDailyRewardClaim = (reward) => {
     const isDiamond = reward.type === 'diamond';
@@ -668,6 +669,7 @@ export default function App() {
         isOpen={isDailyRewardOpen}
         onClose={() => setIsDailyRewardOpen(false)}
         onClaimReward={handleDailyRewardClaim}
+        user={user}
       />
 
       {/* গ্লোবাল কাস্টম ভেক্টর পপআপ মডাল */}

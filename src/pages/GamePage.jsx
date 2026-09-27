@@ -8,6 +8,7 @@ import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import FallingLeaves from '../components/FallingLeaves';
 import { soundManager } from '../utils/soundManager';
+import { getStoredJson, setStoredJson } from '../utils/userStorage';
 
 // রেফারেন্স ইমেজের হুবহু স্লাইস ডাটা
 const SLICES = [
@@ -20,7 +21,7 @@ const SLICES = [
   { id: 7, type: 'apple', label: '500', color: '#FBBF24' },
 ];
 
-const SPIN_STORAGE_KEY = 'apple_farm_spin_state_v2';
+const BASE_SPIN_KEY = 'apple_farm_spin_state_v3';
 
 export default function GamePage({ user, onNavigate, onWinReward, onShowPopup }) {
   const [spinning, setSpinning] = useState(false);
@@ -29,17 +30,21 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
 
   // স্পিন স্টেট লোড
   const [spinData, setSpinData] = useState(() => {
-    try {
-      const raw = localStorage.getItem(SPIN_STORAGE_KEY);
-      if (raw) {
-        return JSON.parse(raw);
-      }
-    } catch (e) {}
-    return {
+    return getStoredJson(BASE_SPIN_KEY, user?.id, {
       lastFreeSpinDate: null,
       usedInviteSpins: 0,
-    };
+    });
   });
+
+  // ইউজার পরিবর্তন হলে স্পিন ডাটা সিঙ্ক
+  useEffect(() => {
+    if (!user?.id) return;
+    const data = getStoredJson(BASE_SPIN_KEY, user.id, {
+      lastFreeSpinDate: null,
+      usedInviteSpins: 0,
+    });
+    setSpinData(data);
+  }, [user?.id]);
 
   const today = new Date().toDateString();
   const isFreeAvailable = spinData.lastFreeSpinDate !== today;
@@ -105,9 +110,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onShowPopup })
     }
 
     setSpinData(nextState);
-    try {
-      localStorage.setItem(SPIN_STORAGE_KEY, JSON.stringify(nextState));
-    } catch (e) {}
+    setStoredJson(BASE_SPIN_KEY, user?.id, nextState);
 
     // Spin Tick Sounds
     let ticks = 0;

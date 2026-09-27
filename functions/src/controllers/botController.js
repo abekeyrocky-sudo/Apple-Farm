@@ -41,17 +41,20 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
       [
         {
           text: 'Play Apple Farm 🍎',
-          web_app: { url: appUrl }
+          web_app: { url: appUrl },
+          style: 'success'
         }
       ],
       [
         {
           text: '📢 Join Community',
-          url: channelUrl || 'https://t.me/AppleFarmCommunity'
+          url: channelUrl || 'https://t.me/AppleFarmCommunity',
+          style: 'primary'
         },
         {
           text: '📖 How to Play',
-          callback_data: 'help_info'
+          callback_data: 'help_info',
+          style: 'primary'
         }
       ]
     ];

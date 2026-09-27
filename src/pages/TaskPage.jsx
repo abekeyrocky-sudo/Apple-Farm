@@ -31,6 +31,8 @@ import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
 import { getPartnerTasksFromDB, savePartnerTaskToDB, incrementPartnerTaskJoinedInDB } from '../firebase';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
+import { getStoredJson, setStoredJson } from '../utils/userStorage';
+import { getDailyRewardStatus } from '../components/DailyRewardModal';
 
 // X / Twitter SVG Component
 const TwitterIcon = ({ className = "w-5 h-5" }) => (
@@ -218,32 +220,26 @@ export default function TaskPage({
       },
     ];
 
-    try {
-      const saved = localStorage.getItem('apple_farm_std_task_states');
-      if (saved) {
-        const states = JSON.parse(saved);
-        return defaultTasks.map(t => ({
-          ...t,
-          status: states[t.id] || t.status
-        }));
+    const uid = user?.id;
+    const dailyStatus = getDailyRewardStatus(uid);
+    const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
+    return defaultTasks.map(t => {
+      let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_6') {
+        status = dailyStatus.canClaimToday ? 'Go' : 'Claimed';
       }
-    } catch (e) {}
-    return defaultTasks;
+      return { ...t, status };
+    });
   });
 
   // রিয়েল পার্টনার টাস্ক তালিকা
   const [partnerTasks, setPartnerTasks] = useState(() => {
     try {
-      localStorage.removeItem('apple_farm_partner_tasks');
-      localStorage.removeItem('partner_tasks');
-      const saved = localStorage.getItem('apple_farm_partner_tasks_real');
-      let savedStates = {};
-      try {
-        savedStates = JSON.parse(localStorage.getItem('apple_farm_partner_task_states') || '{}');
-      } catch (e) {}
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.map(t => ({
+      const uid = user?.id;
+      const saved = getStoredJson('apple_farm_partner_tasks_real', uid, null);
+      const savedStates = getStoredJson('apple_farm_partner_task_states', uid, {});
+      if (saved && Array.isArray(saved)) {
+        return saved.map(t => ({
           ...t,
           status: savedStates[t.id] || t.status || 'Go',
           joinedCount: Number(t.joinedCount) || 0,
@@ -255,6 +251,21 @@ export default function TaskPage({
       return [];
     }
   });
+
+  // ইউজার পরিবর্তন হলে বা ওপেন হলে স্ট্যান্ডার্ড টাস্ক ও ডেইল চেক-ইন রিফ্রেশ
+  useEffect(() => {
+    if (!user?.id) return;
+    const uid = user.id;
+    const dailyStatus = getDailyRewardStatus(uid);
+    const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
+    setStandardTasks(prev => prev.map(t => {
+      let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_6') {
+        status = dailyStatus.canClaimToday ? 'Go' : 'Claimed';
+      }
+      return { ...t, status };
+    }));
+  }, [user?.id]);
 
   // ফায়ারস্টোর ডাটাবেস থেকে রিয়েল লাইভ পার্টনার টাস্ক লোড
   useEffect(() => {
@@ -331,15 +342,13 @@ export default function TaskPage({
           return t;
         });
         if (changed) {
-          try {
-            const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-            localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-          } catch (e) {}
+          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+          setStoredJson('apple_farm_std_task_states', user?.id, states);
         }
         return changed ? updated : prev;
       });
     }
-  }, [user?.airdropTasks?.joinTg, user?.communityJoined]);
+  }, [user?.airdropTasks?.joinTg, user?.communityJoined, user?.id]);
 
   // ক্যালকুলেশন: বাজেট + ৮% প্ল্যাটফর্ম ফি
   const targetNum = Math.max(0, Number(postForm.targetMembers) || 0);
@@ -372,10 +381,8 @@ export default function TaskPage({
         }
         setStandardTasks(prev => {
           const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Verify' } : t);
-          try {
-            const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-            localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-          } catch (e) {}
+          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+          setStoredJson('apple_farm_std_task_states', user?.id, states);
           return updated;
         });
         return;
@@ -393,10 +400,8 @@ export default function TaskPage({
 
       setStandardTasks(prev => {
         const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claim' } : t);
-        try {
-          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-        } catch (e) {}
+        const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+        setStoredJson('apple_farm_std_task_states', user?.id, states);
         return updated;
       });
     } else if (task.status === 'Verify') {
@@ -415,10 +420,8 @@ export default function TaskPage({
             // জয়েন না করলে আবার Go স্টেটে ফিরে যাবে
             setStandardTasks(prev => {
               const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Go' } : t);
-              try {
-                const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-                localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-              } catch (e) {}
+              const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+              setStoredJson('apple_farm_std_task_states', user?.id, states);
               return updated;
             });
 
@@ -437,10 +440,8 @@ export default function TaskPage({
           setVerifyingTaskId(null);
           setStandardTasks(prev => {
             const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Go' } : t);
-            try {
-              const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-              localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-            } catch (e) {}
+            const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+            setStoredJson('apple_farm_std_task_states', user?.id, states);
             return updated;
           });
           if (onShowPopup) {
@@ -458,10 +459,8 @@ export default function TaskPage({
       setVerifyingTaskId(null);
       setStandardTasks(prev => {
         const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claim' } : t);
-        try {
-          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-        } catch (e) {}
+        const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+        setStoredJson('apple_farm_std_task_states', user?.id, states);
         return updated;
       });
 
@@ -481,10 +480,8 @@ export default function TaskPage({
 
       setStandardTasks(prev => {
         const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claimed' } : t);
-        try {
-          const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
-          localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-        } catch (e) {}
+        const states = updated.reduce((acc, cur) => ({ ...acc, [cur.id]: cur.status }), {});
+        setStoredJson('apple_farm_std_task_states', user?.id, states);
         return updated;
       });
 
@@ -541,17 +538,13 @@ export default function TaskPage({
     }
 
     const setTaskStatusHelper = (statusVal, extraFields = {}) => {
-      try {
-        const currentStates = JSON.parse(localStorage.getItem('apple_farm_partner_task_states') || '{}');
-        currentStates[task.id] = statusVal;
-        localStorage.setItem('apple_farm_partner_task_states', JSON.stringify(currentStates));
-      } catch (e) {}
+      const currentStates = getStoredJson('apple_farm_partner_task_states', user?.id, {});
+      currentStates[task.id] = statusVal;
+      setStoredJson('apple_farm_partner_task_states', user?.id, currentStates);
 
       setPartnerTasks(prev => {
         const updated = prev.map(t => t.id === task.id ? { ...t, status: statusVal, ...extraFields } : t);
-        try {
-          localStorage.setItem('apple_farm_partner_tasks_real', JSON.stringify(updated));
-        } catch (e) {}
+        setStoredJson('apple_farm_partner_tasks_real', user?.id, updated);
         return updated;
       });
     };

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CheckCircle2, Rocket, Lock, Wallet, AlertCircle, Loader2 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
 import { soundManager } from '../utils/soundManager';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
+import { getStoredJson, setStoredJson } from '../utils/userStorage';
 
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
@@ -161,13 +161,11 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
             onUpdateUser?.({ airdropTasks: updated, communityJoined: true });
 
             // Sync with TaskPage standard task
-            try {
-              const states = JSON.parse(localStorage.getItem('apple_farm_std_task_states') || '{}');
-              if (states['task_community'] !== 'Claimed') {
-                states['task_community'] = 'Claim';
-                localStorage.setItem('apple_farm_std_task_states', JSON.stringify(states));
-              }
-            } catch (e) {}
+            const states = getStoredJson('apple_farm_std_task_states', user?.id, {});
+            if (states['task_community'] !== 'Claimed') {
+              states['task_community'] = 'Claim';
+              setStoredJson('apple_farm_std_task_states', user?.id, states);
+            }
 
             soundManager.play('reward');
             if (window.Telegram?.WebApp?.HapticFeedback) {

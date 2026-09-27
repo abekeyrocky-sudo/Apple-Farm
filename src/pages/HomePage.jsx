@@ -9,6 +9,7 @@ import FallingLeaves from '../components/FallingLeaves';
 import { calculateLevel } from '../utils/levelSystem';
 import { getAvatarSrc } from '../utils/avatars';
 import { soundManager } from '../utils/soundManager';
+import { getStoredJson, setStoredJson } from '../utils/userStorage';
 
 // 🍎 Tree Apples Coordinates & Sizes
 const TREE_APPLES = [
@@ -28,13 +29,12 @@ const TREE_APPLES = [
   { id: 14, left: '75%', top: '59%', size: 'w-6 h-6' },
 ];
 
-const STORAGE_KEY = 'apple_farm_tree_harvested_apples';
+const BASE_HARVEST_KEY = 'apple_farm_tree_harvested_apples_v2';
 
-const getStoredHarvests = () => {
+const getStoredHarvests = (userId) => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
+    const parsed = getStoredJson(BASE_HARVEST_KEY, userId, {});
+    if (!parsed) return {};
     const now = Date.now();
     const valid = {};
     for (const [id, regrowAt] of Object.entries(parsed)) {
@@ -57,7 +57,7 @@ export default function HomePage({
   onShowPopup
 }) {
   const [harvestedApples, setHarvestedApples] = useState(() => {
-    const stored = getStoredHarvests();
+    const stored = getStoredHarvests(user?.id);
     const initial = {};
     for (const id of Object.keys(stored)) {
       initial[Number(id)] = true;
@@ -76,9 +76,15 @@ export default function HomePage({
     setIsMuted(muted);
   };
 
-  // পেজে ব্যাক আসলে বাকি সময়ের জন্য রিগ্রোথ টাইমার সক্রিয় রাখা
+  // পেজে ব্যাক আসলে বা ইউজার চেঞ্জ হলে বাকি সময়ের জন্য রিগ্রোথ টাইমার সক্রিয় রাখা
   useEffect(() => {
-    const stored = getStoredHarvests();
+    const stored = getStoredHarvests(user?.id);
+    const initial = {};
+    for (const id of Object.keys(stored)) {
+      initial[Number(id)] = true;
+    }
+    setHarvestedApples(initial);
+
     const now = Date.now();
     const timers = [];
 
@@ -93,11 +99,9 @@ export default function HomePage({
           return next;
         });
 
-        try {
-          const current = getStoredHarvests();
-          delete current[appleId];
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-        } catch (e) {}
+        const current = getStoredHarvests(user?.id);
+        delete current[appleId];
+        setStoredJson(BASE_HARVEST_KEY, user?.id, current);
 
         setNewlyGrownApples((prev) => new Set(prev).add(appleId));
         setTimeout(() => {
@@ -115,7 +119,7 @@ export default function HomePage({
     return () => {
       timers.forEach(clearTimeout);
     };
-  }, []);
+  }, [user?.id]);
 
   // ব্যাকগ্রাউন্ডের খালি জায়গায় ট্যাপ করলে
   const handleTreeTap = () => {
@@ -150,11 +154,9 @@ export default function HomePage({
     // ১. আপেলটিকে ঝরা অবস্থায় স্টেট ও লোকালস্টোরেজে সেভ করা (১০ সেকেন্ড পারসিস্টিং)
     setHarvestedApples((prev) => ({ ...prev, [apple.id]: true }));
     const regrowAt = Date.now() + 10000;
-    try {
-      const current = getStoredHarvests();
-      current[apple.id] = regrowAt;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-    } catch (e) {}
+    const current = getStoredHarvests(user?.id);
+    current[apple.id] = regrowAt;
+    setStoredJson(BASE_HARVEST_KEY, user?.id, current);
 
     // ২. নিচে পড়ার ফলিং অ্যানিমেশন এলিমেন্ট তৈরি
     const fallId = Date.now() + Math.random();
@@ -176,11 +178,9 @@ export default function HomePage({
         return next;
       });
 
-      try {
-        const current = getStoredHarvests();
-        delete current[apple.id];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-      } catch (e) {}
+      const updated = getStoredHarvests(user?.id);
+      delete updated[apple.id];
+      setStoredJson(BASE_HARVEST_KEY, user?.id, updated);
 
       // গ্রোইং পপ অ্যানিমেশন
       setNewlyGrownApples((prev) => new Set(prev).add(apple.id));

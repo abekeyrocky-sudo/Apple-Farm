@@ -68,17 +68,20 @@ async function handleStartCommand(message, param) {
     [
       {
         text: 'Play Apple Farm 🍎',
-        web_app: { url: appUrl }
+        web_app: { url: appUrl },
+        style: 'success'
       }
     ],
     [
       {
         text: '📢 Join Community',
-        url: CHANNEL_URL
+        url: CHANNEL_URL,
+        style: 'primary'
       },
       {
         text: '📖 How to Play',
-        callback_data: 'help_info'
+        callback_data: 'help_info',
+        style: 'primary'
       }
     ]
   ];

@@ -5,6 +5,8 @@ import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import { soundManager } from '../utils/soundManager';
 
+import { getUserKey, getStoredJson, setStoredJson } from '../utils/userStorage';
+
 export const DAILY_REWARDS = [
   { day: 1, type: 'apple', amount: 500, label: '500 Apples' },
   { day: 2, type: 'apple', amount: 1000, label: '1,000 Apples' },
@@ -15,14 +17,14 @@ export const DAILY_REWARDS = [
   { day: 7, type: 'diamond', amount: 5, label: '5 Diamonds', isSpecial: true },
 ];
 
-const STORAGE_KEY = 'apple_farm_daily_reward_state_v1';
+const BASE_STORAGE_KEY = 'apple_farm_daily_reward_state_v2';
 
-export const getDailyRewardStatus = () => {
+export const getDailyRewardStatus = (userId) => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
     const today = new Date().toDateString();
+    const data = getStoredJson(BASE_STORAGE_KEY, userId, null);
 
-    if (!raw) {
+    if (!data || !data.lastClaimDate) {
       return {
         currentDay: 1,
         lastClaimDate: null,
@@ -31,18 +33,7 @@ export const getDailyRewardStatus = () => {
       };
     }
 
-    const data = JSON.parse(raw);
     const lastDateStr = data.lastClaimDate;
-
-    if (!lastDateStr) {
-      return {
-        currentDay: 1,
-        lastClaimDate: null,
-        canClaimToday: true,
-        streakMissed: false
-      };
-    }
-
     const todayDate = new Date(today);
     const lastDate = new Date(lastDateStr);
     const diffTime = todayDate.getTime() - lastDate.getTime();
@@ -84,15 +75,16 @@ export const getDailyRewardStatus = () => {
   }
 };
 
-export default function DailyRewardModal({ isOpen, onClose, onClaimReward }) {
-  const [status, setStatus] = useState(getDailyRewardStatus);
+export default function DailyRewardModal({ isOpen, onClose, onClaimReward, user }) {
+  const userId = user?.id;
+  const [status, setStatus] = useState(() => getDailyRewardStatus(userId));
   const [isClaiming, setIsClaiming] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setStatus(getDailyRewardStatus());
+      setStatus(getDailyRewardStatus(userId));
     }
-  }, [isOpen]);
+  }, [isOpen, userId]);
 
   if (!isOpen) return null;
 
@@ -121,9 +113,7 @@ export default function DailyRewardModal({ isOpen, onClose, onClaimReward }) {
       lastClaimDate: today
     };
 
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
-    } catch (e) {}
+    setStoredJson(BASE_STORAGE_KEY, userId, nextState);
 
     setStatus({
       currentDay: currentDay,
