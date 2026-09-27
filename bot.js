@@ -125,6 +125,13 @@ async function handleStartCommand(message, param) {
         style: 'primary'
       },
       {
+        text: '💳 Payment Proofs',
+        url: 'https://t.me/AppleFarmPayouts',
+        style: 'primary'
+      }
+    ],
+    [
+      {
         text: '📖 How to Play',
         callback_data: 'help_info',
         style: 'primary'

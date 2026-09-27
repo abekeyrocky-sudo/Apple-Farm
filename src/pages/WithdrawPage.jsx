@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, AlertCircle, Wallet, Lock } from 'lucide-react';
+import { Check, AlertCircle, Wallet, Lock, ShieldCheck, ExternalLink } from 'lucide-react';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
@@ -371,12 +371,44 @@ export default function WithdrawPage({
           </div>
         </div>
 
-        {/* 2. SECTION TITLE */}
+        {/* 2. OFFICIAL PAYOUTS & PROOFS CHANNEL BANNER */}
+        <div 
+          onClick={() => {
+            const url = 'https://t.me/AppleFarmPayouts';
+            if (window.Telegram?.WebApp?.openTelegramLink) {
+              window.Telegram.WebApp.openTelegramLink(url);
+            } else {
+              window.open(url, '_blank');
+            }
+          }}
+          className="bg-gradient-to-r from-sky-50 via-white to-emerald-50 rounded-2xl p-3 px-4 border border-sky-200/80 shadow-[0_2px_10px_rgba(0,140,255,0.06)] flex items-center justify-between cursor-pointer hover:border-sky-300 active:scale-[0.99] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0098EA] to-[#0077c2] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-[#192f52] leading-tight flex items-center gap-1.5">
+                <span>Official Payouts & Proofs</span>
+                <span className="text-[9px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">Verified</span>
+              </h4>
+              <p className="text-[10px] font-bold text-sky-700 mt-0.5">
+                View real on-chain transaction proofs @AppleFarmPayouts
+              </p>
+            </div>
+          </div>
+
+          <div className="text-sky-600 flex-shrink-0">
+            <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+          </div>
+        </div>
+
+        {/* 3. SECTION TITLE */}
         <h2 className="text-base font-black text-[#192f52] tracking-tight pt-1">
           Choose Payment Method
         </h2>
 
-        {/* 3. PAYMENT METHODS LIST */}
+        {/* 4. PAYMENT METHODS LIST */}
         <div className="space-y-2.5 overflow-y-auto max-h-[calc(100vh-230px)] pb-6">
           {PAYMENT_METHODS.map((method) => (
             <div

@@ -32,9 +32,8 @@ export default function InviteFriendsPage({
   }, [user?.claimedReferMissions]);
 
   const botUsername = 'AppleFarmOfficialBot';
-  const appShortName = 'App';
   const refCode = user?.id || user?.username || '40281';
-  const referralLink = `t.me/${botUsername}/${appShortName}?startapp=${refCode}`;
+  const referralLink = `t.me/${botUsername}?startapp=${refCode}`;
 
   // রিয়েল ইনভাইট সংখ্যা (কোনো ডামি ডিফল্ট ডাটা নেই)
   const invitedFriendsList = Array.isArray(user?.invitedFriends) ? user.invitedFriends : [];

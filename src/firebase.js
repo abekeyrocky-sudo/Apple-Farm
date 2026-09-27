@@ -115,11 +115,80 @@ const sendReferralNotificationToTelegram = async (referrerChatId, friendName) =>
   }
 };
 
+// রেফারেল রিওয়ার্ড প্রসেসিং হেল্পার ফাংশন
+const processReferralReward = async (referrerId, newTgUser, fullName) => {
+  if (!referrerId || !newTgUser?.id || !db) return;
+  const refIdStr = referrerId.toString().trim();
+  const myIdStr = newTgUser.id.toString().trim();
+  
+  if (refIdStr === myIdStr) return; // নিজের রেফারে নিজে জয়েন করলে ইগনোর
+
+  try {
+    const referrerRef = doc(db, "users", refIdStr);
+    const refSnap = await getDoc(referrerRef);
+    
+    if (refSnap.exists()) {
+      const refData = refSnap.data() || {};
+      const existingFriends = Array.isArray(refData.invitedFriends) ? refData.invitedFriends : [];
+      
+      // ডুপ্লিকেট চেকিং
+      const alreadyInvited = existingFriends.some(f => f.id?.toString() === myIdStr);
+      if (!alreadyInvited) {
+        const newFriendItem = {
+          id: newTgUser.id,
+          name: fullName || 'Farmer',
+          username: newTgUser.username || '',
+          avatar: 'avatar-1',
+          date: new Date().toLocaleDateString()
+        };
+
+        await updateDoc(referrerRef, {
+          invitedFriends: arrayUnion(newFriendItem),
+          referralsCount: increment(1),
+          apples: increment(500) // Instant 500 Apples Referral Reward
+        });
+
+        console.log(`[Referral Success] ${fullName} (${myIdStr}) referred by ${refIdStr}`);
+
+        // 📢 রেফারকারীকে টেলিগ্রামে ইনস্ট্যান্ট নোটিফিকেশন পাঠানো
+        sendReferralNotificationToTelegram(refIdStr, fullName);
+      }
+    } else {
+      console.warn("Referrer ID not found in Firestore:", refIdStr);
+    }
+  } catch (err) {
+    console.warn("processReferralReward error:", err);
+  }
+};
+
 // টেলিগ্রাম ইউজার ডাটাবেসে সিঙ্ক করার ফাংশন
 export const syncUserWithFirebase = async (tgUser) => {
   if (!tgUser) return null;
   const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Farmer";
-  const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
+  
+  // 🔍 সমস্ত সম্ভাব্য সোর্স থেকে start_param এক্সট্রাক্ট করা (initData, URL search, URL hash)
+  let rawStartParam = null;
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+    const hashParams = new URLSearchParams(hash);
+
+    rawStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+      || urlParams.get('tgWebAppStartParam')
+      || urlParams.get('startapp')
+      || urlParams.get('start_param')
+      || urlParams.get('start')
+      || urlParams.get('ref')
+      || hashParams.get('tgWebAppStartParam')
+      || hashParams.get('startapp')
+      || hashParams.get('start')
+      || null;
+  } catch (e) {
+    console.warn("Param extraction error:", e);
+  }
+
+  const startParam = rawStartParam ? rawStartParam.toString().trim() : null;
+  const myIdStr = (tgUser.id || 40281).toString();
 
   if (!db || firebaseConfig.apiKey === "YOUR_API_KEY") {
     return {
@@ -138,7 +207,7 @@ export const syncUserWithFirebase = async (tgUser) => {
   }
 
   try {
-    const userRef = doc(db, "users", tgUser.id.toString());
+    const userRef = doc(db, "users", myIdStr);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
@@ -151,7 +220,7 @@ export const syncUserWithFirebase = async (tgUser) => {
         diamonds: 0.0,
         level: 1,
         energy: 100,
-        referredBy: startParam || null,
+        referredBy: (startParam && startParam !== myIdStr) ? startParam : null,
         invitedFriends: [],
         claimedReferMissions: {},
         createdAt: new Date().toISOString()
@@ -159,32 +228,27 @@ export const syncUserWithFirebase = async (tgUser) => {
       await setDoc(userRef, newUser);
 
       // যদি কোনো রেফারেল প্যারামিটার থাকে, রেফারকারী ইউজারের ডাটাবেস আপডেট
-      if (startParam && startParam !== tgUser.id.toString()) {
-        try {
-          const referrerRef = doc(db, "users", startParam.toString());
-          const refSnap = await getDoc(referrerRef);
-          if (refSnap.exists()) {
-            await updateDoc(referrerRef, {
-              invitedFriends: arrayUnion({
-                id: tgUser.id,
-                name: fullName,
-                avatar: 'avatar-1',
-                date: new Date().toLocaleDateString()
-              }),
-              apples: increment(500) // Instant 500 Apples Referral Reward
-            });
-
-            // 📢 রেফারকারীকে টেলিগ্রামে ইনস্ট্যান্ট নোটিফিকেশন পাঠানো
-            sendReferralNotificationToTelegram(startParam, fullName);
-          }
-        } catch (rErr) {
-          console.warn("Referral tracking error:", rErr);
-        }
+      if (startParam && startParam !== myIdStr) {
+        await processReferralReward(startParam, tgUser, fullName);
       }
 
       return newUser;
     } else {
       const existing = userSnap.data();
+      
+      // যদি ইউজার আগে ঢুকে থাকে কিন্তু কোনো রেফারার লিংক না থাকে, এবং এবার রেফারেল লিংকে ঢুকেছে
+      if (!existing.referredBy && startParam && startParam !== myIdStr) {
+        try {
+          await updateDoc(userRef, {
+            referredBy: startParam
+          });
+          existing.referredBy = startParam;
+          await processReferralReward(startParam, tgUser, fullName);
+        } catch (rErr) {
+          console.warn("Existing user referral link error:", rErr);
+        }
+      }
+
       return { 
         ...existing, 
         avatar: existing.avatar || 'avatar-1',
