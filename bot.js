@@ -208,8 +208,8 @@ async function handleHelpCommand(message) {
     ]
   ];
 
-  const primaryPhoto = 'https://apple-farm-plum.vercel.app/start-image.jpg';
-  const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
+  const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+  const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
   let res = await callTelegram('sendPhoto', {
     chat_id: chatId,
@@ -260,8 +260,8 @@ async function handleCallbackQuery(cq) {
       ]
     ];
 
-    const primaryPhoto = 'https://apple-farm-plum.vercel.app/start-image.jpg';
-    const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
+    const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+    const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
     let res = await callTelegram('sendPhoto', {
       chat_id: chatId,
