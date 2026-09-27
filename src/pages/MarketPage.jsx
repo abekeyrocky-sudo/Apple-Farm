@@ -686,9 +686,6 @@ export default function MarketPage({
                       ? item.price.toFixed(2)
                       : item.price.toFixed(1)}
                   </span>
-                  {item.currency === 'gram' && (
-                    <span className="text-[10px] font-bold text-slate-400">GRAM</span>
-                  )}
                 </div>
 
                 {/* Buy Button */}
