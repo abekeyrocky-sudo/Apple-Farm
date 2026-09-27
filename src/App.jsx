@@ -145,6 +145,32 @@ export default function App() {
             }));
           }
         });
+      } else {
+        // 🧪 ব্রাউজার বা লোকাল টেস্টিংয়ের জন্য ফ্যালব্যাক ইউজার
+        const devUser = {
+          id: 40281,
+          first_name: 'Dev',
+          last_name: 'Farmer',
+          username: 'dev_farmer'
+        };
+        setUser((prev) => ({
+          ...prev,
+          id: devUser.id,
+          name: 'Dev Farmer',
+          username: 'dev_farmer',
+        }));
+        syncUserWithFirebase(devUser).then((data) => {
+          if (data) {
+            const calculatedLvl = calculateLevel(data.apples || 0);
+            setUser((prev) => ({
+              ...prev,
+              ...data,
+              level: calculatedLvl,
+              name: 'Dev Farmer',
+              avatar: data.avatar || prev.avatar || 'avatar-1',
+            }));
+          }
+        });
       }
     }
   }, []);
@@ -152,6 +178,17 @@ export default function App() {
   // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
   const checkCommunityMembership = async () => {
     if (!user.id) return;
+    
+    // 🧪 Dev Mode / Localhost এ ম্যান্ডাটরি পপ-আপ বাইপাস করা যাতে নির্বিঘ্নে টেস্টিং করা যায়
+    const isDev = window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' || 
+                  !window.Telegram?.WebApp?.initDataUnsafe?.user ||
+                  user.id === 40281;
+    if (isDev) {
+      console.log('[Dev Mode] Skipping mandatory channel membership blocking modal');
+      return;
+    }
+
     try {
       // ১. কমিউনিটি চ্যানেল মেম্বারশিপ চেক
       const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
@@ -379,8 +416,9 @@ export default function App() {
   };
 
   const handleBonusWin = (amount, title = 'Bonus Claimed') => {
+    const numAmount = Number(amount || 0);
     setUser((prev) => {
-      const newApples = prev.apples + amount;
+      const newApples = (prev.apples || 0) + numAmount;
       const newLevel = calculateLevel(newApples);
       return { 
         ...prev, 
@@ -388,11 +426,14 @@ export default function App() {
         level: newLevel
       };
     });
+    if (user?.id) {
+      updateUserInDB(user.id, { apples: (user.apples || 0) + numAmount });
+    }
     addTransaction({
       userId: user.id,
       title: title,
       subtitle: 'Apple Farm Reward',
-      amount: `+${amount}`,
+      amount: `+${numAmount}`,
       currency: 'apple',
       type: 'earn',
       category: 'task',
@@ -401,8 +442,8 @@ export default function App() {
     showPopupModal({
       type: 'reward',
       title: title,
-      message: `Congratulations. You received +${amount} Apples into your balance.`,
-      rewardAmount: amount,
+      message: `Congratulations. You received +${numAmount} Apples into your balance.`,
+      rewardAmount: numAmount,
       rewardType: 'apple'
     });
   };
@@ -416,7 +457,11 @@ export default function App() {
   const handleGameReward = (item) => {
     const value = parseFloat(item.label) || 0;
     if (item.type === 'diamond') {
-      setUser((prev) => ({ ...prev, diamonds: prev.diamonds + value }));
+      const nextDiamonds = Number(((user.diamonds || 0) + value).toFixed(2));
+      setUser((prev) => ({ ...prev, diamonds: Number(((prev.diamonds || 0) + value).toFixed(2)) }));
+      if (user?.id) {
+        updateUserInDB(user.id, { diamonds: nextDiamonds });
+      }
       addTransaction({
         userId: user.id,
         title: 'Lucky Wheel Spin',
@@ -435,10 +480,14 @@ export default function App() {
         rewardType: 'diamond'
       });
     } else {
+      const nextApples = (user.apples || 0) + value;
       setUser((prev) => {
-        const newApples = prev.apples + value;
+        const newApples = (prev.apples || 0) + value;
         return { ...prev, apples: newApples, level: calculateLevel(newApples) };
       });
+      if (user?.id) {
+        updateUserInDB(user.id, { apples: nextApples });
+      }
       addTransaction({
         userId: user.id,
         title: 'Lucky Wheel Spin',
@@ -533,15 +582,47 @@ export default function App() {
     });
   };
 
-  const handleUpdateUserBalance = (delta) => {
+  const handleUpdateUserBalance = (payload) => {
+    if (!payload) return;
     setUser((prev) => {
-      const newApples = Math.max(0, prev.apples + (delta.apples || 0));
-      return {
+      let nextApples = prev.apples || 0;
+      let nextDiamonds = prev.diamonds || 0;
+
+      if (payload.apples !== undefined) {
+        // যদি নেগেটিভ হয় তবে ডেল্টা বিয়োগ, আর পজিটিভ হলে চেক
+        if (typeof payload.apples === 'number' && payload.isDelta) {
+          nextApples = Math.max(0, (prev.apples || 0) + payload.apples);
+        } else {
+          nextApples = Math.max(0, payload.apples);
+        }
+      }
+
+      if (payload.diamonds !== undefined) {
+        if (typeof payload.diamonds === 'number' && payload.isDelta) {
+          nextDiamonds = Math.max(0, (prev.diamonds || 0) + payload.diamonds);
+        } else {
+          nextDiamonds = Math.max(0, payload.diamonds);
+        }
+      }
+
+      const updated = {
         ...prev,
-        apples: newApples,
-        diamonds: Math.max(0, prev.diamonds + (delta.diamonds || 0)),
-        level: calculateLevel(newApples)
+        ...payload,
+        apples: nextApples,
+        diamonds: Number(nextDiamonds.toFixed(2)),
+        level: calculateLevel(nextApples)
       };
+      delete updated.isDelta;
+
+      if (user?.id) {
+        const dbFields = { ...payload };
+        delete dbFields.isDelta;
+        if (payload.apples !== undefined) dbFields.apples = nextApples;
+        if (payload.diamonds !== undefined) dbFields.diamonds = Number(nextDiamonds.toFixed(2));
+        updateUserInDB(user.id, dbFields);
+      }
+
+      return updated;
     });
   };
 
@@ -694,8 +775,10 @@ export default function App() {
       case 'ads':
         return (
           <WatchAdsPage 
+            user={user}
             onBack={() => setCurrentTab('home')}
             onRewardEarned={(amount) => handleBonusWin(amount, 'Ad Reward Claimed!')}
+            onWinReward={handleGameReward}
             onShowPopup={showPopupModal}
           />
         );

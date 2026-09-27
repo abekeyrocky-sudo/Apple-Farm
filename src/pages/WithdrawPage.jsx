@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, AlertCircle, Wallet, Lock, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Check, CheckCircle2, AlertCircle, Wallet, Lock, ShieldCheck, ExternalLink } from 'lucide-react';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
@@ -384,16 +384,18 @@ export default function WithdrawPage({
           className="bg-gradient-to-r from-sky-50 via-white to-emerald-50 rounded-2xl p-3 px-4 border border-sky-200/80 shadow-[0_2px_10px_rgba(0,140,255,0.06)] flex items-center justify-between cursor-pointer hover:border-sky-300 active:scale-[0.99] transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0098EA] to-[#0077c2] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0098EA] to-[#0077c2] flex items-center justify-center text-white shadow-sm flex-shrink-0">
               <ShieldCheck className="w-5 h-5" />
+              <div className="absolute -top-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 ring-2 ring-white shadow-xs flex items-center justify-center">
+                <CheckCircle2 className="w-2.5 h-2.5 stroke-[3]" />
+              </div>
             </div>
             <div>
-              <h4 className="text-xs font-black text-[#192f52] leading-tight flex items-center gap-1.5">
-                <span>Official Payouts & Proofs</span>
-                <span className="text-[9px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">Verified</span>
+              <h4 className="text-xs font-black text-[#192f52] leading-tight">
+                Official Payouts & Proofs
               </h4>
               <p className="text-[10px] font-bold text-sky-700 mt-0.5">
-                View real on-chain transaction proofs @AppleFarmPayouts
+                View real on-chain transaction proofs
               </p>
             </div>
           </div>

@@ -86,7 +86,7 @@ export default function HomePage({
     };
   }, [user?.id]);
 
-  // 🤖 অনলাইন অটো-হার্ভেস্ট লুপ: বট অ্যাক্টিভ থাকলে স্বয়ংক্রিয়ভাবে পাকা আপেল তোলা হবে
+  // 🤖 অনলাইন অটো-হার্ভেস্ট লুপ: বট অ্যাক্টিভ থাকলে স্বয়ংক্রিয়ভাবে দ্রুত পাকা আপেল সংগ্রহ করবে
   useEffect(() => {
     if (!botState.active) return;
 
@@ -96,7 +96,7 @@ export default function HomePage({
         const target = availableApples[Math.floor(Math.random() * availableApples.length)];
         triggerAppleHarvest(target);
       }
-    }, 7000); // প্রতি ৭ সেকেন্ডে স্বয়ংক্রিয় ১টি আপেল সংগ্রহ
+    }, 2000); // ⚡ প্রতি ২ সেকেন্ডে স্বয়ংক্রিয় দ্রুত ১টি আপেল সংগ্রহ (Fast Harvest)
 
     return () => clearInterval(autoHarvestInterval);
   }, [botState.active, harvestedApples]);

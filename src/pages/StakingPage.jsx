@@ -305,7 +305,7 @@ export default function StakingPage({
 
     // Deduct user balance
     if (onUpdateUserBalance) {
-      onUpdateUserBalance({ apples: -amount });
+      onUpdateUserBalance({ apples: -amount, isDelta: true });
     }
 
     // Record in Transaction History
@@ -373,7 +373,7 @@ export default function StakingPage({
 
     // Credit back to user balance (Principal + Profit)
     if (onUpdateUserBalance) {
-      onUpdateUserBalance({ apples: totalClaimAmount });
+      onUpdateUserBalance({ apples: totalClaimAmount, isDelta: true });
     }
 
     // Record in Transaction History
