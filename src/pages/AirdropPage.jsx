@@ -504,7 +504,6 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-[#192f52] leading-tight">Join Community</h3>
-                    <p className="text-[11px] font-bold text-[#567396]">Official Telegram Channel</p>
                   </div>
                 </div>
 
@@ -541,7 +540,6 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-[#192f52] leading-tight">Follow on X</h3>
-                    <p className="text-[11px] font-bold text-[#567396]">@AppleFarmTMA</p>
                   </div>
                 </div>
 
