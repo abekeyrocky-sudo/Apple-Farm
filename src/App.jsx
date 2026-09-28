@@ -296,26 +296,32 @@ export default function App() {
     };
   }, [user.id]);
 
+  const hasCheckedOfflineRef = React.useRef(false);
+
   // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড ও অফলাইন অটো-বট পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
   useEffect(() => {
     if (!isLoading && user?.id) {
-      // ১. অটো-বট অফলাইন হার্ভেস্ট চেক
-      const offlineData = calculateOfflineHarvest(user);
-      if (offlineData.pendingApples > 0) {
-        setOfflineHarvest(offlineData);
-        setIsAutoBotModalOpen(true);
-      } else {
-        // ২. যদি অফলাইন আর্নিং না থাকে তবে ডেইলী রিওয়ার্ড চেক
-        const dailyStatus = getDailyRewardStatus(user.id);
-        if (dailyStatus.canClaimToday) {
-          const timer = setTimeout(() => {
-            setIsDailyRewardOpen(true);
-          }, 1000);
-          return () => clearTimeout(timer);
+      if (!hasCheckedOfflineRef.current) {
+        // ১. অটো-বট অফলাইন হার্ভেস্ট চেক
+        const offlineData = calculateOfflineHarvest(user);
+        if (offlineData.pendingApples > 0) {
+          hasCheckedOfflineRef.current = true;
+          setOfflineHarvest(offlineData);
+          setIsAutoBotModalOpen(true);
+        } else if (user.autoBot !== undefined) {
+          // Firebase sync সম্পন্ন হয়েছে এবং অফলাইন রিওয়ার্ড নেই, ডেইলী রিওয়ার্ড চেক
+          hasCheckedOfflineRef.current = true;
+          const dailyStatus = getDailyRewardStatus(user.id);
+          if (dailyStatus.canClaimToday) {
+            const timer = setTimeout(() => {
+              setIsDailyRewardOpen(true);
+            }, 1000);
+            return () => clearTimeout(timer);
+          }
         }
       }
     }
-  }, [isLoading, user?.id]);
+  }, [isLoading, user?.id, user?.autoBot]);
 
   // 🤖 অটো-বটের অফলাইন হার্ভেস্ট ক্লেইম হ্যান্ডলার
   const handleAutoBotHarvestClaim = (amount) => {

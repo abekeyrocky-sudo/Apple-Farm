@@ -95,11 +95,21 @@ export const calculateOfflineHarvest = (user) => {
   const botState = getAutoBotState(user);
   if (!botState.active) return { pendingApples: 0, offlineMinutes: 0 };
 
-  const lastActive = getStoredJson(BASE_LAST_ACTIVE_KEY, user.id, Date.now());
-  const now = Date.now();
-  const diffMs = now - Number(lastActive);
+  // ১. লোকাল স্টোরেজ অথবা ডাটাবেসের lastActiveTime চেক
+  const localLastActive = getStoredJson(BASE_LAST_ACTIVE_KEY, user.id, null);
+  const dbLastActive = user?.lastActiveTime || user?.autoBot?.activatedAt || null;
+  const lastActiveTimestamp = Number(localLastActive || dbLastActive);
 
-  // ১০ সেকেন্ডের কম হলে অফলাইন ক্লেইম দরকার নেই
+  if (!lastActiveTimestamp || isNaN(lastActiveTimestamp)) {
+    // প্রথমবারের জন্য বর্তমান সময় রেকর্ড রাখা
+    updateLastActiveTime(user.id);
+    return { pendingApples: 0, offlineMinutes: 0 };
+  }
+
+  const now = Date.now();
+  const diffMs = now - lastActiveTimestamp;
+
+  // ১০ সেকেন্ডের কম হলে অফলাইন জমার দরকার নেই
   if (diffMs < 10000) {
     return { pendingApples: 0, offlineMinutes: 0 };
   }
@@ -110,11 +120,11 @@ export const calculateOfflineHarvest = (user) => {
   if (botState.expiresAt && botState.expiresAt !== 'lifetime') {
     const expiresAtMs = Number(botState.expiresAt);
     if (expiresAtMs < now) {
-      effectiveMs = Math.max(0, expiresAtMs - Number(lastActive));
+      effectiveMs = Math.max(0, expiresAtMs - lastActiveTimestamp);
     }
   }
 
-  // সর্বোচ্চ অফলাইন জমার লিমিট ২৪ ঘণ্টা (যাতে ব্যালেন্স এক্সপ্লয়েট না হয়)
+  // সর্বোচ্চ অফলাইন জমার লিমিট ২৪ ঘণ্টা
   const MAX_OFFLINE_MS = 24 * 60 * 60 * 1000;
   effectiveMs = Math.min(effectiveMs, MAX_OFFLINE_MS);
 

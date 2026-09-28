@@ -661,7 +661,7 @@ export default function WatchAdsPage({
             <div className="w-6 h-6 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center">
               <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
             </div>
-            <span>{isWatching ? `Watching Ad... (${countdown}s)` : 'Watch Ad (+10 Apples)'}</span>
+            <span>{isWatching ? `Watching Ad... (${countdown}s)` : 'Watch Ad'}</span>
           </button>
         )}
 

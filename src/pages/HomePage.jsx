@@ -76,12 +76,26 @@ export default function HomePage({
   // হার্টবিট: ইউজারের লাস্ট অ্যাক্টিভ টাইম রেকর্ড
   useEffect(() => {
     if (!user?.id) return;
-    updateLastActiveTime(user.id);
     const interval = setInterval(() => {
       updateLastActiveTime(user.id);
     }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        updateLastActiveTime(user.id);
+      }
+    };
+    const handleBeforeUnload = () => {
+      updateLastActiveTime(user.id);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       updateLastActiveTime(user.id);
     };
   }, [user?.id]);

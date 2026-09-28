@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sprout, ArrowDownLeft, ArrowUpRight, Coins, Wallet } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import appleJettonImg from '../../assets/apple-jetton.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
@@ -132,6 +133,23 @@ export default function WalletPage({
               <img src={diamondImg} alt="Diamond" className="w-4 h-4 object-contain" />
               <span className="text-base font-black text-[#192f52]">{Number(user.diamonds || 0).toFixed(1)}</span>
             </div>
+          </div>
+
+          {/* $APPLE Token Row */}
+          <div className="bg-gradient-to-r from-emerald-50/90 via-sky-50/90 to-emerald-50/90 backdrop-blur-md rounded-2xl p-3 px-4 border border-emerald-200/80 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={appleJettonImg} alt="Apple Token" className="w-8 h-8 object-contain filter drop-shadow-sm" />
+              <span className="text-sm font-extrabold text-[#192f52]">$APPLE Token</span>
+            </div>
+            <a
+              href="https://app.ston.fi/pools/EQB2OPxkcWaWgwvwa0Iurob2n8TORDLX7hdl-RsFkKusg4fuXYg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1"
+            >
+              <span>STON.fi Pool</span>
+              <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
+            </a>
           </div>
 
         </div>
