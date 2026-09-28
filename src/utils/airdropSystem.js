@@ -17,7 +17,7 @@ export const AIRDROP_CONFIG = {
   
   // DEX & Explorer URLs
   stonfiSwapUrl: 'https://app.ston.fi/swap?ft=GRAM&tt=EQDz-8DoxesPcoqzU9FJmOEdYf4ri9rDwaVTtDVEB_rZ4GHC',
-  stonfiPoolUrl: 'https://app.ston.fi/pools/EQB2OPxkcWaWgwvwa0Iurob2n8TORDLX7hdl-RsFkKusg4fuXYg',
+  stonfiPoolUrl: 'https://app.ston.fi/pools/EQB2OPxkWaWgwwao0urob2n8T08DLXZhdLRsFkKusg4fuXYg',
   tonviewerUrl: 'https://tonviewer.com/EQDz-8DoxesPcoqzU9FJmOEdYf4ri9rDwaVTtDVEB_rZ4GHC',
   tonscanUrl: 'https://tonscan.org/token/EQDz-8DoxesPcoqzU9FJmOEdYf4ri9rDwaVTtDVEB_rZ4GHC#events',
   

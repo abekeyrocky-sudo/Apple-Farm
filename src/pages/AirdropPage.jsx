@@ -30,6 +30,7 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import appleJettonImg from '../../assets/apple-jetton.png';
+import verifyBadgeImg from '../../assets/verify-badge.png';
 import { soundManager } from '../utils/soundManager';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
@@ -806,6 +807,40 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                   <Info className="w-3.5 h-3.5 text-blue-500" />
                   <span>View Calculation Criteria</span>
                 </button>
+
+                {/* Verified Farmer Advantage Tag */}
+                {(user?.isVerified || user?.verifiedBadge) ? (
+                  <div className="mt-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-2.5 flex items-center justify-between text-left">
+                    <div className="flex items-center gap-2">
+                      <img src={verifyBadgeImg} alt="Verified Badge" className="w-5 h-5 object-contain flex-shrink-0" />
+                      <div>
+                        <span className="text-[11px] font-black text-blue-900 block leading-tight">Verified Farmer Advantage</span>
+                        <span className="text-[10px] font-bold text-blue-600">Active • +15% Extra Allocation Priority Weight</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-black bg-blue-600 text-white px-2 py-0.5 rounded-full flex-shrink-0">
+                      VIP
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex items-center justify-between text-left">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">
+                        💎
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-black text-slate-700 block leading-tight">Standard Farmer Tier</span>
+                        <span className="text-[10px] font-bold text-slate-400">Get Verify Badge in Market for +15% Bonus</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => onNavigate?.('market')} 
+                      className="text-[9px] font-black bg-slate-800 text-white px-2 py-0.5 rounded-full flex-shrink-0 hover:bg-black cursor-pointer active:scale-95"
+                    >
+                      Unlock
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1110,6 +1145,16 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                 <div>
                   <h4 className="text-xs font-black text-[#192f52]">Verified TON Wallet</h4>
                   <p className="text-[10px] font-bold text-purple-700">Anti-bot verified wallet bonus</p>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <img src={verifyBadgeImg} alt="Badge" className="w-5 h-5 object-contain" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-[#192f52]">Verified Farmer Status</h4>
+                  <p className="text-[10px] font-bold text-blue-700">+15% allocation weight priority</p>
                 </div>
               </div>
             </div>

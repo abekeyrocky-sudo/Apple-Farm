@@ -33,6 +33,7 @@ import { getPartnerTasksFromDB, savePartnerTaskToDB, incrementPartnerTaskJoinedI
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
 import { getDailyRewardStatus } from '../components/DailyRewardModal';
+import { openGigaOfferWall } from '../utils/gigaOfferwall';
 
 // X / Twitter SVG Component
 const TwitterIcon = ({ className = "w-5 h-5" }) => (
@@ -107,13 +108,29 @@ export default function TaskPage({
   const [standardTasks, setStandardTasks] = useState(() => {
     const defaultTasks = [
       {
-        id: 'task_1',
-        title: 'Watch 5 Ads',
-        reward: '+50 Apples',
-        rewardAmount: 50,
-        rewardCurrency: 'apple',
+        id: 'task_offerwall',
+        title: 'Offerwall Tasks',
+        reward: 'Up to 10 Diamonds',
+        rewardAmount: 10,
+        rewardCurrency: 'diamond',
         type: 'Daily',
-        status: 'Go', // 'Go' | 'Claim' | 'Claimed'
+        status: 'Go',
+        iconBg: 'bg-indigo-50 border-indigo-200',
+        actionUrl: 'offerwall',
+        icon: (
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-inner">
+            <Sparkles className="w-5 h-5 text-amber-300 fill-amber-300" />
+          </div>
+        ),
+      },
+      {
+        id: 'task_1',
+        title: 'Watch Ads',
+        reward: 'Up to 50 Diamonds',
+        rewardAmount: 50,
+        rewardCurrency: 'diamond',
+        type: 'Daily',
+        status: 'Go',
         iconBg: 'bg-blue-50 border-blue-200',
         actionUrl: 'ads',
         icon: (
@@ -234,15 +251,39 @@ export default function TaskPage({
           </div>
         ),
       },
+      {
+        id: 'task_monetag_pop',
+        title: 'Daily Bonus Ad',
+        reward: '+100 Apples',
+        rewardAmount: 100,
+        rewardCurrency: 'apple',
+        type: 'Daily',
+        status: 'Go',
+        iconBg: 'bg-rose-50 border-rose-200',
+        actionUrl: 'monetag_pop',
+        icon: (
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center text-white shadow-inner">
+            <Sparkles className="w-5 h-5 text-amber-200 fill-amber-200" />
+          </div>
+        ),
+      },
     ];
 
     const uid = user?.id;
     const dailyStatus = getDailyRewardStatus(uid);
+    const todayStr = new Date().toDateString();
+    const isPopClaimedToday = getStoredJson(`apple_farm_daily_pop_${todayStr}`, uid, false);
     const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
     return defaultTasks.map(t => {
       let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_1') {
+        status = 'Go';
+      }
       if (t.id === 'task_6') {
         status = dailyStatus.canClaimToday ? 'Go' : 'Claimed';
+      }
+      if (t.id === 'task_monetag_pop') {
+        status = isPopClaimedToday ? 'Claimed' : 'Go';
       }
       return { ...t, status };
     });
@@ -273,11 +314,19 @@ export default function TaskPage({
     if (!user?.id) return;
     const uid = user.id;
     const dailyStatus = getDailyRewardStatus(uid);
+    const todayStr = new Date().toDateString();
+    const isPopClaimedToday = getStoredJson(`apple_farm_daily_pop_${todayStr}`, uid, false);
     const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
     setStandardTasks(prev => prev.map(t => {
       let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_1') {
+        status = 'Go';
+      }
       if (t.id === 'task_6') {
         status = dailyStatus.canClaimToday ? 'Go' : 'Claimed';
+      }
+      if (t.id === 'task_monetag_pop') {
+        status = isPopClaimedToday ? 'Claimed' : 'Go';
       }
       return { ...t, status };
     }));
@@ -406,6 +455,95 @@ export default function TaskPage({
 
       if (task.actionUrl === 'daily_reward') {
         if (onOpenDailyReward) onOpenDailyReward();
+        return;
+      }
+
+      if (task.actionUrl === 'offerwall' || task.id === 'task_offerwall') {
+        openGigaOfferWall();
+        return;
+      }
+
+      // Monetag Rewarded Popup Ad Task
+      if (task.actionUrl === 'monetag_pop' || task.id === 'task_monetag_pop') {
+        const getMonetagFn = () => {
+          return typeof window.show_11914279 === 'function' 
+            ? window.show_11914279 
+            : (typeof show_11914279 === 'function' ? show_11914279 : null);
+        };
+
+        const grantPopReward = () => {
+          const todayStr = new Date().toDateString();
+          setStoredJson(`apple_farm_daily_pop_${todayStr}`, user?.id, true);
+
+          setStandardTasks(prev => {
+            const updated = prev.map(t => t.id === task.id ? { ...t, status: 'Claimed' } : t);
+            return updated;
+          });
+
+          soundManager.play('reward');
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+
+          if (onRewardClaim) {
+            onRewardClaim(task);
+          } else if (onUpdateUser) {
+            onUpdateUser({
+              apples: (user.apples || 0) + task.rewardAmount,
+            });
+          }
+
+          addTransaction({
+            userId: user.id,
+            title: 'Daily Bonus Ad',
+            subtitle: 'Monetag Rewarded Popup',
+            amount: `+${task.rewardAmount}`,
+            currency: 'apple',
+            type: 'earn',
+            category: 'task',
+            status: 'Completed'
+          });
+
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'reward',
+              title: 'Bonus Apples Earned!',
+              message: `Awesome! You received +${task.rewardAmount} Apples for watching the Daily Bonus Ad.`,
+              rewardAmount: task.rewardAmount,
+              rewardType: 'apple'
+            });
+          }
+        };
+
+        const monetagFn = getMonetagFn();
+        if (monetagFn) {
+          setVerifyingTaskId(task.id);
+          try {
+            monetagFn('pop')
+              .then(() => {
+                setVerifyingTaskId(null);
+                grantPopReward();
+              })
+              .catch((err) => {
+                console.warn('[Monetag Pop Closed/Error]:', err);
+                setVerifyingTaskId(null);
+                if (onShowPopup) {
+                  onShowPopup({
+                    type: 'warn',
+                    title: 'Ad Incomplete',
+                    message: 'Ad was closed early or could not be loaded. Please watch the ad to receive your reward.',
+                    confirmText: 'OK'
+                  });
+                }
+              });
+          } catch (e) {
+            setVerifyingTaskId(null);
+            grantPopReward();
+          }
+        } else {
+          // Dev / Fallback
+          grantPopReward();
+        }
         return;
       }
 
@@ -1076,7 +1214,7 @@ export default function TaskPage({
                   <h3 className="text-sm font-extrabold text-[#192f52] leading-snug">
                     {task.title}
                   </h3>
-                  <p className="text-xs font-bold text-[#4c739e]">
+                  <p className={`text-xs font-bold ${task.rewardCurrency === 'diamond' ? 'text-sky-600' : 'text-[#4c739e]'}`}>
                     {task.reward}
                   </p>
                 </div>

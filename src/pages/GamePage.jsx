@@ -78,7 +78,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
         onShowPopup({
           type: 'info',
           title: 'No Spins Left',
-          message: 'Get 50 extra spins voucher from Market (0.18 GRAM) or invite friends to get +1 spin per referral!',
+          message: 'Get 50 extra spins voucher from Market or invite friends to get +1 spin per referral!',
           confirmText: 'Get 50x Voucher',
           cancelText: 'Invite Friends',
           onConfirm: () => onNavigate?.('market'),
@@ -127,10 +127,36 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
       }
     }, 140);
 
-    // র্যান্ডম রোটেশন (কমপক্ষে ৫ চক্কর + র্যান্ডম অ্যাঙ্গেল)
-    const extraRounds = 5 * 360;
-    const randomAngle = Math.floor(Math.random() * 360);
-    const totalRotation = rotation + extraRounds + randomAngle;
+    // 🎯 500 Diamonds (Index 0)-এ পড়ার চান্স ১০০% জিরো (0%)
+    // শুধুমাত্র Apple স্লাইসগুলোতেই (Index 1 থেকে 6) ল্যান্ড করবে:
+    // Index 1: 100 Apples (30%)
+    // Index 4: 200 Apples (25%)
+    // Index 5: 200 Apples (20%)
+    // Index 6: 300 Apples (15%)
+    // Index 2/7: 500 Apples (10%)
+    const rand = Math.random() * 100;
+    let targetIndex;
+    if (rand < 30) {
+      targetIndex = 1; // 100 Apples
+    } else if (rand < 55) {
+      targetIndex = 3; // 200 Apples
+    } else if (rand < 75) {
+      targetIndex = 4; // 200 Apples
+    } else if (rand < 90) {
+      targetIndex = 5; // 300 Apples
+    } else {
+      targetIndex = Math.random() < 0.5 ? 2 : 6; // 500 Apples
+    }
+
+    // হুইল অ্যাঙ্গেল ক্যালকুলেশন (৭টি স্লাইসের টপ পয়েন্টারে ল্যান্ড করার জন্য)
+    const sliceSize = 360 / SLICES.length;
+    const sliceCenterAngle = (targetIndex * sliceSize) + (sliceSize / 2);
+    const jitter = (Math.random() - 0.5) * (sliceSize * 0.35); // স্লাইসের নিরাপদ মাঝখানে
+    const targetPointerAngle = (sliceCenterAngle + jitter + 360) % 360;
+    const stopDeg = (360 - targetPointerAngle + 360) % 360;
+    const extraRounds = (5 + Math.floor(Math.random() * 2)) * 360;
+    const currentMod = rotation % 360;
+    const totalRotation = rotation + (360 - currentMod) + extraRounds + stopDeg;
 
     setRotation(totalRotation);
 
@@ -142,12 +168,8 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
       // বিজয়ী সাউন্ড
       soundManager.playSuccessSound();
 
-      // বিজয়ী স্লাইস ক্যালকুলেশন
-      const actualDeg = (totalRotation % 360);
-      const sliceSize = 360 / SLICES.length;
-      // টপ পয়েন্টারের সাপেক্ষে ইনডেক্স
-      const winningIndex = Math.floor(((360 - actualDeg + (sliceSize / 2)) % 360) / sliceSize);
-      const wonItem = SLICES[winningIndex] || SLICES[0];
+      // বিজয়ী আইটেম (নিশ্চিতভাবে Apple স্লাইস)
+      const wonItem = SLICES[targetIndex];
 
       // কনফেটি ফায়ার
       confetti({
@@ -202,7 +224,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
           ) : (
             <>
               <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
-              <span className="text-xs font-black text-amber-800">50x Voucher (0.18 GRAM)</span>
+              <span className="text-xs font-black text-amber-800">50x Voucher</span>
             </>
           )}
         </div>
@@ -352,7 +374,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
           ) : hasSpins ? (
             `SPIN (${availableInviteSpins} Left)`
           ) : (
-            'Get 50x Spin Voucher (0.18 GRAM)'
+            'Get 50x Spin Voucher'
           )}
         </button>
 
@@ -374,7 +396,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
                   </>
                 ) : (
                   <>
-                    <span>50x Spin Voucher = 0.18 GRAM</span>
+                    <span>50x Spin Voucher</span>
                     <span className="text-[10px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">Best Deal</span>
                   </>
                 )}

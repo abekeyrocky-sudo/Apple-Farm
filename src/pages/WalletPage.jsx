@@ -142,7 +142,7 @@ export default function WalletPage({
               <span className="text-sm font-extrabold text-[#192f52]">$APPLE Token</span>
             </div>
             <a
-              href="https://app.ston.fi/pools/EQB2OPxkcWaWgwvwa0Iurob2n8TORDLX7hdl-RsFkKusg4fuXYg"
+              href="https://app.ston.fi/pools/EQB2OPxkWaWgwwao0urob2n8T08DLXZhdLRsFkKusg4fuXYg"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-[11px] px-3 py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1"

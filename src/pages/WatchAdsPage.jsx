@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Gift, Sparkles, Star, Trophy, CheckCircle2, X, RotateCw, Clock } from 'lucide-react';
+import { Play, Gift, Sparkles, Star, Trophy, CheckCircle2, X, RotateCw, Clock, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
@@ -52,7 +52,7 @@ export default function WatchAdsPage({
   onWinReward, 
   onShowPopup 
 }) {
-  const maxDailyAds = 20;
+  const maxDailyAds = 10;
   const today = new Date().toDateString();
 
   // লোকাল স্টোরেজ থেকে ডেইলি অ্যাড স্টেট লোড
@@ -95,6 +95,7 @@ export default function WatchAdsPage({
   const [copiedRef, setCopiedRef] = useState(false);
 
   const [isWatching, setIsWatching] = useState(false);
+  const [adLoadingText, setAdLoadingText] = useState('');
   const [countdown, setCountdown] = useState(3);
   const [isWheelModalOpen, setIsWheelModalOpen] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -106,7 +107,7 @@ export default function WatchAdsPage({
 
   const adsWatched = adState.watched || 0;
   const isWheelClaimed = adState.isWheelClaimed || false;
-  const is20AdsCompleted = adsWatched >= maxDailyAds;
+  const isDailyAdsCompleted = adsWatched >= maxDailyAds;
 
   // লাইভ মধ্যরাত কাউন্টডাউন টাইমার ইফেক্ট
   useEffect(() => {
@@ -345,7 +346,7 @@ export default function WatchAdsPage({
     setStoredJson(BASE_JACKPOT_STORAGE_KEY, user?.id, resetJackpot);
   };
 
-  // অ্যাড দেখা হ্যান্ডলার
+  // অ্যাড দেখা হ্যান্ডলার (GigaPub + Monetag Dual Ad Networks)
   const handleWatchAd = () => {
     if (adsWatched >= maxDailyAds || isWatching) return;
 
@@ -354,44 +355,166 @@ export default function WatchAdsPage({
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
 
-    setIsWatching(true);
-    let timer = 3;
-    setCountdown(timer);
+    const grantAdReward = () => {
+      const nextWatched = adsWatched + 1;
+      const nextState = {
+        ...adState,
+        date: today,
+        watched: nextWatched,
+        isWheelClaimed: nextWatched >= maxDailyAds ? false : adState.isWheelClaimed
+      };
+      setAdState(nextState);
+      setStoredJson(BASE_ADS_STORAGE_KEY, user?.id, nextState);
 
-    const interval = setInterval(() => {
-      timer -= 1;
+      if (onRewardEarned) {
+        onRewardEarned(10);
+      }
+
+      soundManager.playSuccessSound();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+
+      if (nextWatched === maxDailyAds) {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        setTimeout(() => {
+          setIsWheelModalOpen(true);
+        }, 600);
+      }
+    };
+
+    const runFallbackCountdown = () => {
+      setIsWatching(true);
+      setAdLoadingText('');
+      let timer = 3;
       setCountdown(timer);
-      if (timer <= 0) {
-        clearInterval(interval);
-        setIsWatching(false);
-        
-        const nextWatched = adsWatched + 1;
-        const nextState = {
-          ...adState,
-          date: today,
-          watched: nextWatched,
-          isWheelClaimed: nextWatched >= maxDailyAds ? false : adState.isWheelClaimed
-        };
-        setAdState(nextState);
-        setStoredJson(BASE_ADS_STORAGE_KEY, user?.id, nextState);
 
-        if (onRewardEarned) {
-          onRewardEarned(10);
+      const interval = setInterval(() => {
+        timer -= 1;
+        setCountdown(timer);
+        if (timer <= 0) {
+          clearInterval(interval);
+          setIsWatching(false);
+          setAdLoadingText('');
+          grantAdReward();
         }
+      }, 1000);
+    };
 
-        soundManager.playSuccessSound();
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    // Helper to give GigaPub SDK 1-5 seconds to load if needed
+    const waitForGigaSdk = (maxWaitMs = 5000) => {
+      return new Promise((resolve) => {
+        if (typeof window.showGiga === 'function') {
+          return resolve(window.showGiga);
         }
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+          if (typeof window.showGiga === 'function') {
+            clearInterval(checkInterval);
+            resolve(window.showGiga);
+          } else if (Date.now() - startTime >= maxWaitMs) {
+            clearInterval(checkInterval);
+            resolve(null);
+          }
+        }, 300);
+      });
+    };
 
-        if (nextWatched === maxDailyAds) {
-          confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-          setTimeout(() => {
-            setIsWheelModalOpen(true);
-          }, 600);
+    const getMonetagFn = () => {
+      return typeof window.show_11914279 === 'function' 
+        ? window.show_11914279 
+        : (typeof show_11914279 === 'function' ? show_11914279 : null);
+    };
+
+    // Explicit Ad Scheduling:
+    // Ad 1, 3, 5, 7, 9 = GigaPub Ads
+    // Ad 2, 4, 6, 8, 10 = Monetag Ads
+    const currentAdNumber = adsWatched + 1; // 1st to 10th ad
+    const isGigaPubTurn = currentAdNumber % 2 !== 0; // 1, 3, 5, 7, 9 -> GigaPub
+
+    const playMonetagAd = () => {
+      setIsWatching(true);
+      setAdLoadingText('Loading Monetag Ad...');
+      const monetagFn = getMonetagFn();
+
+      if (monetagFn) {
+        try {
+          monetagFn()
+            .then(() => {
+              setIsWatching(false);
+              setAdLoadingText('');
+              grantAdReward();
+            })
+            .catch((err) => {
+              console.warn('[Monetag Ad Error]:', err);
+              // Waterfall to GigaPub if Monetag fails
+              playGigaAd();
+            });
+        } catch (err) {
+          playGigaAd();
+        }
+      } else {
+        // Monetag not loaded, fallback to GigaPub
+        playGigaAd();
+      }
+    };
+
+    const playGigaAd = async () => {
+      setIsWatching(true);
+      setAdLoadingText('Loading GigaPub Ad (1-5s)...');
+
+      // Give GigaPub 1-5 seconds buffer to fetch and load ad
+      const gigaSdkFn = await waitForGigaSdk(5000);
+
+      if (gigaSdkFn) {
+        setAdLoadingText('Showing Ad...');
+        try {
+          gigaSdkFn()
+            .then(() => {
+              setIsWatching(false);
+              setAdLoadingText('');
+              grantAdReward();
+            })
+            .catch((err) => {
+              console.warn('[GigaPub Ad Error]:', err);
+              const monetagFn = getMonetagFn();
+              if (monetagFn) {
+                // Waterfall to Monetag if GigaPub had no ad
+                playMonetagAd();
+              } else {
+                setIsWatching(false);
+                setAdLoadingText('');
+                if (onShowPopup) {
+                  onShowPopup({
+                    type: 'warn',
+                    title: 'Ad Incomplete',
+                    message: 'Ad was closed early or unavailable. Please watch the full ad to receive your reward.',
+                    confirmText: 'OK'
+                  });
+                }
+              }
+            });
+        } catch (err) {
+          const monetagFn = getMonetagFn();
+          if (monetagFn) playMonetagAd();
+          else runFallbackCountdown();
+        }
+      } else {
+        // GigaPub timed out after 5s, waterfall to Monetag
+        const monetagFn = getMonetagFn();
+        if (monetagFn) {
+          playMonetagAd();
+        } else {
+          runFallbackCountdown();
         }
       }
-    }, 1000);
+    };
+
+    if (isGigaPubTurn) {
+      playGigaAd();
+    } else {
+      playMonetagAd();
+    }
   };
 
   // 🎮 FADED WHEEL LIGHT CHASING ANIMATION (Center Spin Button Triggered)
@@ -406,8 +529,23 @@ export default function WatchAdsPage({
       window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
     }
 
-    // উইনিং আইটেম সিলেক্ট করা (র‍্যান্ডম বা ওয়েইটেড)
-    const winningIndex = Math.floor(Math.random() * FADED_ITEMS.length);
+    // 🎯 সুনির্দিষ্ট প্রোবাবিলিটি বণ্টন:
+    // ❌ ০% চান্স (কখনোই পড়বে না): +50 Diamonds (id: 0), +20 Diamonds (id: 2), +10 Diamonds (id: 4)
+    // ✔️ ১৫% চান্স: +5 Diamonds (id: 6)
+    // 🍎 ৮৫% চান্স: Apples (id: 7, 5, 3, 1)
+    const rand = Math.random() * 100;
+    let winningIndex;
+    if (rand < 15) {
+      winningIndex = 6; // +5 Diamonds (15% Chance)
+    } else if (rand < 50) {
+      winningIndex = 7; // +100 Apples (35% Chance)
+    } else if (rand < 75) {
+      winningIndex = 5; // +250 Apples (25% Chance)
+    } else if (rand < 90) {
+      winningIndex = 3; // +500 Apples (15% Chance)
+    } else {
+      winningIndex = 1; // +1000 Apples (10% Chance)
+    }
     const targetPrize = FADED_ITEMS[winningIndex];
 
     // কমপক্ষে ৪ ফুল রাউন্ড + উইনিং পয়েন্ট পর্যন্ত স্টেপ সংখ্যা
@@ -561,7 +699,7 @@ export default function WatchAdsPage({
           </div>
 
           <p className="text-xs font-bold text-[#32527b]">
-            Watch 20 Ads = Up to 50 Diamonds
+            Watch 10 Ads = Up to 50 Diamonds
           </p>
         </div>
 
@@ -628,7 +766,7 @@ export default function WatchAdsPage({
       {/* ----------------- BOTTOM ACTION SECTION ----------------- */}
       <div className="space-y-3 pb-4">
         
-        {is20AdsCompleted ? (
+        {isDailyAdsCompleted ? (
           isWheelClaimed ? (
             <button 
               disabled
@@ -654,22 +792,30 @@ export default function WatchAdsPage({
             disabled={isWatching}
             className={`w-full py-3.5 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2.5 transition-all shadow-[0_4px_0_#145a32] border-t border-emerald-300 active:scale-95 active:shadow-[0_1px_0_#145a32] cursor-pointer ${
               isWatching
-                ? 'bg-gray-400 cursor-not-allowed shadow-[0_4px_0_#6b7280]'
+                ? 'bg-emerald-700/80 cursor-not-allowed shadow-[0_4px_0_#0f4024]'
                 : 'bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105'
             }`}
           >
-            <div className="w-6 h-6 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center">
-              <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
-            </div>
-            <span>{isWatching ? `Watching Ad... (${countdown}s)` : 'Watch Ad'}</span>
+            {isWatching ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                <span>{adLoadingText || `Watching Ad... (${countdown}s)`}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-6 h-6 rounded-lg bg-white/20 border border-white/40 flex items-center justify-center">
+                  <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                </div>
+                <span>Watch Ad</span>
+              </>
+            )}
           </button>
         )}
 
-        <div className="bg-[#e4f3ff] border border-sky-200/80 rounded-2xl py-2.5 px-4 flex items-center justify-center gap-2 shadow-sm">
-          <Star className="w-4 h-4 text-amber-500 fill-amber-400 flex-shrink-0" />
-          <span className="text-xs font-extrabold text-[#237cd7]">
-            More apple earn task coming soon
-          </span>
+        {/* Coming Soon Notice Pill */}
+        <div className="w-full py-2.5 px-4 rounded-2xl bg-[#eaf4fd] border border-sky-200/80 flex items-center justify-center gap-2 text-xs font-bold text-[#32699e] shadow-sm">
+          <Star className="w-4 h-4 fill-amber-400 text-amber-400 shrink-0" />
+          <span>More apple earn task coming soon</span>
         </div>
 
       </div>
@@ -694,7 +840,7 @@ export default function WatchAdsPage({
             {/* Header Badge */}
             <div className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-[11px] font-black text-amber-700 mb-2 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-              <span>20 Ads Daily Reward Unlocked!</span>
+              <span>10 Ads Daily Reward Unlocked!</span>
             </div>
 
             <h3 className="text-lg font-black text-[#192f52] text-center tracking-tight mb-1">

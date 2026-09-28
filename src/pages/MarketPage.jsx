@@ -5,6 +5,7 @@ import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import gramImg from '../../assets/gram.png';
+import verifyBadgeImg from '../../assets/verify-badge.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
@@ -251,14 +252,19 @@ export default function MarketPage({
     },
     {
       id: 6,
-      name: 'Rare Apple Seed',
+      name: 'Verify Badge',
       category: 'Items',
-      price: 549.0,
-      currency: 'diamond',
-      description: 'Plant a golden tree with 3x diamond drop chances.',
+      price: 0.1,
+      priceNano: '100000000', // 0.1 TON/GRAM in nanotons
+      currency: 'gram',
+      description: 'Official Verified Farmer status badge on your profile and leaderboards.',
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
-          <img src={appleImg} alt="Rare Apple" className="w-12 h-12 object-contain filter drop-shadow-[0_4px_8px_rgba(239,68,68,0.4)] animate-bounce-gentle" />
+          <img 
+            src={verifyBadgeImg} 
+            alt="Verify Badge" 
+            className="w-12 h-12 object-contain filter drop-shadow-[0_4px_10px_rgba(37,99,235,0.35)] hover:scale-105 transition-transform" 
+          />
         </div>
       ),
     },
@@ -281,8 +287,11 @@ export default function MarketPage({
       id: 8,
       name: '24h Super Harvester',
       category: 'Boosts',
-      price: 2000,
-      currency: 'apple',
+      price: 0.15,
+      priceNano: '150000000', // 0.15 TON/GRAM in nanotons
+      currency: 'gram',
+      durationMs: 24 * 60 * 60 * 1000,
+      tier: '24h',
       description: 'Collects apples automatically every minute for 24 hours.',
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md">
@@ -388,54 +397,148 @@ export default function MarketPage({
 
         await tonConnectUI.sendTransaction(transaction);
 
-        // 50টি স্পিন ভাউচার ইউজারের অ্যাকাউন্টে যোগ করা
-        const bonusVouchers = item.voucherSpins || 50;
-        const currentVouchers = Number(user.spinVouchers || 0);
-        const nextVouchers = currentVouchers + bonusVouchers;
+        if (item.id === 6 || item.name === 'Verify Badge') {
+          // Verify Badge হ্যান্ডলার
+          if (onUpdateUserBalance) {
+            onUpdateUserBalance({ isVerified: true, verifiedBadge: true });
+          }
+          if (user?.id) {
+            updateUserInDB(user.id, { isVerified: true, verifiedBadge: true });
+          }
 
-        if (onUpdateUserBalance) {
-          onUpdateUserBalance({ spinVouchers: nextVouchers });
-        }
-        if (user?.id) {
-          updateUserInDB(user.id, { spinVouchers: nextVouchers });
-        }
-
-        // ট্রানজাকশন হিস্ট্রি রেকর্ড
-        addTransaction({
-          userId: user.id,
-          title: item.name,
-          subtitle: `${item.price} GRAM Paid`,
-          amount: `-${item.price} GRAM`,
-          currency: 'gram',
-          type: 'spend',
-          category: 'spin_voucher',
-          status: 'Completed'
-        });
-
-        soundManager.playSuccessSound();
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-        }
-
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-
-        setPurchaseSuccess(item);
-        if (onShowPopup) {
-          onShowPopup({
-            type: 'reward',
-            title: '50 Spin Vouchers Added!',
-            message: 'You have received 50 Lucky Wheel Spins! Head to the Game page to spin now.',
-            confirmText: 'Spin Now',
-            onConfirm: () => onNavigate?.('game')
+          // ট্রানজাকশন হিস্ট্রি রেকর্ড
+          addTransaction({
+            userId: user.id,
+            title: item.name,
+            subtitle: `${item.price} GRAM Paid`,
+            amount: `-${item.price} GRAM`,
+            currency: 'gram',
+            type: 'spend',
+            category: 'badge',
+            status: 'Completed'
           });
+
+          soundManager.playSuccessSound();
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+
+          setPurchaseSuccess(item);
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'reward',
+              title: 'Verified Badge Activated!',
+              message: 'Congratulations! Your profile now has the official verified farmer badge.',
+              confirmText: 'Awesome!'
+            });
+          }
+        } else if (item.id === 8 || item.durationMs) {
+          // 24h Super Harvester (Auto-Bot) অ্যাক্টিভেশন
+          const now = Date.now();
+          const expiresAt = now + (item.durationMs || 24 * 60 * 60 * 1000);
+          const nextBotState = {
+            active: true,
+            tier: item.tier || '24h',
+            expiresAt: expiresAt,
+            activatedAt: now
+          };
+
+          saveAutoBotState(user.id, nextBotState);
+          if (onUpdateUserBalance) {
+            onUpdateUserBalance({ autoBot: nextBotState });
+          }
+          if (user?.id) {
+            updateUserInDB(user.id, { autoBot: nextBotState });
+          }
+
+          // ট্রানজাকশন হিস্ট্রি রেকর্ড
+          addTransaction({
+            userId: user.id,
+            title: item.name,
+            subtitle: `${item.price} GRAM Paid`,
+            amount: `-${item.price} GRAM`,
+            currency: 'gram',
+            type: 'spend',
+            category: 'bot',
+            status: 'Completed'
+          });
+
+          soundManager.playSuccessSound();
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+
+          setPurchaseSuccess(item);
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'reward',
+              title: '24h Super Harvester Active!',
+              message: 'Your 24h Auto-Farmer is now collecting apples automatically 24/7!',
+              confirmText: 'Awesome!'
+            });
+          }
+        } else {
+          // 50টি স্পিন ভাউচার ইউজারের অ্যাকাউন্টে যোগ করা
+          const bonusVouchers = item.voucherSpins || 50;
+          const currentVouchers = Number(user.spinVouchers || 0);
+          const nextVouchers = currentVouchers + bonusVouchers;
+
+          if (onUpdateUserBalance) {
+            onUpdateUserBalance({ spinVouchers: nextVouchers });
+          }
+          if (user?.id) {
+            updateUserInDB(user.id, { spinVouchers: nextVouchers });
+          }
+
+          // ট্রানজাকশন হিস্ট্রি রেকর্ড
+          addTransaction({
+            userId: user.id,
+            title: item.name,
+            subtitle: `${item.price} GRAM Paid`,
+            amount: `-${item.price} GRAM`,
+            currency: 'gram',
+            type: 'spend',
+            category: 'spin_voucher',
+            status: 'Completed'
+          });
+
+          soundManager.playSuccessSound();
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+
+          setPurchaseSuccess(item);
+          if (onShowPopup) {
+            onShowPopup({
+              type: 'reward',
+              title: '50 Spin Vouchers Added!',
+              message: 'You have received 50 Lucky Wheel Spins! Head to the Game page to spin now.',
+              confirmText: 'Spin Now',
+              onConfirm: () => onNavigate?.('game')
+            });
+          }
         }
         setTimeout(() => setPurchaseSuccess(null), 3000);
       } catch (err) {
-        console.error('Spin voucher purchase error:', err);
+        console.error('GRAM item purchase error:', err);
         setErrorMsg(err.message || 'Transaction was cancelled or rejected.');
         setTimeout(() => setErrorMsg(null), 4000);
       } finally {
@@ -683,26 +786,36 @@ export default function MarketPage({
                     {item.currency === 'apple' 
                       ? item.price.toLocaleString() 
                       : item.currency === 'gram'
-                      ? item.price.toFixed(2)
+                      ? item.price
                       : item.price.toFixed(1)}
                   </span>
                 </div>
 
                 {/* Buy Button */}
-                <button
-                  onClick={() => handleBuyItem(item)}
-                  disabled={isProcessingTx && processingPkgId === item.id}
-                  className="w-full py-1.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all mt-0.5 cursor-pointer flex items-center justify-center gap-1"
-                >
-                  {isProcessingTx && processingPkgId === item.id ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      <span className="text-[10px]">Wait...</span>
-                    </>
-                  ) : (
-                    'Buy'
-                  )}
-                </button>
+                {(item.id === 6 && (user?.isVerified || user?.verifiedBadge)) || (item.id === 8 && botState.active) ? (
+                  <button
+                    disabled
+                    className="w-full py-1.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-emerald-500 to-green-700 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all mt-0.5 flex items-center justify-center gap-1 cursor-default opacity-90"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Active</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleBuyItem(item)}
+                    disabled={isProcessingTx && processingPkgId === item.id}
+                    className="w-full py-1.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all mt-0.5 cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    {isProcessingTx && processingPkgId === item.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="text-[10px]">Wait...</span>
+                      </>
+                    ) : (
+                      'Buy'
+                    )}
+                  </button>
+                )}
               </div>
             ))}
           </div>

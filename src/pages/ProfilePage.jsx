@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ChevronRight, Award } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ChevronRight, Award, ArrowRight } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
+import verifyBadgeImg from '../../assets/verify-badge.png';
 import { calculateLevel, getLevelProgress, LEVEL_TIERS } from '../utils/levelSystem';
 import { AVATARS, getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
@@ -229,9 +230,19 @@ export default function ProfilePage({
 
           {/* User Details */}
           <div className="space-y-1 overflow-hidden flex-1">
-            <h1 className="text-2xl font-black text-[#192f52] tracking-tight truncate">
-              {user.name || 'Farmer'}
-            </h1>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-2xl font-black text-[#192f52] tracking-tight truncate">
+                {user.name || 'Farmer'}
+              </h1>
+              {(user?.isVerified || user?.verifiedBadge) && (
+                <img 
+                  src={verifyBadgeImg} 
+                  alt="Verified" 
+                  className="w-5 h-5 object-contain flex-shrink-0 filter drop-shadow-sm" 
+                  title="Verified Farmer"
+                />
+              )}
+            </div>
             <p className="text-xs font-bold text-[#567396] flex items-center gap-1">
               <span>ID:</span>
               <span className="font-mono text-[#192f52] font-extrabold">{telegramId}</span>
@@ -349,7 +360,32 @@ export default function ProfilePage({
               <button onClick={() => setShowRedeemModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">✕</button>
             </div>
 
-            {redeemSuccess ? (
+            {!(user?.isVerified || user?.verifiedBadge) ? (
+              <div className="py-2 text-center space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center relative">
+                  <img src={verifyBadgeImg} alt="Verify Badge" className="w-9 h-9 object-contain" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center text-white text-[10px] font-black shadow-xs">
+                    🔒
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-black text-[#192f52] text-sm">Verified Farmers Only!</h4>
+                  <p className="text-[11px] font-bold text-slate-500 mt-1 leading-relaxed">
+                    Promo codes can only be redeemed by verified accounts. Unlock your official <span className="text-blue-600 font-extrabold">Verify Badge</span> in the Apple Market.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRedeemModal(false);
+                    onNavigate?.('market');
+                  }}
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Get Verify Badge</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : redeemSuccess ? (
               <div className="py-4 text-center text-emerald-600 font-black text-sm flex flex-col items-center gap-1">
                 <span className="text-2xl">🎉</span>
                 <span>Code Redeemed! +500 Apples</span>
@@ -646,8 +682,27 @@ export default function ProfilePage({
             </div>
 
             <div className="space-y-2.5 text-xs">
+              {(user?.isVerified || user?.verifiedBadge) && (
+                <div className="p-3 bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 rounded-2xl border border-amber-200 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                      <span>⭐ Priority VIP Support</span>
+                    </span>
+                    <span className="text-[10px] font-extrabold text-amber-700">⚡ &lt; 5 min response</span>
+                  </div>
+                  <h4 className="font-black text-amber-950 text-xs">Direct VIP Support Channel</h4>
+                  <p className="text-[11px] text-amber-800 leading-snug">As a Verified Farmer, your support requests are routed with top priority.</p>
+                  <button
+                    onClick={() => window.open('https://t.me/AppleFarmCommunity', '_blank')}
+                    className="mt-1 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-105 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⚡ Contact VIP Support Group</span>
+                  </button>
+                </div>
+              )}
+
               <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 space-y-1">
-                <h4 className="font-black text-sky-900">💬 Official Telegram Support</h4>
+                <h4 className="font-black text-sky-900">💬 Community Telegram Support</h4>
                 <p className="text-[11px] text-sky-700">Join our 24/7 community group for quick help, announcements, and guides.</p>
                 <button
                   onClick={() => window.open('https://t.me/AppleFarmCommunity', '_blank')}

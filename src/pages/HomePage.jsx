@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Volume2, VolumeX, Bot, Zap, Sparkles } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import verifyBadgeImg from '../../assets/verify-badge.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
@@ -277,7 +278,17 @@ export default function HomePage({
               />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-[#1a2f4c] leading-tight drop-shadow-sm max-w-[120px] truncate">{user.name || 'Farmer'}</h2>
+              <div className="flex items-center gap-1">
+                <h2 className="text-base font-extrabold text-[#1a2f4c] leading-tight drop-shadow-sm max-w-[120px] truncate">{user.name || 'Farmer'}</h2>
+                {(user?.isVerified || user?.verifiedBadge) && (
+                  <img 
+                    src={verifyBadgeImg} 
+                    alt="Verified" 
+                    className="w-4 h-4 object-contain flex-shrink-0 filter drop-shadow-xs" 
+                    title="Verified Farmer"
+                  />
+                )}
+              </div>
               <span className="text-xs font-bold text-[#32527b]">Lv.{currentLevel}</span>
             </div>
           </div>

@@ -17,11 +17,13 @@ import CustomPopupModal from './components/CustomPopupModal';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
-import { calculateLevel } from './utils/levelSystem';
+import { calculateLevel, LEVEL_TIERS } from './utils/levelSystem';
+import confetti from 'canvas-confetti';
 import { soundManager } from './utils/soundManager';
 import { addTransaction } from './utils/transactionHistory';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL, OFFICIAL_PAYOUTS_URL } from './utils/telegramVerify';
 import { calculateOfflineHarvest, updateLastActiveTime, saveAutoBotState } from './utils/autoBotManager';
+import { initGigaOfferWall } from './utils/gigaOfferwall';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -175,6 +177,27 @@ export default function App() {
     }
   }, []);
 
+  // 🎁 GigaPub Offerwall SDK ইনিশিয়ালাইজেশন ও রিওয়ার্ড হ্যান্ডলার
+  useEffect(() => {
+    if (user?.id) {
+      initGigaOfferWall(user, ({ diamonds }) => {
+        const added = Number(diamonds) || 1.0;
+        setUser((prev) => ({
+          ...prev,
+          diamonds: Number(((prev.diamonds || 0) + added).toFixed(2)),
+        }));
+        showPopupModal({
+          type: 'reward',
+          title: 'Offer Completed! 💎',
+          message: `Congratulations! You received +${added.toFixed(1)} Diamonds from GigaPub Offerwall.`,
+          rewardAmount: added.toFixed(1),
+          rewardType: 'diamond',
+          confirmText: 'Collect',
+        });
+      });
+    }
+  }, [user?.id]);
+
   // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
   const checkCommunityMembership = async () => {
     if (!user.id) return;
@@ -297,6 +320,45 @@ export default function App() {
   }, [user.id]);
 
   const hasCheckedOfflineRef = React.useRef(false);
+  const prevLevelRef = React.useRef(null);
+
+  // 🏆 লেভেল আপ হলে স্বয়ংক্রিয় সেলিব্রেশন পপআপ ও কনফেটি
+  useEffect(() => {
+    if (isLoading || !user?.id) return;
+    const currentLevel = calculateLevel(user?.apples || 0);
+
+    // Initial level set on load
+    if (prevLevelRef.current === null) {
+      prevLevelRef.current = currentLevel;
+      return;
+    }
+
+    // লেভেল বাড়লে সেলিব্রেশন মেসেজ
+    if (currentLevel > prevLevelRef.current) {
+      prevLevelRef.current = currentLevel;
+      const tierInfo = LEVEL_TIERS[currentLevel - 1] || { name: 'Farmer' };
+
+      soundManager.play('reward');
+      confetti({
+        particleCount: 150,
+        spread: 90,
+        origin: { y: 0.4 },
+      });
+
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+
+      showPopupModal({
+        type: 'success',
+        title: '🎉 Level Up!',
+        message: `Congratulations! You leveled up to Level ${currentLevel} (${tierInfo.name})! Keep growing to unlock higher tier rewards.`,
+        confirmText: 'Awesome!'
+      });
+    } else {
+      prevLevelRef.current = currentLevel;
+    }
+  }, [user?.apples, user?.id, isLoading]);
 
   // 🎁 অ্যাপ ওপেন করলে ডেইলি রিওয়ার্ড ও অফলাইন অটো-বট পপ-আপ স্বয়ংক্রিয়ভাবে প্রদর্শন
   useEffect(() => {

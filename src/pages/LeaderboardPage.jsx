@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, User, Award, Medal, Shield, Sparkles } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
+import verifyBadgeImg from '../../assets/verify-badge.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import { getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
@@ -100,9 +101,14 @@ export default function LeaderboardPage({
                 <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 border-2 border-white shadow-lg overflow-hidden flex items-center justify-center mb-1 transform hover:scale-105 transition-transform">
                   <img src={getAvatarSrc(secondPlace.avatar)} alt="2nd" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-[11px] font-black text-[#1c324f] truncate max-w-[80px] drop-shadow-xs">
-                  {secondPlace.name}
-                </p>
+                <div className="flex items-center justify-center gap-1 max-w-[80px]">
+                  <p className="text-[11px] font-black text-[#1c324f] truncate drop-shadow-xs">
+                    {secondPlace.name}
+                  </p>
+                  {(secondPlace.isVerified || secondPlace.verifiedBadge) && (
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3 h-3 object-contain flex-shrink-0" />
+                  )}
+                </div>
                 <div className="w-full h-24 bg-gradient-to-b from-[#D5D8DC] to-[#A6ACAF] rounded-t-2xl shadow-md border-t-2 border-l border-r border-white flex flex-col items-center justify-start pt-2">
                   <span className="text-base font-black text-white drop-shadow">2nd</span>
                   <div className="mt-2 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-full">
@@ -126,9 +132,14 @@ export default function LeaderboardPage({
                 <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-300 to-yellow-100 border-3 border-amber-300 shadow-xl overflow-hidden flex items-center justify-center mb-1 transform hover:scale-105 transition-transform ring-4 ring-yellow-400/40">
                   <img src={getAvatarSrc(firstPlace.avatar)} alt="1st" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs font-black text-[#1c324f] truncate max-w-[90px] drop-shadow-xs">
-                  {firstPlace.name}
-                </p>
+                <div className="flex items-center justify-center gap-1 max-w-[90px]">
+                  <p className="text-xs font-black text-[#1c324f] truncate drop-shadow-xs">
+                    {firstPlace.name}
+                  </p>
+                  {(firstPlace.isVerified || firstPlace.verifiedBadge) && (
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                  )}
+                </div>
                 <div className="w-full h-32 bg-gradient-to-b from-[#F4D03F] to-[#E67E22] rounded-t-2xl shadow-xl border-t-2 border-l border-r border-yellow-200 flex flex-col items-center justify-start pt-2">
                   <span className="text-xl font-black text-white drop-shadow-md">1st</span>
                   <div className="mt-3 flex items-center gap-1 bg-black/25 px-2.5 py-0.5 rounded-full shadow-inner">
@@ -151,9 +162,14 @@ export default function LeaderboardPage({
                 <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-700/20 to-amber-100 border-2 border-white shadow-lg overflow-hidden flex items-center justify-center mb-1 transform hover:scale-105 transition-transform">
                   <img src={getAvatarSrc(thirdPlace.avatar)} alt="3rd" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-[11px] font-black text-[#1c324f] truncate max-w-[80px] drop-shadow-xs">
-                  {thirdPlace.name}
-                </p>
+                <div className="flex items-center justify-center gap-1 max-w-[80px]">
+                  <p className="text-[11px] font-black text-[#1c324f] truncate drop-shadow-xs">
+                    {thirdPlace.name}
+                  </p>
+                  {(thirdPlace.isVerified || thirdPlace.verifiedBadge) && (
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3 h-3 object-contain flex-shrink-0" />
+                  )}
+                </div>
                 <div className="w-full h-20 bg-gradient-to-b from-[#E59866] to-[#BA4A00] rounded-t-2xl shadow-md border-t-2 border-l border-r border-amber-200 flex flex-col items-center justify-start pt-2">
                   <span className="text-base font-black text-white drop-shadow">3rd</span>
                   <div className="mt-1.5 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-full">
@@ -207,9 +223,14 @@ export default function LeaderboardPage({
 
                   {/* Name & Level */}
                   <div>
-                    <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">
-                      {item.name}
-                    </h3>
+                    <div className="flex items-center gap-1">
+                      <h3 className="text-sm font-extrabold text-[#1a2f4c] leading-tight">
+                        {item.name}
+                      </h3>
+                      {(item.isVerified || item.verifiedBadge || (item.id === user?.id && (user?.isVerified || user?.verifiedBadge))) && (
+                        <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                      )}
+                    </div>
                     <p className="text-[11px] font-bold text-gray-400">
                       Lv. {item.level || 1}
                     </p>
