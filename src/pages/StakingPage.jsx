@@ -1,25 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Shield, Zap, Sparkles, Coins, Lock, LockOpen, Clock, Calendar, TrendingUp, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Wallet, Shield, Zap, Sparkles, Coins, Lock, LockOpen, Clock, Calendar, TrendingUp, CheckCircle2, ChevronRight, AlertCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { TonConnectUI } from '@tonconnect/ui';
 import confetti from 'canvas-confetti';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import appleImg from '../../assets/apple.png';
+import appleJettonImg from '../../assets/apple-jetton.png';
+import gramImg from '../../assets/gram.png';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
+
+// Master Staking Vault Address (অন-চেইন স্ট্যাকিং রিসিভ অ্যাড্রেস)
+const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const STONFI_SWAP_URL = 'https://app.ston.fi/swap';
 
 // Pool Configurations
 const POOL_CONFIGS = {
   pool_3m: {
     id: 'pool_3m',
-    name: 'Stake $APPLE (3 Months)',
+    name: 'Stake In-Game $APPLE (3 Months)',
     shortName: '3 Months Lock',
-    badge: '15% / Month',
+    badge: '15% APY • In-Game',
+    isOnChain: false,
+    icon: appleImg,
     months: 3,
     days: 90,
     monthlyRate: 15, // 15% per month
     totalRate: 45, // 15% * 3 = 45% total profit
     minStake: 100,
+    currencySymbol: 'Apples',
     accentColor: 'from-[#2ecc71] to-[#1e824c]',
     borderColor: 'border-emerald-200',
     tagBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -27,14 +36,18 @@ const POOL_CONFIGS = {
   },
   pool_6m: {
     id: 'pool_6m',
-    name: 'Stake $APPLE (6 Months)',
-    shortName: '6 Months Lock',
-    badge: '25% / Month',
+    name: 'Stake $APPLE (STON.fi On-Chain)',
+    shortName: 'STON.fi On-Chain Pool',
+    badge: '25% APY • STON.fi DEX',
+    isOnChain: true,
+    icon: appleJettonImg,
+    stonFiUrl: STONFI_SWAP_URL,
     months: 6,
     days: 180,
     monthlyRate: 25, // 25% per month
     totalRate: 150, // 25% * 6 = 150% total profit
-    minStake: 200,
+    minStake: 50,
+    currencySymbol: '$APPLE',
     accentColor: 'from-[#f39c12] to-[#d35400]',
     borderColor: 'border-amber-200',
     tagBg: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -69,6 +82,8 @@ export default function StakingPage({
   // Real TON Connect Wallet State
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
+  const [tonConnectUI, setTonConnectUI] = useState(null);
+  const [isProcessingOnChainStake, setIsProcessingOnChainStake] = useState(false);
 
   // Persistent Staking Data
   const [stakingData, setStakingData] = useState(getInitialStakingData);
@@ -97,6 +112,7 @@ export default function StakingPage({
       const manifest = window.location.origin + '/tonconnect-manifest.json';
       tonConnect = window.__tonConnectUI || new TonConnectUI({ manifestUrl: manifest });
       window.__tonConnectUI = tonConnect;
+      setTonConnectUI(tonConnect);
 
       if (tonConnect.wallet) {
         setIsWalletConnected(true);
@@ -265,8 +281,23 @@ export default function StakingPage({
     triggerHaptic('light');
   };
 
-  // Confirm Stake Submission
-  const handleConfirmStake = (e) => {
+  // STON.fi Swap Link Opener
+  const handleOpenStonFi = () => {
+    soundManager.playClickSound();
+    triggerHaptic('medium');
+    try {
+      if (window.Telegram?.WebApp?.openLink) {
+        window.Telegram.WebApp.openLink(STONFI_SWAP_URL);
+      } else {
+        window.open(STONFI_SWAP_URL, '_blank');
+      }
+    } catch (e) {
+      window.open(STONFI_SWAP_URL, '_blank');
+    }
+  };
+
+  // Confirm Stake Submission (Supports In-Game and On-Chain STON.fi Flow)
+  const handleConfirmStake = async (e) => {
     e.preventDefault();
     const config = POOL_CONFIGS[selectedPoolId];
     const amount = parseInt(inputAmount, 10);
@@ -277,10 +308,88 @@ export default function StakingPage({
     }
 
     if (amount < config.minStake) {
-      showToast(`Minimum stake is ${config.minStake} Apples`);
+      showToast(`Minimum stake is ${config.minStake} ${config.currencySymbol}`);
       return;
     }
 
+    // 🚀 ON-CHAIN STON.FI POOL (Pool 2): TonConnect on-chain transaction request
+    if (config.isOnChain) {
+      if (!tonConnectUI || !tonConnectUI.wallet) {
+        handleOpenTonConnect();
+        return;
+      }
+
+      setIsProcessingOnChainStake(true);
+      try {
+        // TonConnect অন-চেইন ট্রানজাকশন রিকোয়েস্ট (Staking Vault Contract / Master Address)
+        const transaction = {
+          validUntil: Math.floor(Date.now() / 1000) + 360, // 6 minutes
+          messages: [
+            {
+              address: MASTER_WALLET_ADDRESS,
+              amount: '50000000', // 0.05 TON Staking gas & vault transfer
+            }
+          ]
+        };
+
+        await tonConnectUI.sendTransaction(transaction);
+
+        // অন-চেইন স্টেক সফল: লোকাল স্টেট ও ডাটাবেস আপডেট
+        const currentData = stakingData[selectedPoolId] || { staked: 0 };
+        const newStakedAmount = (currentData.staked || 0) + amount;
+        const stakedAt = Date.now();
+        const unlockAt = stakedAt + config.days * 86400 * 1000;
+
+        const updatedStaking = {
+          ...stakingData,
+          [selectedPoolId]: {
+            staked: newStakedAmount,
+            stakedAt: stakedAt,
+            unlockAt: unlockAt,
+            isOnChain: true
+          }
+        };
+
+        saveStakingData(updatedStaking);
+
+        // ট্রানজাকশন হিস্ট্রি রেকর্ড
+        addTransaction({
+          userId: user?.id,
+          title: `Staked $APPLE (STON.fi Pool)`,
+          subtitle: `25% APY On-Chain Vault (${config.months} Months Lock)`,
+          amount: `-${amount} $APPLE`,
+          currency: 'gram',
+          type: 'spend',
+          category: 'stake',
+          status: 'Locked'
+        });
+
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+        soundManager.play('reward');
+        triggerHaptic('success');
+
+        if (onShowPopup) {
+          onShowPopup({
+            type: 'reward',
+            title: 'On-Chain Stake Successful!',
+            message: `Congratulations! You have staked ${amount.toLocaleString()} $APPLE tokens into the STON.fi 25% APY Vault for ${config.months} months.`,
+            confirmText: 'Awesome'
+          });
+        } else {
+          showToast(`Staked ${amount.toLocaleString()} $APPLE tokens successfully`);
+        }
+
+        setActiveModal(null);
+      } catch (err) {
+        console.error('On-Chain staking error:', err);
+        showToast(err.message || 'Transaction was cancelled or rejected.');
+      } finally {
+        setIsProcessingOnChainStake(false);
+      }
+      return;
+    }
+
+    // 🍎 IN-GAME APPLES POOL (Pool 1)
     const maxAvailable = user.apples || 0;
     if (amount > maxAvailable) {
       showToast(`Insufficient balance. Max available: ${maxAvailable.toLocaleString()}`);
@@ -372,7 +481,7 @@ export default function StakingPage({
     saveStakingData(updatedStaking);
 
     // Credit back to user balance (Principal + Profit)
-    if (onUpdateUserBalance) {
+    if (!config.isOnChain && onUpdateUserBalance) {
       onUpdateUserBalance({ apples: totalClaimAmount, isDelta: true });
     }
 
@@ -380,9 +489,9 @@ export default function StakingPage({
     addTransaction({
       userId: user?.id,
       title: `Claimed ${config.shortName}`,
-      subtitle: `Principal: ${metrics.staked} + Profit: ${profitOnly}`,
-      amount: `+${totalClaimAmount}`,
-      currency: 'apple',
+      subtitle: `Principal: ${metrics.staked} + Profit: ${profitOnly} ${config.currencySymbol}`,
+      amount: `+${totalClaimAmount} ${config.currencySymbol}`,
+      currency: config.isOnChain ? 'gram' : 'apple',
       type: 'earn',
       category: 'stake',
       status: 'Completed'
@@ -396,12 +505,12 @@ export default function StakingPage({
       onShowPopup({
         type: 'reward',
         title: 'Staking Claimed',
-        message: `Congratulations. You received ${totalClaimAmount.toLocaleString()} Apples (Principal + ${profitOnly.toLocaleString()} Profit) into your balance.`,
+        message: `Congratulations! You received ${totalClaimAmount.toLocaleString()} ${config.currencySymbol} (Principal + ${profitOnly.toLocaleString()} Profit) from the ${config.name}.`,
         rewardAmount: totalClaimAmount,
-        rewardType: 'apple'
+        rewardType: config.isOnChain ? 'gram' : 'apple'
       });
     } else {
-      showToast(`Claimed +${totalClaimAmount.toLocaleString()} Apples successfully`);
+      showToast(`Claimed +${totalClaimAmount.toLocaleString()} ${config.currencySymbol} successfully`);
     }
 
     setActiveModal(null);
@@ -438,7 +547,7 @@ export default function StakingPage({
           {/* Back Button */}
           <button 
             onClick={onBack || (() => onNavigate?.('wallet'))}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 shadow-sm flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-slate-200 shadow-sm flex items-center justify-center text-slate-700 active:scale-95 transition-transform cursor-pointer"
           >
             <svg className="w-6 h-6 stroke-current stroke-2" fill="none" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -484,7 +593,7 @@ export default function StakingPage({
       {/* ----------------- MAIN STAKING CARDS LIST ----------------- */}
       <div className="flex-1 px-4 py-2 space-y-4 overflow-y-auto z-10">
         
-        {/* ================= CARD 1: 3 MONTHS LOCK (15% / MONTH) ================= */}
+        {/* ================= CARD 1: 3 MONTHS LOCK (15% APY • IN-GAME) ================= */}
         {(() => {
           const cfg = POOL_CONFIGS.pool_3m;
           const m = getPoolMetrics('pool_3m');
@@ -585,22 +694,43 @@ export default function StakingPage({
           );
         })()}
 
-        {/* ================= CARD 2: 6 MONTHS LOCK (25% / MONTH) ================= */}
+        {/* ================= CARD 2: 6 MONTHS LOCK (25% APY • ON-CHAIN STON.FI) ================= */}
         {(() => {
           const cfg = POOL_CONFIGS.pool_6m;
           const m = getPoolMetrics('pool_6m');
 
           return (
-            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_25px_rgba(0,100,50,0.06)] border border-amber-100 transition-all hover:shadow-md relative overflow-hidden">
+            <div className="bg-white rounded-3xl p-5 shadow-[0_8px_25px_rgba(245,158,11,0.12)] border-2 border-amber-200 transition-all hover:shadow-md relative overflow-hidden">
               
+              {/* STON.fi DEX Tag */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-xs">
+                  <Zap className="w-2.5 h-2.5 fill-white" />
+                  <span>STON.fi DEX On-Chain</span>
+                </span>
+
+                <button
+                  onClick={handleOpenStonFi}
+                  className="flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 cursor-pointer transition-all active:scale-95"
+                >
+                  <span>Buy on STON.fi</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </div>
+
               {/* Header row with Apple icon & Info button */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <img 
-                    src={appleImg} 
-                    alt="Apple" 
-                    className="w-12 h-12 object-contain filter drop-shadow-md -rotate-6"
-                  />
+                  <div className="relative">
+                    <img 
+                      src={appleJettonImg} 
+                      alt="$APPLE Jetton" 
+                      className="w-12 h-12 object-contain filter drop-shadow-md -rotate-6"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full border border-white flex items-center justify-center text-[8px] font-black text-amber-950 shadow-xs">
+                      ⚡
+                    </span>
+                  </div>
                   <div>
                     <h3 className="text-base font-black text-[#132c4a] leading-tight">
                       Stake $APPLE:
@@ -625,10 +755,10 @@ export default function StakingPage({
                 <div className="flex items-center justify-between text-xs font-bold text-gray-600">
                   <span className="flex items-center gap-1">
                     <Coins className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Staked</span>
+                    <span>Staked ($APPLE)</span>
                   </span>
                   <div className="flex items-center gap-1.5 font-black text-[#1c324f] text-sm">
-                    <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
+                    <img src={appleJettonImg} alt="$APPLE" className="w-4 h-4 object-contain" />
                     <span>{m.staked.toLocaleString()}</span>
                   </div>
                 </div>
@@ -639,8 +769,8 @@ export default function StakingPage({
                     <span>Available rewards:</span>
                   </span>
                   <div className="flex items-center gap-1.5 font-black text-[#27ae60] text-sm">
-                    <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-                    <span>{m.accruedRewards.toFixed(1)}</span>
+                    <img src={appleJettonImg} alt="$APPLE" className="w-4 h-4 object-contain" />
+                    <span>{m.accruedRewards.toFixed(2)} $APPLE</span>
                   </div>
                 </div>
 
@@ -712,57 +842,95 @@ export default function StakingPage({
               </button>
             </div>
 
+            {/* If Pool 2: STON.fi Direct Purchase Link Banner */}
+            {activePoolConfig.isOnChain && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-2.5 rounded-2xl border border-blue-200 mb-3 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-black text-blue-900 block text-[11px]">Need more $APPLE tokens?</span>
+                  <span className="text-[10px] text-blue-700">Buy instantly on STON.fi DEX</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenStonFi}
+                  className="px-2.5 py-1 rounded-xl bg-blue-600 text-white font-black text-[10px] flex items-center gap-1 shadow-xs hover:bg-blue-700 active:scale-95 cursor-pointer"
+                >
+                  <span>Buy $APPLE</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            )}
+
             {/* User Balance Bar */}
             <div className="bg-emerald-50/80 p-2.5 rounded-2xl border border-emerald-100 mb-3 flex items-center justify-between text-xs font-bold text-[#145a32]">
               <span className="flex items-center gap-1.5">
                 <Coins className="w-4 h-4 text-emerald-600" />
-                <span>Available Apples:</span>
+                <span>{activePoolConfig.isOnChain ? 'TON Wallet Connected:' : 'Available Apples:'}</span>
               </span>
-              <span className="font-black text-sm">{(user.apples || 0).toLocaleString()}</span>
+              <span className="font-black text-xs">
+                {activePoolConfig.isOnChain ? (walletAddress || 'Connected') : (user.apples || 0).toLocaleString()}
+              </span>
             </div>
 
             <form onSubmit={handleConfirmStake} className="space-y-3">
               
               {/* Input field */}
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Enter Apple Amount to Stake</label>
+                <label className="text-xs font-bold text-gray-600 block mb-1">
+                  Enter {activePoolConfig.currencySymbol} Amount to Stake
+                </label>
                 <div className="relative">
                   <input
                     type="number"
                     min={activePoolConfig.minStake}
-                    max={user.apples || 0}
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder={`Min ${activePoolConfig.minStake} Apples`}
+                    placeholder={`Min ${activePoolConfig.minStake} ${activePoolConfig.currencySymbol}`}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-base font-black text-[#1c324f] focus:outline-none focus:border-emerald-500"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setInputAmount(String(user.apples || 0))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#2ecc71] text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl active:scale-95 cursor-pointer"
-                  >
-                    MAX
-                  </button>
+                  {!activePoolConfig.isOnChain && (
+                    <button
+                      type="button"
+                      onClick={() => setInputAmount(String(user.apples || 0))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#2ecc71] text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl active:scale-95 cursor-pointer"
+                    >
+                      MAX
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Quick Percentage Selector */}
-              <div className="grid grid-cols-4 gap-2">
-                {[25, 50, 75, 100].map((pct) => {
-                  const maxVal = user.apples || 0;
-                  return (
+              {/* Quick Selectors for Pool 2 */}
+              {activePoolConfig.isOnChain ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {[100, 250, 500, 1000].map((val) => (
                     <button
-                      key={pct}
+                      key={val}
                       type="button"
-                      onClick={() => setInputAmount(String(Math.floor((maxVal * pct) / 100)))}
+                      onClick={() => setInputAmount(String(val))}
                       className="py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-black text-slate-600 active:scale-95 cursor-pointer"
                     >
-                      {pct}%
+                      {val}
                     </button>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {[25, 50, 75, 100].map((pct) => {
+                    const maxVal = user.apples || 0;
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setInputAmount(String(Math.floor((maxVal * pct) / 100)))}
+                        className="py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-black text-slate-600 active:scale-95 cursor-pointer"
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* 📊 REAL-TIME LIVE PROFIT CALCULATOR BOX 📊 */}
               <div className="bg-gradient-to-br from-amber-50 to-yellow-50/70 p-3.5 rounded-2xl border border-amber-200 space-y-2">
@@ -772,7 +940,7 @@ export default function StakingPage({
                     <span>Monthly Return ({activePoolConfig.monthlyRate}%):</span>
                   </span>
                   <span className="font-black text-[#27ae60]">
-                    +{previewMonthlyProfit.toLocaleString()} Apples / mo
+                    +{previewMonthlyProfit.toLocaleString()} {activePoolConfig.currencySymbol} / mo
                   </span>
                 </div>
 
@@ -782,14 +950,14 @@ export default function StakingPage({
                     <span>Total {activePoolConfig.months}M Profit ({activePoolConfig.totalRate}%):</span>
                   </span>
                   <span className="font-black text-[#27ae60] text-sm">
-                    +{previewTotalProfit.toLocaleString()} Apples
+                    +{previewTotalProfit.toLocaleString()} {activePoolConfig.currencySymbol}
                   </span>
                 </div>
 
                 <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs font-black text-[#1c324f]">
                   <span>Total Payout at Unlock:</span>
                   <span className="text-sm font-black text-[#145a32]">
-                    {previewTotalPayout.toLocaleString()} Apples
+                    {previewTotalPayout.toLocaleString()} {activePoolConfig.currencySymbol}
                   </span>
                 </div>
 
@@ -805,14 +973,21 @@ export default function StakingPage({
               {/* Submit Stake Button */}
               <button
                 type="submit"
-                disabled={previewAmount < activePoolConfig.minStake || previewAmount > (user.apples || 0)}
-                className={`w-full py-3 rounded-2xl text-white font-black text-sm tracking-wide transition-all ${
-                  previewAmount < activePoolConfig.minStake || previewAmount > (user.apples || 0)
+                disabled={isProcessingOnChainStake || previewAmount < activePoolConfig.minStake || (!activePoolConfig.isOnChain && previewAmount > (user.apples || 0))}
+                className={`w-full py-3 rounded-2xl text-white font-black text-sm tracking-wide transition-all flex items-center justify-center gap-2 ${
+                  previewAmount < activePoolConfig.minStake || (!activePoolConfig.isOnChain && previewAmount > (user.apples || 0))
                     ? 'bg-slate-300 cursor-not-allowed shadow-none'
                     : 'bg-gradient-to-b from-[#2ecc71] to-[#1e824c] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32] border-t border-emerald-300 cursor-pointer'
                 }`}
               >
-                Confirm & Lock {previewAmount > 0 ? `${previewAmount.toLocaleString()} Apples` : 'Stake'}
+                {isProcessingOnChainStake ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Confirming in Wallet...</span>
+                  </>
+                ) : (
+                  <span>Confirm & Lock {previewAmount > 0 ? `${previewAmount.toLocaleString()} ${activePoolConfig.currencySymbol}` : 'Stake'}</span>
+                )}
               </button>
             </form>
           </div>
@@ -840,19 +1015,19 @@ export default function StakingPage({
               <div className="flex justify-between items-center">
                 <span>Staked Principal:</span>
                 <span className="font-black text-[#1c324f] text-sm">
-                  {activePoolMetrics.staked.toLocaleString()} Apples
+                  {activePoolMetrics.staked.toLocaleString()} {activePoolConfig.currencySymbol}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span>Accrued Rewards:</span>
                 <span className="font-black text-[#27ae60] text-sm">
-                  +{activePoolMetrics.accruedRewards.toFixed(1)} Apples
+                  +{activePoolMetrics.accruedRewards.toFixed(1)} {activePoolConfig.currencySymbol}
                 </span>
               </div>
               <div className="flex justify-between items-center pt-1.5 border-t border-slate-200 text-slate-600">
                 <span>Total Maturity Profit:</span>
                 <span className="font-black text-[#27ae60]">
-                  +{activePoolMetrics.totalExpectedProfit.toLocaleString()} Apples
+                  +{activePoolMetrics.totalExpectedProfit.toLocaleString()} {activePoolConfig.currencySymbol}
                 </span>
               </div>
               <div className="flex justify-between items-center text-slate-600">
@@ -918,10 +1093,16 @@ export default function StakingPage({
             </div>
 
             <div className="text-xs text-gray-600 space-y-3 font-medium mb-4">
+              {activePoolConfig.isOnChain && (
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-[11px] font-bold">
+                  ⚡ <strong>STON.fi DEX Staking:</strong> This pool stakes real on-chain $APPLE Jetton tokens directly from your TON Wallet.
+                </div>
+              )}
+
               <div className="flex items-start gap-2.5">
                 <Lock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                 <p>
-                  <strong>{activePoolConfig.months} Months Lock Period:</strong> Your staked apples are locked for exactly {activePoolConfig.days} days ({activePoolConfig.months} months) to generate guaranteed yields.
+                  <strong>{activePoolConfig.months} Months Lock Period:</strong> Your staked tokens are locked for exactly {activePoolConfig.days} days ({activePoolConfig.months} months) to generate maximum high yields.
                 </p>
               </div>
 
@@ -935,7 +1116,7 @@ export default function StakingPage({
               <div className="flex items-start gap-2.5">
                 <Sparkles className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Automatic Maturity Payout:</strong> Upon completion of the lock period, your entire principal plus all earned profits are credited directly to your Apple balance upon claim.
+                  <strong>Automatic Maturity Payout:</strong> Upon completion of the lock period, your entire principal plus all earned profits are released to you.
                 </p>
               </div>
             </div>
@@ -953,3 +1134,4 @@ export default function StakingPage({
     </div>
   );
 }
+

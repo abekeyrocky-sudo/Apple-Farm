@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Zap, Sparkles, CheckCircle2, Wallet, Clock, ShieldCheck, ArrowRight, Loader2, Crown, Ticket, Star, Gift, Disc, AlertCircle } from 'lucide-react';
+import { Bot, Zap, Sparkles, CheckCircle2, Wallet, Clock, ShieldCheck, ArrowRight, Loader2, Crown, Ticket, Star, Gift, Disc, AlertCircle, Info, X, Check } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
@@ -34,6 +34,7 @@ export default function MarketPage({
   const [processingPkgId, setProcessingPkgId] = useState(null);
   const [tonConnectUI, setTonConnectUI] = useState(null);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [selectedInfoItem, setSelectedInfoItem] = useState(null);
 
   const botState = getAutoBotState(user);
 
@@ -174,6 +175,8 @@ export default function MarketPage({
       price: 1250,
       currency: 'apple',
       description: 'Increases tree harvest speed by 2x for 24 hours.',
+      details: 'Enriches your apple orchard soil with golden organic minerals. Automatically boosts your apple tree harvest speed by 2x for 24 continuous hours so you harvest double apples!',
+      benefits: ['2x Tree Harvest Speed', 'Active for 24 continuous hours', 'Fully stacks with online tapping'],
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-14 h-14 bg-gradient-to-b from-[#fcd34d] via-[#f59e0b] to-[#b45309] rounded-2xl border-2 border-amber-600 shadow-md flex flex-col items-center justify-center relative transform -rotate-1">
@@ -191,6 +194,8 @@ export default function MarketPage({
       price: 1250,
       currency: 'apple',
       description: 'Doubles all apple rewards from tapping for 1 hour.',
+      details: 'Supercharge your tapping energy! Every single tap on your apple tree produces 2x apple yield for 1 full hour. Perfect for active gameplay sessions.',
+      benefits: ['2x Tapping Apple Yield', 'Active for 1 full hour', 'Instant activation upon purchase'],
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-13 h-14 rounded-full bg-gradient-to-b from-emerald-200 to-green-500 border-2 border-emerald-700 shadow-[0_0_12px_rgba(74,222,128,0.5)] flex flex-col items-center justify-center relative">
@@ -210,6 +215,8 @@ export default function MarketPage({
       currency: 'gram',
       voucherSpins: 50,
       description: 'Get 50 Lucky Wheel spins instantly to win Apples and Diamonds!',
+      details: 'Grants 50 Lucky Wheel spin vouchers instantly to your account. Use them anytime in the Game zone to win mega prizes including thousands of Apples and Diamonds!',
+      benefits: ['50 Lucky Wheel Spin Tickets', 'Directly credited to your balance', 'Never expires until used'],
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-500 shadow-md flex flex-col items-center justify-center relative">
@@ -228,6 +235,8 @@ export default function MarketPage({
       price: 550,
       currency: 'apple',
       description: 'Special apple display stand with automated harvest power.',
+      details: 'Sets up a charming roadside market stand that automatically gathers extra apples from visiting villagers for 1 continuous hour.',
+      benefits: ['Automated roadside apple gathering', 'Active for 1 hour', 'Low entry cost in apples'],
       icon: (
         <div className="relative w-16 h-16 flex flex-col items-center justify-center">
           <img src={appleImg} alt="Apple" className="w-9 h-9 object-contain filter drop-shadow z-10 -mb-1.5" />
@@ -242,6 +251,8 @@ export default function MarketPage({
       price: 1350,
       currency: 'diamond',
       description: 'Contains guaranteed rare boosters and jackpot tokens!',
+      details: 'An enchanted golden mystery box filled with treasure! Contains guaranteed rare harvest boosters, lucky vouchers, and chance for jackpot apple bundles.',
+      benefits: ['Guaranteed rare farming item', 'Chance for mega jackpot prize', 'Instant opening & delivery'],
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <div className="w-12 h-12 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-xl border-2 border-amber-600 shadow-md flex items-center justify-center relative">
@@ -258,6 +269,8 @@ export default function MarketPage({
       priceNano: '100000000', // 0.1 TON/GRAM in nanotons
       currency: 'gram',
       description: 'Official Verified Farmer status badge on your profile and leaderboards.',
+      details: 'Get the official blue checkmark badge next to your farmer name on your profile, leaderboards, and airdrop eligibility. Grants priority status and bonus airdrop allocation!',
+      benefits: ['Official Blue Checkmark badge', 'Higher airdrop reward weight', 'Permanent verified status'],
       icon: (
         <div className="relative w-16 h-16 flex items-center justify-center">
           <img 
@@ -277,6 +290,8 @@ export default function MarketPage({
       price: 450,
       currency: 'apple',
       description: 'Instantly refills your stamina energy bar to 100%.',
+      details: 'An invigorating orchard herbal potion. Instantly restores your energy bar to maximum 100% capacity without having to wait for natural recharge.',
+      benefits: ['Instant 100% Energy Refill', 'Zero waiting or cooldown', 'Keep tapping immediately'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-md">
           <Zap className="w-6 h-6 fill-white" />
@@ -293,6 +308,8 @@ export default function MarketPage({
       durationMs: 24 * 60 * 60 * 1000,
       tier: '24h',
       description: 'Collects apples automatically every minute for 24 hours.',
+      details: 'Deploys an autonomous high-speed harvester bot to your orchard for 24 hours. Gathers apples continuously around the clock even when your game is completely closed!',
+      benefits: ['24/7 100% Offline auto-harvest', 'Runs continuously for 24 hours', 'Automatic claim on login'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md">
           <Bot className="w-6 h-6" />
@@ -306,6 +323,8 @@ export default function MarketPage({
       price: 350.0,
       currency: 'diamond',
       description: '5 free super spins on the Lucky Wheel with guaranteed wins.',
+      details: 'A pack of 5 Lucky Wheel spin tickets. Take your chances at hitting the 50,000 Apple jackpot or rare diamond rewards in the Game section.',
+      benefits: ['5 Instant Lucky Wheel spins', 'Win up to 50,000 Apples', 'No daily limit on ticket usage'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-purple-400 to-indigo-600 flex items-center justify-center text-white shadow-md">
           <Disc className="w-6 h-6" />
@@ -321,6 +340,8 @@ export default function MarketPage({
       price: 3500.0,
       currency: 'diamond',
       description: 'A permanent mythical tree yielding pure diamond fruits.',
+      details: 'A legendary golden tree blessed by ancient orchard spirits. Provides permanent passive diamond rewards and boosts overall farm yield forever.',
+      benefits: ['Permanent orchard upgrade', 'Passive diamond bonuses', 'Exclusive golden farm aura'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-yellow-300 to-amber-500 flex items-center justify-center text-white shadow-md">
           <Star className="w-6 h-6 fill-white" />
@@ -334,6 +355,8 @@ export default function MarketPage({
       price: 8000,
       currency: 'apple',
       description: 'Exclusive golden profile badge and +50% all earnings.',
+      details: 'The ultimate status symbol for top farmers! Unlocks a master crown on your profile and increases all harvest earnings by +50% permanently.',
+      benefits: ['Golden Master Crown profile badge', '+50% All harvest earnings', 'Permanent unlocked status'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-600 flex items-center justify-center text-white shadow-md">
           <Crown className="w-6 h-6" />
@@ -347,6 +370,8 @@ export default function MarketPage({
       price: 1999.0,
       currency: 'diamond',
       description: 'VIP status with 0% withdrawal fees & instant processing.',
+      details: 'Gain full VIP privileges across the entire Apple Farm ecosystem, including 0% fee transactions, priority processing, and special seasonal airdrops.',
+      benefits: ['0% Withdrawal & transaction fees', 'Priority airdrop queue', 'VIP badge & exclusive perks'],
       icon: (
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-blue-400 to-cyan-600 flex items-center justify-center text-white shadow-md">
           <Ticket className="w-6 h-6" />
@@ -707,6 +732,45 @@ export default function MarketPage({
                     key={pkg.id}
                     className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 border border-sky-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-between text-center transition-transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden"
                   >
+                    {/* Small (i) Info Button in top-right */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundManager.playClickSound();
+                        if (window.Telegram?.WebApp?.HapticFeedback) {
+                          window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                        }
+                        setSelectedInfoItem({
+                          id: pkg.id,
+                          name: pkg.title,
+                          category: 'Auto-Bot',
+                          price: pkg.priceGram,
+                          currency: 'gram',
+                          description: pkg.description,
+                          details: pkg.durationDays 
+                            ? `Automated 24/7 harvest bot active for ${pkg.durationDays} continuous days (${pkg.durationDays * 24} hours). Automatically gathers apples even while offline or sleeping!`
+                            : 'The ultimate permanent automated harvest bot. Collects apples 24/7 forever with no expiration date!',
+                          benefits: [
+                            pkg.durationDays ? `${pkg.durationDays} Days 24/7 Harvest` : 'Permanent Lifetime Harvest',
+                            '100% Offline Apple Gathering',
+                            'Auto-claim rewards on login'
+                          ],
+                          isBot: true,
+                          pkgData: pkg,
+                          icon: (
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md">
+                              <Bot className="w-8 h-8 animate-pulse" />
+                            </div>
+                          )
+                        });
+                      }}
+                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-slate-100/90 hover:bg-sky-100 text-slate-400 hover:text-sky-600 border border-slate-200/80 flex items-center justify-center transition-all active:scale-90 z-10 cursor-pointer shadow-2xs"
+                      title="Details"
+                    >
+                      <Info className="w-3 h-3 stroke-[2.5]" />
+                    </button>
+
                     {/* Icon Frame */}
                     <div className="w-full h-18 bg-[#f8fbfe] rounded-xl flex items-center justify-center p-1 border border-slate-100/80 mb-1.5 relative">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-400 to-blue-600 flex items-center justify-center text-white shadow-md relative">
@@ -761,8 +825,25 @@ export default function MarketPage({
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 border border-sky-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-between text-center transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                className="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 border border-sky-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col items-center justify-between text-center transition-transform hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden"
               >
+                {/* Small (i) Info Button in top-right */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    soundManager.playClickSound();
+                    if (window.Telegram?.WebApp?.HapticFeedback) {
+                      window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                    }
+                    setSelectedInfoItem(item);
+                  }}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-slate-100/90 hover:bg-sky-100 text-slate-400 hover:text-sky-600 border border-slate-200/80 flex items-center justify-center transition-all active:scale-90 z-10 cursor-pointer shadow-2xs"
+                  title="Details"
+                >
+                  <Info className="w-3 h-3 stroke-[2.5]" />
+                </button>
+
                 {/* Product Icon Frame */}
                 <div className="w-full h-18 bg-[#f8fbfe] rounded-xl flex items-center justify-center p-1 border border-slate-100/80 mb-1.5">
                   {item.icon}
@@ -823,6 +904,123 @@ export default function MarketPage({
 
       </div>
 
+      {/* ----------------- ITEM INFO / DETAILS POPUP MODAL ----------------- */}
+      {selectedInfoItem && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setSelectedInfoItem(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl border border-sky-100 relative text-center overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Close Button */}
+            <button
+              onClick={() => {
+                soundManager.playClickSound();
+                setSelectedInfoItem(null);
+              }}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" />
+            </button>
+
+            {/* Top Category Badge */}
+            <div className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-sky-100 border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider mb-2">
+              <span>{selectedInfoItem.category}</span>
+            </div>
+
+            {/* Large Icon Preview */}
+            <div className="w-20 h-20 mx-auto my-2 rounded-2xl bg-gradient-to-b from-[#f0f8ff] to-[#e6f4ea] border border-sky-100 flex items-center justify-center shadow-inner">
+              <div className="scale-110">
+                {selectedInfoItem.icon}
+              </div>
+            </div>
+
+            {/* Item Title */}
+            <h3 className="text-base font-black text-[#192f52] tracking-tight leading-tight mt-1">
+              {selectedInfoItem.name}
+            </h3>
+
+            {/* Price Row Pill */}
+            <div className="inline-flex items-center justify-center gap-1.5 bg-slate-50 px-3 py-1 rounded-full border border-slate-200 my-2">
+              <span className="text-[11px] font-bold text-slate-500">Price:</span>
+              <div className="flex items-center gap-1">
+                {selectedInfoItem.currency === 'apple' ? (
+                  <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
+                ) : selectedInfoItem.currency === 'gram' ? (
+                  <img src={gramImg} alt="GRAM" className="w-4 h-4 object-contain" />
+                ) : (
+                  <img src={diamondImg} alt="Diamond" className="w-4 h-4 object-contain" />
+                )}
+                <span className="text-xs font-black text-[#192f52]">
+                  {selectedInfoItem.currency === 'apple' 
+                    ? selectedInfoItem.price.toLocaleString() 
+                    : selectedInfoItem.currency === 'gram'
+                    ? `${selectedInfoItem.price} GRAM`
+                    : `${selectedInfoItem.price.toFixed(1)} Diamonds`}
+                </span>
+              </div>
+            </div>
+
+            {/* Detailed Description */}
+            <div className="bg-[#f8fbfe] rounded-2xl p-3 border border-sky-100/80 text-left my-2">
+              <p className="text-xs text-[#2c3e50] font-medium leading-relaxed">
+                {selectedInfoItem.details || selectedInfoItem.description}
+              </p>
+            </div>
+
+            {/* Key Benefits List */}
+            {selectedInfoItem.benefits && selectedInfoItem.benefits.length > 0 && (
+              <div className="space-y-1.5 text-left mb-4 px-1">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-1">
+                  Key Benefits:
+                </span>
+                {selectedInfoItem.benefits.map((benefit, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs font-bold text-[#192f52]">
+                    <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                    <span>{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2.5 mt-3 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClickSound();
+                  setSelectedInfoItem(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95 transition-all cursor-pointer border border-slate-200 flex items-center justify-center"
+              >
+                Close
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const itemToBuy = selectedInfoItem;
+                  setSelectedInfoItem(null);
+                  if (itemToBuy.isBot && itemToBuy.pkgData) {
+                    handleBuyAutoBot(itemToBuy.pkgData);
+                  } else {
+                    handleBuyItem(itemToBuy);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl font-black text-xs text-white bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_2px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Buy Now</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
       <div className="bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-6 py-2.5 flex justify-between items-center z-30 border-t border-gray-100">
         
@@ -872,3 +1070,4 @@ export default function MarketPage({
     </div>
   );
 }
+

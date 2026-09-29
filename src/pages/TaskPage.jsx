@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   UserCheck, 
   UserPlus, 
@@ -19,8 +19,12 @@ import {
   Coins, 
   Loader2, 
   X,
-  ArrowRight
+  ArrowRight,
+  RotateCw,
+  Crown,
+  Wallet
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
@@ -60,6 +64,18 @@ const PLATFORM_TYPES = [
   { id: 'youtube', label: 'YouTube', icon: YoutubeIcon },
 ];
 
+// 🎁 8টি পেরিমিটার বক্সের ক্যাশব্যাক আইটেম (Faded Wheel)
+const CASHBACK_WHEEL_ITEMS = [
+  { id: 0, percentage: 150, label: '150%', title: '150% Cashback', type: 'cashback', bg: 'from-amber-400/30 via-yellow-400/30 to-amber-500/40', border: 'border-amber-400', badge: 'Jackpot', badgeBg: 'bg-amber-500' },
+  { id: 1, percentage: 50, label: '50%', title: '50% Cashback', type: 'cashback', bg: 'from-emerald-500/25 to-green-600/30', border: 'border-emerald-400', badge: 'Rare', badgeBg: 'bg-emerald-600' },
+  { id: 2, percentage: 0, label: '0%', title: 'Better Luck', type: 'empty', bg: 'from-slate-200/50 to-slate-300/40', border: 'border-slate-300' },
+  { id: 3, percentage: 25, label: '25%', title: '25% Cashback', type: 'cashback', bg: 'from-sky-500/25 to-blue-600/30', border: 'border-sky-400' },
+  { id: 4, percentage: 15, label: '15%', title: '15% Cashback', type: 'cashback', bg: 'from-indigo-500/25 to-purple-600/30', border: 'border-indigo-400' },
+  { id: 5, percentage: 10, label: '10%', title: '10% Cashback', type: 'cashback', bg: 'from-orange-500/25 to-amber-600/30', border: 'border-orange-400' },
+  { id: 6, percentage: 5, label: '5%', title: '5% Cashback', type: 'cashback', bg: 'from-teal-500/25 to-emerald-600/30', border: 'border-teal-400' },
+  { id: 7, percentage: 0, label: '0%', title: 'Better Luck', type: 'empty', bg: 'from-slate-200/50 to-slate-300/40', border: 'border-slate-300' },
+];
+
 // প্রতি 0.005 GRAM বিডে ১টি ডায়মন্ড (0.005 GRAM -> +1 💎, 0.010 GRAM -> +2 💎)
 export const calculateRewardDiamonds = (bidPerMember) => {
   const bid = parseFloat(bidPerMember) || 0;
@@ -89,6 +105,23 @@ export default function TaskPage({
   const [partnerSubTab, setPartnerSubTab] = useState('explore');
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [verifyingTaskId, setVerifyingTaskId] = useState(null);
+
+  // 🎡 Cashback Faded Wheel State
+  const [isCashbackWheelOpen, setIsCashbackWheelOpen] = useState(false);
+  const [cashbackPaidAmount, setCashbackPaidAmount] = useState(0);
+  const [isCashbackSpinning, setIsCashbackSpinning] = useState(false);
+  const [cashbackActiveHighlight, setCashbackActiveHighlight] = useState(0);
+  const [cashbackWonPrize, setCashbackWonPrize] = useState(null);
+  const [isCashbackClaimed, setIsCashbackClaimed] = useState(false);
+  const cashbackSpinTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (cashbackSpinTimerRef.current) {
+        clearTimeout(cashbackSpinTimerRef.current);
+      }
+    };
+  }, []);
 
   // TonConnect UI State
   const [tonConnectUI, setTonConnectUI] = useState(null);
@@ -923,15 +956,13 @@ export default function TaskPage({
       setIsPostModalOpen(false);
       setPartnerSubTab('my_tasks');
 
-      soundManager.play('reward');
-      if (onShowPopup) {
-        onShowPopup({
-          type: 'success',
-          title: 'Partner Task Created',
-          message: `Your campaign is now live for ${postForm.targetMembers} members.`,
-          confirmText: 'Awesome'
-        });
-      }
+      // 🎁 Trigger Cashback Faded Wheel for job launch!
+      const paidAmountNum = Number(totalPayableGram) || 0;
+      setCashbackPaidAmount(paidAmountNum);
+      setIsCashbackClaimed(false);
+      setCashbackWonPrize(null);
+      setCashbackActiveHighlight(0);
+      setIsCashbackWheelOpen(true);
     } catch (err) {
       console.error('Payment error:', err);
       if (err.message && !err.message.includes('User rejects')) {
@@ -940,6 +971,210 @@ export default function TaskPage({
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  // 🎮 CASHBACK FADED WHEEL SPIN HANDLER
+  const handleSpinCashbackWheel = () => {
+    if (isCashbackSpinning || isCashbackClaimed) return;
+
+    setIsCashbackSpinning(true);
+    setCashbackWonPrize(null);
+    soundManager.play('click');
+
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+    }
+
+    // 🎯 সুনির্দিষ্ট প্রোবাবিলিটি বণ্টন:
+    // Slot 0 (150% Cashback): 4%
+    // Slot 1 (50% Cashback): 8%
+    // Slot 3 (25% Cashback): 18%
+    // Slot 4 (15% Cashback): 25%
+    // Slot 5 (10% Cashback): 25%
+    // Slot 6 (5% Cashback): 15%
+    // Slot 2 or 7 (Empty): 5%
+    const rand = Math.random() * 100;
+    let winningIndex;
+    if (rand < 4) {
+      winningIndex = 0; // 150% Cashback
+    } else if (rand < 12) {
+      winningIndex = 1; // 50% Cashback
+    } else if (rand < 30) {
+      winningIndex = 3; // 25% Cashback
+    } else if (rand < 55) {
+      winningIndex = 4; // 15% Cashback
+    } else if (rand < 80) {
+      winningIndex = 5; // 10% Cashback
+    } else if (rand < 95) {
+      winningIndex = 6; // 5% Cashback
+    } else {
+      winningIndex = Math.random() < 0.5 ? 2 : 7; // Empty
+    }
+
+    const targetPrize = CASHBACK_WHEEL_ITEMS[winningIndex];
+    const fullRounds = 4;
+    const totalSteps = (fullRounds * 8) + ((winningIndex - cashbackActiveHighlight + 8) % 8);
+
+    let currentStep = 0;
+    let currentIdx = cashbackActiveHighlight;
+
+    const runStep = () => {
+      currentStep++;
+      currentIdx = (currentIdx + 1) % 8;
+      setCashbackActiveHighlight(currentIdx);
+      soundManager.playSpinTick?.();
+
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      }
+
+      if (currentStep >= totalSteps) {
+        setIsCashbackSpinning(false);
+        setIsCashbackClaimed(true);
+
+        const calculatedCashback = targetPrize.percentage > 0
+          ? Number(((cashbackPaidAmount * targetPrize.percentage) / 100).toFixed(4))
+          : 0;
+
+        const resultWithAmount = {
+          ...targetPrize,
+          cashbackAmountGram: calculatedCashback
+        };
+
+        setCashbackWonPrize(resultWithAmount);
+
+        if (targetPrize.percentage > 0) {
+          soundManager.play('reward');
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+          }
+
+          confetti({
+            particleCount: 130,
+            spread: 80,
+            origin: { y: 0.5 }
+          });
+        } else {
+          soundManager.play('click');
+        }
+      } else {
+        const remaining = totalSteps - currentStep;
+        let delay = 60;
+        if (remaining < 12) {
+          delay = 60 + Math.pow(12 - remaining, 2) * 3.5;
+        }
+        cashbackSpinTimerRef.current = setTimeout(runStep, delay);
+      }
+    };
+
+    cashbackSpinTimerRef.current = setTimeout(runStep, 60);
+  };
+
+  // 💎 CLAIM CASHBACK DIRECTLY TO TON WALLET
+  const handleClaimCashbackToWallet = () => {
+    if (!cashbackWonPrize || cashbackWonPrize.percentage <= 0) {
+      setIsCashbackWheelOpen(false);
+      return;
+    }
+
+    soundManager.play('reward');
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    }
+
+    confetti({
+      particleCount: 150,
+      spread: 90,
+      origin: { y: 0.5 }
+    });
+
+    const walletRaw = tonConnectUI?.wallet?.account?.address || user?.walletAddress || '';
+    const walletShort = walletRaw ? `${walletRaw.slice(0, 4)}...${walletRaw.slice(-4)}` : 'Connected TON Wallet';
+
+    // রেকর্ড ট্রানজাকশন
+    addTransaction({
+      userId: user?.id,
+      title: `Job Cashback (${cashbackWonPrize.percentage}%)`,
+      subtitle: `Sent to ${walletShort}`,
+      amount: `+${cashbackWonPrize.cashbackAmountGram} GRAM`,
+      currency: 'gram',
+      type: 'earn',
+      category: 'cashback',
+      status: 'Completed'
+    });
+
+    if (onUpdateUser) {
+      onUpdateUser({
+        cashbackEarnedGram: Number(((user?.cashbackEarnedGram || 0) + cashbackWonPrize.cashbackAmountGram).toFixed(4))
+      });
+    }
+
+    setIsCashbackWheelOpen(false);
+
+    if (onShowPopup) {
+      onShowPopup({
+        type: 'reward',
+        title: 'Cashback Claimed!',
+        message: `Congratulations! +${cashbackWonPrize.cashbackAmountGram} GRAM (${cashbackWonPrize.label}) cashback has been sent to your TON wallet (${walletShort}).`,
+        confirmText: 'Awesome!'
+      });
+    }
+  };
+
+  // 🎮 CASHBACK FADED WHEEL CELL RENDERER (3x3 Perimeter)
+  const renderCashbackCell = (cellIdx) => {
+    const item = CASHBACK_WHEEL_ITEMS[cellIdx];
+    const isLit = cashbackActiveHighlight === cellIdx;
+    const isWinner = cashbackWonPrize && cashbackWonPrize.id === item.id && !isCashbackSpinning;
+
+    return (
+      <div 
+        key={item.id}
+        className={`relative aspect-square rounded-2xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-150 overflow-hidden select-none ${
+          isWinner
+            ? 'border-amber-400 bg-amber-500/20 scale-105 shadow-[0_0_20px_rgba(245,158,11,0.6)] z-20 animate-pulse'
+            : isLit 
+            ? 'border-emerald-400 bg-emerald-400/25 scale-102 shadow-[0_0_15px_rgba(46,204,113,0.5)] z-10' 
+            : `${item.border} bg-gradient-to-br ${item.bg} opacity-90`
+        }`}
+      >
+        {/* Top Badge for Rare/Jackpot */}
+        {item.badge && (
+          <span className={`absolute -top-1 left-1/2 -translate-x-1/2 ${item.badgeBg} text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider shadow-xs`}>
+            {item.badge}
+          </span>
+        )}
+
+        {/* Center Graphic */}
+        <div className="flex-1 flex items-center justify-center pt-1">
+          {item.percentage === 150 ? (
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-amber-900 shadow-md">
+              <Crown className="w-5 h-5 fill-amber-300 stroke-amber-800" />
+            </div>
+          ) : item.percentage > 0 ? (
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm">
+              <img src={gramImg} alt="GRAM" className="w-4 h-4 object-contain" />
+            </div>
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-400">
+              <X className="w-3.5 h-3.5 stroke-[3]" />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Percentage Label */}
+        <div className="text-center w-full">
+          <span className={`text-[11px] font-black leading-none block ${
+            item.percentage === 150 ? 'text-amber-900 font-extrabold' : item.percentage > 0 ? 'text-[#192f52]' : 'text-slate-500'
+          }`}>
+            {item.label}
+          </span>
+          <span className="text-[8px] font-bold text-slate-500 tracking-tight block">
+            {item.percentage > 0 ? 'Cashback' : 'Empty'}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   // ফিল্টার করা স্ট্যান্ডার্ড টাস্ক
@@ -1009,6 +1244,56 @@ export default function TaskPage({
         {/* ============== PARTNER TAB ============== */}
         {activeTab === 'Partner' ? (
           <div className="space-y-2.5">
+            
+            {/* 🎁 PROMOTIONAL BANNER CARD: Up to 150% Cashback on 1st Campaign */}
+            <div className="relative w-full rounded-3xl bg-gradient-to-br from-[#fffbeb] via-[#fef3c7] to-[#e6fffa] border-2 border-amber-300 p-4 shadow-[0_6px_20px_rgba(245,158,11,0.18)] overflow-hidden select-none">
+              {/* Background ambient glow circles */}
+              <div className="absolute -right-8 -top-8 w-28 h-28 bg-amber-400/20 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-emerald-400/20 rounded-full blur-lg pointer-events-none" />
+
+              {/* Top Tag Pill */}
+              <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs mb-2">
+                <Sparkles className="w-3 h-3 fill-amber-200 text-amber-200" />
+                <span>1st Campaign Bonus</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 space-y-1">
+                  <h3 className="text-base font-black text-[#192f52] leading-tight tracking-tight">
+                    Get Up To <span className="text-amber-600 font-black">150% Cashback</span>!
+                  </h3>
+                  <p className="text-[11px] font-bold text-[#567396] leading-snug">
+                    Launch your 1st promotion task & spin the exclusive Faded Wheel for instant refund in GRAM!
+                  </p>
+                </div>
+
+                {/* Right Graphic Preview */}
+                <div className="flex-shrink-0 relative">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-400/80 flex flex-col items-center justify-center text-white shadow-md transform rotate-2">
+                    <Crown className="w-6 h-6 fill-amber-100 text-amber-900" />
+                    <span className="text-[8px] font-black text-amber-950 uppercase tracking-tight -mt-0.5">
+                      150%
+                    </span>
+                  </div>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
+                </div>
+              </div>
+
+              {/* Quick Launch CTA Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.play('click');
+                  setIsPostModalOpen(true);
+                }}
+                className="mt-3 w-full py-2.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Launch Campaign & Get Cashback</span>
+              </button>
+            </div>
+
             {/* Sub-header with Explore/My Tasks and + Post */}
             <div className="bg-white/90 rounded-2xl p-2 border border-slate-100 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
@@ -1040,16 +1325,16 @@ export default function TaskPage({
                 </button>
               </div>
 
-              {/* + Post Button */}
+              {/* Post Button */}
               <button
                 onClick={() => {
                   soundManager.play('click');
                   setIsPostModalOpen(true);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 active:scale-95 text-white font-black text-xs shadow-md shadow-emerald-500/30 transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 active:scale-95 text-white font-black text-xs shadow-md shadow-emerald-500/30 transition-all cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>+ Post</span>
+                <span>Post</span>
               </button>
             </div>
 
@@ -1172,9 +1457,9 @@ export default function TaskPage({
                   </p>
                   <button
                     onClick={() => setIsPostModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black text-xs"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-black text-xs cursor-pointer active:scale-95 transition-all shadow-md shadow-emerald-500/20"
                   >
-                    + Post First Campaign
+                    Post First Campaign
                   </button>
                 </div>
               ) : (
@@ -1417,6 +1702,125 @@ export default function TaskPage({
                   <span>Pay & Launch</span>
                 )}
               </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 🎁 CASHBACK FADED WHEEL MODAL (Launch Campaign Bonus)    */}
+      {/* ========================================================= */}
+      {isCashbackWheelOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#f8fbff] to-[#edf5fc] rounded-3xl p-5 border border-sky-100 shadow-[0_20px_50px_rgba(0,100,200,0.22)] flex flex-col items-center text-[#192f52] select-none">
+            
+            {/* Close Button (only when not spinning) */}
+            {!isCashbackSpinning && (
+              <button 
+                onClick={() => setIsCashbackWheelOpen(false)}
+                className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Header Badge */}
+            <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-100 to-yellow-100 border border-amber-300 px-3.5 py-1 rounded-full text-[11px] font-black text-amber-800 mb-2 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 fill-amber-400 text-amber-600" />
+              <span>Job Launch Cashback Wheel!</span>
+            </div>
+
+            <h3 className="text-lg font-black text-[#192f52] text-center tracking-tight mb-0.5">
+              Cashback Faded Wheel
+            </h3>
+            <p className="text-xs font-bold text-[#567396] text-center mb-3">
+              Spin to get up to <strong className="text-amber-600 font-black">150% Refund</strong> on your {cashbackPaidAmount} GRAM payment!
+            </p>
+
+            {/* 🎮 3x3 GRID (8 Outer Boxes + 1 Center SPIN Button) */}
+            <div className="w-full grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-[#eaf4fd] border border-sky-200/70 shadow-inner my-1">
+              
+              {/* Row 1 */}
+              {renderCashbackCell(0)} {/* Top-Left: 150% */}
+              {renderCashbackCell(1)} {/* Top-Center: 50% */}
+              {renderCashbackCell(2)} {/* Top-Right: Empty */}
+
+              {/* Row 2 */}
+              {renderCashbackCell(7)} {/* Middle-Left: Empty */}
+
+              {/* 🎯 CENTER SPIN BUTTON (Cell 4) */}
+              <div className="aspect-square rounded-2xl flex items-center justify-center p-0.5">
+                {isCashbackClaimed && !isCashbackSpinning ? (
+                  <button 
+                    disabled
+                    className="w-full h-full rounded-xl bg-slate-200/80 border border-slate-300 flex flex-col items-center justify-center text-slate-500 cursor-not-allowed shadow-inner text-xs font-black gap-1"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span className="text-[10px]">Claimed</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSpinCashbackWheel}
+                    disabled={isCashbackSpinning || isCashbackClaimed}
+                    className={`w-full h-full rounded-xl flex flex-col items-center justify-center gap-1 font-black text-white transition-all shadow-[0_4px_0_#145a32] border-t-2 border-emerald-300 bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-110 active:scale-90 active:shadow-[0_1px_0_#145a32] cursor-pointer ${
+                      isCashbackSpinning 
+                        ? 'opacity-85 cursor-not-allowed animate-pulse' 
+                        : 'animate-bounce-gentle shadow-[0_0_15px_rgba(46,204,113,0.4)]'
+                    }`}
+                  >
+                    <RotateCw className={`w-5 h-5 text-white stroke-[2.5] ${isCashbackSpinning ? 'animate-spin' : ''}`} />
+                    <span className="text-xs tracking-wider uppercase drop-shadow font-black">
+                      {isCashbackSpinning ? 'SPINNING' : 'SPIN'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {renderCashbackCell(3)} {/* Middle-Right: 25% */}
+
+              {/* Row 3 */}
+              {renderCashbackCell(6)} {/* Bottom-Left: 5% */}
+              {renderCashbackCell(5)} {/* Bottom-Center: 10% */}
+              {renderCashbackCell(4)} {/* Bottom-Right: 15% */}
+
+            </div>
+
+            {/* Won Prize Announcement Banner */}
+            {cashbackWonPrize && !isCashbackSpinning && (
+              <div className={`mt-3 w-full border rounded-2xl p-2.5 px-4 flex items-center justify-center text-white shadow-md text-center animate-bounce-gentle ${
+                cashbackWonPrize.percentage > 0 
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 border-emerald-400' 
+                  : 'bg-gradient-to-r from-slate-500 to-slate-600 border-slate-400'
+              }`}>
+                <span className="text-xs font-black">
+                  {cashbackWonPrize.percentage > 0 
+                    ? `🎉 Won +${cashbackWonPrize.cashbackAmountGram} GRAM (${cashbackWonPrize.label}) Cashback!`
+                    : `Better luck next time! Your campaign is live and active.`
+                  }
+                </span>
+              </div>
+            )}
+
+            {/* Bottom Modal Action Buttons */}
+            <div className="w-full mt-3">
+              {cashbackWonPrize && cashbackWonPrize.percentage > 0 ? (
+                <button 
+                  onClick={handleClaimCashbackToWallet}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span>Claim to TON Wallet (+{cashbackWonPrize.cashbackAmountGram} GRAM)</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsCashbackWheelOpen(false)}
+                  disabled={isCashbackSpinning}
+                  className="w-full py-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 font-black text-xs text-slate-700 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isCashbackClaimed ? 'Done' : 'Close'}
+                </button>
+              )}
             </div>
 
           </div>

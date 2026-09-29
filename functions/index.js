@@ -49,6 +49,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// GigaPub Postback Callback route
+app.get(['/api/giga-callback', '/giga-callback'], (req, res) => {
+  const { userId, amount, rewardId } = req.query;
+  console.log('[GigaPub Postback Received]:', { userId, amount, rewardId });
+  return res.status(200).json({ ok: true, status: 'success' });
+});
+
 // Telegram Membership Verification Route (Bot API getChatMember)
 app.post(['/telegram/verify-member', '/api/telegram/verify-member'], async (req, res) => {
   try {
