@@ -20,7 +20,8 @@ const REFER_MISSIONS = [
 export default function InviteFriendsPage({ 
   user = { username: 'Farmer', id: null, invitedFriends: [], claimedReferMissions: {} }, 
   onBack,
-  onClaimReward
+  onClaimReward,
+  onClaimCommission
 }) {
   const [copied, setCopied] = useState(false);
   const [claimedMissions, setClaimedMissions] = useState(user?.claimedReferMissions || {});
@@ -39,6 +40,36 @@ export default function InviteFriendsPage({
   const invitedFriendsList = Array.isArray(user?.invitedFriends) ? user.invitedFriends : [];
   const invitedCount = invitedFriendsList.length || user?.referralsCount || 0;
 
+  // কমিশন ব্যালেন্স
+  const applesCommission = Math.max(0, Number(user?.referralApplesCommission || 0));
+  const diamondsCommission = Math.max(0, Number(user?.referralDiamondsCommission || 0));
+
+  // কমিশন ক্লেইম হ্যান্ডলার (Apples)
+  const handleClaimApplesCommission = () => {
+    if (applesCommission <= 0) return;
+    soundManager.playSuccessSound();
+    confetti({ particleCount: 60, spread: 55, origin: { y: 0.6 } });
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    }
+    if (onClaimCommission) {
+      onClaimCommission('apple', applesCommission);
+    }
+  };
+
+  // কমিশন ক্লেইম হ্যান্ডলার (Diamonds)
+  const handleClaimDiamondsCommission = () => {
+    if (diamondsCommission <= 0) return;
+    soundManager.playSuccessSound();
+    confetti({ particleCount: 60, spread: 55, origin: { y: 0.6 } });
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    }
+    if (onClaimCommission) {
+      onClaimCommission('diamond', diamondsCommission);
+    }
+  };
+
   // লিংক কপি করার ফাংশন
   const handleCopyLink = () => {
     soundManager.playClickSound();
@@ -55,7 +86,7 @@ export default function InviteFriendsPage({
   // সরাসরি টেলিগ্রামে বন্ধুদের শেয়ার করার ফাংশন
   const handleShareNow = () => {
     soundManager.playClickSound();
-    const shareText = encodeURIComponent('🍎 Join Apple Farm with me! Grow apples and harvest real rewards together!');
+    const shareText = encodeURIComponent('🍎 Join Apple Farm with me! Grow apples, harvest rewards and earn lifetime commission together!');
     const fullShareUrl = `https://t.me/share/url?url=https://${referralLink}&text=${shareText}`;
 
     if (window.Telegram?.WebApp?.openTelegramLink) {
@@ -115,7 +146,7 @@ export default function InviteFriendsPage({
       </div>
 
       {/* ----------------- SCROLLABLE MAIN CONTENT ----------------- */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 max-h-[calc(100vh-170px)] pb-3">
+      <div className="flex-1 overflow-y-auto space-y-3 pr-0.5 max-h-[calc(100vh-170px)] pb-3">
         
         {/* 1. TOP ILLUSTRATION BANNER */}
         <div className="w-full h-44 rounded-3xl overflow-hidden border-2 border-white shadow-[0_6px_20px_rgba(0,0,0,0.08)] bg-sky-100 relative flex items-center justify-center flex-shrink-0">
@@ -127,13 +158,95 @@ export default function InviteFriendsPage({
         </div>
 
         {/* 2. HEADLINE & COMMISSION TEXT */}
-        <div className="text-center space-y-0.5 pt-0.5">
+        <div className="text-center space-y-1 pt-0.5">
           <h2 className="text-xl font-black text-[#192f52] tracking-tight leading-tight">
             Invite Your Friends
           </h2>
-          <p className="text-xs font-extrabold text-[#38587f]">
-            Get +500 Apples Instant Bonus
-          </p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+            <span className="text-[11px] font-black text-emerald-800">
+              Get +500 Apples + 10% Lifetime Commission
+            </span>
+          </div>
+        </div>
+
+        {/* 2.5 💰 2x LIFETIME COMMISSION CLAIM CARDS */}
+        <div className="grid grid-cols-2 gap-2.5 px-0.5">
+          
+          {/* Card 1: Apples Commission */}
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3 border border-red-100 shadow-[0_2px_12px_rgba(239,68,68,0.06)] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-7 h-7 rounded-xl bg-red-50 flex items-center justify-center">
+                  <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                  Apples Comm.
+                </span>
+              </div>
+              <span className="text-[9px] font-black bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full">
+                10%
+              </span>
+            </div>
+
+            <div className="my-2 text-left">
+              <div className="text-base font-black text-[#192f52] flex items-center gap-1">
+                <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain inline" />
+                <span>{applesCommission.toLocaleString()}</span>
+              </div>
+              <span className="text-[9px] font-bold text-slate-400">Available to Claim</span>
+            </div>
+
+            <button
+              onClick={handleClaimApplesCommission}
+              disabled={applesCommission <= 0}
+              className={`w-full py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1 shadow-sm active:scale-95 ${
+                applesCommission > 0
+                  ? 'bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white hover:brightness-105 cursor-pointer shadow-emerald-200'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <span>{applesCommission > 0 ? 'Claim Apples' : 'Claim'}</span>
+            </button>
+          </div>
+
+          {/* Card 2: Diamonds Commission */}
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3 border border-sky-100 shadow-[0_2px_12px_rgba(2,132,199,0.06)] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-7 h-7 rounded-xl bg-sky-50 flex items-center justify-center">
+                  <img src={diamondImg} alt="Diamond" className="w-4 h-4 object-contain" />
+                </div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                  Diamonds Comm.
+                </span>
+              </div>
+              <span className="text-[9px] font-black bg-sky-100 text-sky-700 px-1.5 py-0.2 rounded-full">
+                10%
+              </span>
+            </div>
+
+            <div className="my-2 text-left">
+              <div className="text-base font-black text-[#0284c7] flex items-center gap-1">
+                <img src={diamondImg} alt="Diamond" className="w-4 h-4 object-contain inline" />
+                <span>{diamondsCommission.toFixed(1)}</span>
+              </div>
+              <span className="text-[9px] font-bold text-slate-400">Available to Claim</span>
+            </div>
+
+            <button
+              onClick={handleClaimDiamondsCommission}
+              disabled={diamondsCommission <= 0}
+              className={`w-full py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-1 shadow-sm active:scale-95 ${
+                diamondsCommission > 0
+                  ? 'bg-gradient-to-r from-[#0098EA] to-[#0077c2] text-white hover:brightness-105 cursor-pointer shadow-sky-200'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <span>{diamondsCommission > 0 ? 'Claim Diamonds' : 'Claim'}</span>
+            </button>
+          </div>
+
         </div>
 
         {/* 3. REFERRAL LINK BOX */}

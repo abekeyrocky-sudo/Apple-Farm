@@ -364,26 +364,26 @@ export default function App() {
   useEffect(() => {
     if (!isLoading && user?.id) {
       if (!hasCheckedOfflineRef.current) {
+        hasCheckedOfflineRef.current = true;
+
         // ১. অটো-বট অফলাইন হার্ভেস্ট চেক
         const offlineData = calculateOfflineHarvest(user);
         if (offlineData.pendingApples > 0) {
-          hasCheckedOfflineRef.current = true;
           setOfflineHarvest(offlineData);
           setIsAutoBotModalOpen(true);
-        } else if (user.autoBot !== undefined) {
-          // Firebase sync সম্পন্ন হয়েছে এবং অফলাইন রিওয়ার্ড নেই, ডেইলী রিওয়ার্ড চেক
-          hasCheckedOfflineRef.current = true;
+        } else {
+          // ২. অফলাইন হার্ভেস্ট না থাকলে সরাসরি ডেইলী রিওয়ার্ড চেক
           const dailyStatus = getDailyRewardStatus(user.id);
           if (dailyStatus.canClaimToday) {
             const timer = setTimeout(() => {
               setIsDailyRewardOpen(true);
-            }, 1000);
+            }, 800);
             return () => clearTimeout(timer);
           }
         }
       }
     }
-  }, [isLoading, user?.id, user?.autoBot]);
+  }, [isLoading, user?.id]);
 
   // 🤖 অটো-বটের অফলাইন হার্ভেস্ট ক্লেইম হ্যান্ডলার
   const handleAutoBotHarvestClaim = (amount) => {
@@ -523,10 +523,49 @@ export default function App() {
   };
 
   const handleGameReward = (item) => {
+    if (item.type === 'box') {
+      const applesWon = Number(item.boxApples) || (Math.floor(Math.random() * 9 + 1) * 100);
+      const diamondsWon = Number(item.boxDiamonds) || Number((Math.random() * 2.9 + 0.1).toFixed(1));
+
+      const nextApples = (user.apples || 0) + applesWon;
+      const nextDiamonds = Number(((user.diamonds || 0) + diamondsWon).toFixed(2));
+
+      setUser((prev) => ({
+        ...prev,
+        apples: nextApples,
+        diamonds: nextDiamonds,
+        level: calculateLevel(nextApples)
+      }));
+
+      if (user?.id) {
+        updateUserInDB(user.id, { apples: nextApples, diamonds: nextDiamonds });
+      }
+
+      addTransaction({
+        userId: user.id,
+        title: '🎁 Mystery Box Prize',
+        subtitle: `Lucky Wheel (+${applesWon} 🍎, +${diamondsWon} 💎)`,
+        amount: `+${applesWon} 🍎, +${diamondsWon} 💎`,
+        currency: 'apple',
+        type: 'earn',
+        category: 'spin',
+        status: 'Completed'
+      });
+
+      showPopupModal({
+        type: 'reward',
+        title: '🎁 Mystery Box Opened!',
+        message: `Congratulations! You unlocked +${applesWon.toLocaleString()} Apples and +${diamondsWon} Diamonds from the Mystery Box.`,
+        rewardAmount: applesWon,
+        rewardType: 'apple'
+      });
+      return;
+    }
+
     const value = parseFloat(item.label) || 0;
     if (item.type === 'diamond') {
       const nextDiamonds = Number(((user.diamonds || 0) + value).toFixed(2));
-      setUser((prev) => ({ ...prev, diamonds: Number(((prev.diamonds || 0) + value).toFixed(2)) }));
+      setUser((prev) => ({ ...prev, diamonds: nextDiamonds }));
       if (user?.id) {
         updateUserInDB(user.id, { diamonds: nextDiamonds });
       }
@@ -738,12 +777,84 @@ export default function App() {
     });
   };
 
+  const handleClaimCommission = (type, amount) => {
+    if (amount <= 0) return;
+    if (type === 'apple') {
+      const nextApples = (user.apples || 0) + amount;
+      const nextComm = Math.max(0, (user.referralApplesCommission || 0) - amount);
+      setUser((prev) => ({
+        ...prev,
+        apples: nextApples,
+        referralApplesCommission: nextComm,
+        level: calculateLevel(nextApples)
+      }));
+      if (user?.id) {
+        updateUserInDB(user.id, {
+          apples: nextApples,
+          referralApplesCommission: nextComm
+        });
+      }
+      addTransaction({
+        userId: user.id,
+        title: 'Referral Commission',
+        subtitle: '10% Lifetime Harvest Commission',
+        amount: `+${amount}`,
+        currency: 'apple',
+        type: 'earn',
+        category: 'invite',
+        status: 'Completed'
+      });
+      showPopupModal({
+        type: 'reward',
+        title: 'Commission Claimed!',
+        message: `Awesome! You claimed +${amount.toLocaleString()} Apples referral commission.`,
+        rewardAmount: amount,
+        rewardType: 'apple'
+      });
+    } else if (type === 'diamond') {
+      const nextDiamonds = Number(((user.diamonds || 0) + amount).toFixed(2));
+      const nextComm = Math.max(0, Number(((user.referralDiamondsCommission || 0) - amount).toFixed(2)));
+      setUser((prev) => ({
+        ...prev,
+        diamonds: nextDiamonds,
+        referralDiamondsCommission: nextComm
+      }));
+      if (user?.id) {
+        updateUserInDB(user.id, {
+          diamonds: nextDiamonds,
+          referralDiamondsCommission: nextComm
+        });
+      }
+      addTransaction({
+        userId: user.id,
+        title: 'Referral Commission',
+        subtitle: '10% Lifetime Diamonds Commission',
+        amount: `+${amount}`,
+        currency: 'diamond',
+        type: 'earn',
+        category: 'invite',
+        status: 'Completed'
+      });
+      showPopupModal({
+        type: 'reward',
+        title: 'Commission Claimed!',
+        message: `Awesome! You claimed +${amount} Diamonds referral commission.`,
+        rewardAmount: amount,
+        rewardType: 'diamond'
+      });
+    }
+  };
+
   const [taskInitialTab, setTaskInitialTab] = useState('All');
+  const [marketInitialTab, setMarketInitialTab] = useState('Auto-Bot');
 
   const handleNavigate = (tab, options = {}) => {
     setCurrentTab(tab);
     if (tab === 'task') {
       setTaskInitialTab(options?.taskTab || 'All');
+    }
+    if (tab === 'market') {
+      setMarketInitialTab(options?.marketTab || 'Auto-Bot');
     }
   };
 
@@ -856,6 +967,7 @@ export default function App() {
             user={user}
             onBack={() => setCurrentTab('home')}
             onClaimReward={handleClaimReferReward}
+            onClaimCommission={handleClaimCommission}
             onShowPopup={showPopupModal}
           />
         );
@@ -891,6 +1003,7 @@ export default function App() {
         return (
           <MarketPage 
             user={user}
+            initialTab={marketInitialTab}
             onBack={() => setCurrentTab('home')}
             onNavigate={handleNavigate}
             onUpdateUserBalance={handleUpdateUserBalance}
@@ -917,7 +1030,17 @@ export default function App() {
       {/* 🤖 অটো-হার্ভেস্ট বট অফলাইন রিওয়ার্ড ক্লেইম মডাল */}
       <AutoBotClaimModal
         isOpen={isAutoBotModalOpen}
-        onClose={() => setIsAutoBotModalOpen(false)}
+        onClose={() => {
+          setIsAutoBotModalOpen(false);
+          if (user?.id) {
+            const dailyStatus = getDailyRewardStatus(user.id);
+            if (dailyStatus.canClaimToday) {
+              setTimeout(() => {
+                setIsDailyRewardOpen(true);
+              }, 600);
+            }
+          }
+        }}
         offlineHarvest={offlineHarvest}
         onClaim={handleAutoBotHarvestClaim}
       />

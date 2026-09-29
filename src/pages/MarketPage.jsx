@@ -22,12 +22,19 @@ const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c'
 
 export default function MarketPage({ 
   user = { apples: 0, diamonds: 0.0 }, 
+  initialTab = 'Auto-Bot',
   onBack, 
   onNavigate,
   onUpdateUserBalance,
   onShowPopup
 }) {
-  const [activeTab, setActiveTab] = useState('Auto-Bot');
+  const [activeTab, setActiveTab] = useState(initialTab || 'Auto-Bot');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [purchaseSuccess, setPurchaseSuccess] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [isProcessingTx, setIsProcessingTx] = useState(false);
@@ -594,14 +601,44 @@ export default function MarketPage({
       }
     }
 
+    // ট্রানজাকশন হিস্ট্রি রেকর্ড
+    if (user?.id) {
+      addTransaction({
+        userId: user.id,
+        title: item.name,
+        subtitle: `${item.price.toLocaleString()} ${item.currency === 'apple' ? 'Apples' : 'Diamonds'} Paid`,
+        amount: `-${item.price.toLocaleString()}`,
+        currency: item.currency,
+        type: 'spend',
+        category: 'market',
+        status: 'Completed'
+      });
+    }
+
+    soundManager.playSuccessSound();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
     }
 
+    confetti({
+      particleCount: 80,
+      spread: 60,
+      origin: { y: 0.6 }
+    });
+
     setPurchaseSuccess(item);
     setTimeout(() => {
       setPurchaseSuccess(null);
-    }, 2000);
+    }, 2500);
+
+    if (onShowPopup) {
+      onShowPopup({
+        type: 'reward',
+        title: `${item.name} Activated!`,
+        message: item.description || `You have successfully purchased ${item.name}!`,
+        confirmText: 'Awesome!'
+      });
+    }
   };
 
   return (

@@ -105,8 +105,8 @@ export default function LeaderboardPage({
                   <p className="text-[11px] font-black text-[#1c324f] truncate drop-shadow-xs">
                     {secondPlace.name}
                   </p>
-                  {(secondPlace.isVerified || secondPlace.verifiedBadge) && (
-                    <img src={verifyBadgeImg} alt="Verified" className="w-3 h-3 object-contain flex-shrink-0" />
+                  {(secondPlace.isVerified || secondPlace.verifiedBadge || (secondPlace.id?.toString() === user?.id?.toString() && (user?.isVerified || user?.verifiedBadge))) && (
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
                   )}
                 </div>
                 <div className="w-full h-24 bg-gradient-to-b from-[#D5D8DC] to-[#A6ACAF] rounded-t-2xl shadow-md border-t-2 border-l border-r border-white flex flex-col items-center justify-start pt-2">
@@ -136,7 +136,7 @@ export default function LeaderboardPage({
                   <p className="text-xs font-black text-[#1c324f] truncate drop-shadow-xs">
                     {firstPlace.name}
                   </p>
-                  {(firstPlace.isVerified || firstPlace.verifiedBadge) && (
+                  {(firstPlace.isVerified || firstPlace.verifiedBadge || (firstPlace.id?.toString() === user?.id?.toString() && (user?.isVerified || user?.verifiedBadge))) && (
                     <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
                   )}
                 </div>
@@ -166,8 +166,8 @@ export default function LeaderboardPage({
                   <p className="text-[11px] font-black text-[#1c324f] truncate drop-shadow-xs">
                     {thirdPlace.name}
                   </p>
-                  {(thirdPlace.isVerified || thirdPlace.verifiedBadge) && (
-                    <img src={verifyBadgeImg} alt="Verified" className="w-3 h-3 object-contain flex-shrink-0" />
+                  {(thirdPlace.isVerified || thirdPlace.verifiedBadge || (thirdPlace.id?.toString() === user?.id?.toString() && (user?.isVerified || user?.verifiedBadge))) && (
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
                   )}
                 </div>
                 <div className="w-full h-20 bg-gradient-to-b from-[#E59866] to-[#BA4A00] rounded-t-2xl shadow-md border-t-2 border-l border-r border-amber-200 flex flex-col items-center justify-start pt-2">
@@ -255,9 +255,14 @@ export default function LeaderboardPage({
               <img src={userAvatarImg} alt="Avatar" className="w-full h-full object-cover" />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-[#8C6B1F] leading-tight">
-                Your Rank:
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-[11px] font-bold text-[#8C6B1F] leading-tight">
+                  Your Rank:
+                </p>
+                {(user.isVerified || user.verifiedBadge) && (
+                  <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain flex-shrink-0" />
+                )}
+              </div>
               <h2 className="text-lg font-black text-[#1c324f] tracking-tight">
                 {myRank}
               </h2>

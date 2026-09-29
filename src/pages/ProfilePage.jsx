@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ChevronRight, Award, ArrowRight } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ShieldAlert, ChevronRight, Award, ArrowRight, Calendar, Copy, CheckCheck, Sparkles, Bot, X, ExternalLink } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
+import diamondImg from '../../assets/daimond.png';
 import verifyBadgeImg from '../../assets/verify-badge.png';
 import { calculateLevel, getLevelProgress, LEVEL_TIERS } from '../utils/levelSystem';
 import { AVATARS, getAvatarSrc } from '../utils/avatars';
@@ -17,6 +18,7 @@ export default function ProfilePage({
   onRedeemBonus, 
   onUpdateAvatar
 }) {
+  const [showMyProfileModal, setShowMyProfileModal] = useState(false);
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -26,6 +28,7 @@ export default function ProfilePage({
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
 
   // সাউন্ড ও হ্যাপটিক সেটিংস স্টেট
   const [isSoundMuted, setIsSoundMuted] = useState(soundManager.isMuted);
@@ -54,6 +57,41 @@ export default function ProfilePage({
   const progress = getLevelProgress(user.apples || 0);
   const telegramId = user.id || window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '40281';
   const currentAvatarSrc = getAvatarSrc(user.avatar);
+  const isUserVerified = !!(user?.isVerified || user?.verifiedBadge);
+
+  const getJoinDate = () => {
+    try {
+      if (user?.createdAt) {
+        const d = new Date(user.createdAt.seconds ? user.createdAt.seconds * 1000 : user.createdAt);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+      }
+      const key = `apple_farm_join_date_${user?.id || 'me'}`;
+      let saved = localStorage.getItem(key);
+      if (!saved) {
+        const now = new Date();
+        saved = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        localStorage.setItem(key, saved);
+      }
+      return saved;
+    } catch (e) {
+      return '24 Sep 2026';
+    }
+  };
+
+  const handleCopyUsername = () => {
+    const text = user.username ? `@${user.username}` : `Farmer #${telegramId}`;
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedId(true);
+      soundManager.playClickSound();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+      setTimeout(() => setCopiedId(false), 2000);
+    } catch (e) {}
+  };
 
   // মেনু আইটেমের তালিকা
   const menuItems = [
@@ -147,7 +185,7 @@ export default function ProfilePage({
     }
 
     if (id === 'profile') {
-      setShowAvatarModal(true);
+      setShowMyProfileModal(true);
     } else if (id === 'market') {
       onNavigate?.('market');
     } else if (id === 'redeem') {
@@ -377,7 +415,7 @@ export default function ProfilePage({
                 <button
                   onClick={() => {
                     setShowRedeemModal(false);
-                    onNavigate?.('market');
+                    onNavigate?.('market', { marketTab: 'Items' });
                   }}
                   className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
@@ -826,6 +864,218 @@ export default function ProfilePage({
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- 🌾 FARMER ID & PASSPORT MODAL (MY PROFILE) ----------------- */}
+      {showMyProfileModal && (
+        <div 
+          className="fixed inset-0 bg-black/55 backdrop-blur-xs flex items-center justify-center p-3.5 z-50 animate-fade-in"
+          onClick={() => setShowMyProfileModal(false)}
+        >
+          <div 
+            className="relative w-full max-w-sm bg-gradient-to-b from-[#f0f9ff] via-white to-[#eef8f1] rounded-[32px] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] border-2 border-white overflow-hidden text-center animate-scale-up select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Background Decorative Glows */}
+            <div className="absolute -top-10 -right-10 w-28 h-28 bg-emerald-300/30 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-28 h-28 bg-amber-300/25 rounded-full blur-xl pointer-events-none" />
+
+            {/* Top Header Row */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 relative z-10">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">🌾</span>
+                <span className="text-xs font-black uppercase tracking-wider text-[#192f52]">
+                  Farmer Passport
+                </span>
+                <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                  ID: #{telegramId}
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowMyProfileModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-xs flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Center Profile Hero */}
+            <div className="flex flex-col items-center my-2 relative z-10">
+              {/* Avatar with Ring */}
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-400 via-emerald-300 to-sky-400 p-1 shadow-lg ring-4 ring-white">
+                  <div className="w-full h-full rounded-full overflow-hidden bg-sky-100 border border-white">
+                    <img src={currentAvatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                </div>
+                {/* Camera edit button on avatar */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMyProfileModal(false);
+                    setShowAvatarModal(true);
+                  }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md border-2 border-white active:scale-90 transition-transform cursor-pointer"
+                  title="Change Avatar"
+                >
+                  <Camera className="w-3 h-3 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Name & Verified / Not Verified Badge */}
+              <div className="flex items-center justify-center gap-1.5 mt-2.5 flex-wrap">
+                <h3 className="text-lg font-black text-[#132c4a] tracking-tight">
+                  {user.name || 'Farmer'}
+                </h3>
+                {isUserVerified ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-black shadow-2xs">
+                    <img src={verifyBadgeImg} alt="Verified" className="w-3.5 h-3.5 object-contain" />
+                    <span>Verified</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-[10px] font-black shadow-2xs">
+                    <ShieldAlert className="w-3 h-3 text-red-500" />
+                    <span>Not Verified</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Telegram Username Pill with Copy */}
+              <button
+                type="button"
+                onClick={handleCopyUsername}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 hover:bg-sky-100 border border-sky-200 text-[11px] font-black text-sky-800 mt-1 shadow-xs active:scale-95 transition-all cursor-pointer"
+              >
+                <span>{user.username ? `@${user.username}` : `Farmer #${telegramId}`}</span>
+                {copiedId ? (
+                  <CheckCheck className="w-3 h-3 text-emerald-600" />
+                ) : (
+                  <Copy className="w-3 h-3 text-sky-600" />
+                )}
+              </button>
+            </div>
+
+            {/* 6-Grid Stats Card Details */}
+            <div className="grid grid-cols-2 gap-2 my-3 text-left relative z-10">
+              
+              {/* 1. Join Date */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-amber-500" />
+                  <span>Joined Farm</span>
+                </span>
+                <p className="text-xs font-black text-[#1c324f] mt-0.5">
+                  {getJoinDate()}
+                </p>
+              </div>
+
+              {/* 2. Verification Status */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  {isUserVerified ? (
+                    <ShieldCheck className="w-3 h-3 text-blue-500" />
+                  ) : (
+                    <ShieldAlert className="w-3 h-3 text-red-500" />
+                  )}
+                  <span>Status</span>
+                </span>
+                <p className={`text-xs font-black mt-0.5 flex items-center gap-1 ${isUserVerified ? 'text-blue-600' : 'text-red-500'}`}>
+                  {isUserVerified ? (
+                    <>
+                      <span>Verified Pro</span>
+                      <img src={verifyBadgeImg} alt="V" className="w-3 h-3 object-contain" />
+                    </>
+                  ) : (
+                    <span>Not Verified</span>
+                  )}
+                </p>
+              </div>
+
+              {/* 3. Farming Rank & Level */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  <Award className="w-3 h-3 text-emerald-500" />
+                  <span>Farmer Rank</span>
+                </span>
+                <p className="text-xs font-black text-emerald-700 mt-0.5 truncate">
+                  Lv.{progress.level} {progress.title}
+                </p>
+              </div>
+
+              {/* 4. Total Apples */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  <img src={appleImg} alt="Apple" className="w-3 h-3 object-contain" />
+                  <span>Apples Harvested</span>
+                </span>
+                <p className="text-xs font-black text-[#1c324f] mt-0.5">
+                  {(user.apples || 0).toLocaleString()}
+                </p>
+              </div>
+
+              {/* 5. Diamonds */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  <img src={diamondImg} alt="Diamond" className="w-3 h-3 object-contain" />
+                  <span>Diamonds</span>
+                </span>
+                <p className="text-xs font-black text-[#0284c7] mt-0.5">
+                  {Number(user.diamonds || 0).toFixed(1)} 💎
+                </p>
+              </div>
+
+              {/* 6. Auto-Farmer Bot */}
+              <div className="bg-white/90 p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                  <Bot className="w-3 h-3 text-purple-500" />
+                  <span>Auto-Farmer</span>
+                </span>
+                <p className={`text-xs font-black mt-0.5 truncate ${user?.autoBot?.active ? 'text-purple-600' : 'text-slate-400'}`}>
+                  {user?.autoBot?.active ? '24/7 Active ⚡' : 'Not Active'}
+                </p>
+              </div>
+
+            </div>
+
+            {/* Bottom Action Buttons */}
+            <div className="flex items-center gap-2 pt-1 relative z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMyProfileModal(false);
+                  setShowAvatarModal(true);
+                }}
+                className="flex-1 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs border border-slate-200 shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Camera className="w-3.5 h-3.5 text-slate-500" />
+                <span>Change Avatar</span>
+              </button>
+
+              {!isUserVerified ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMyProfileModal(false);
+                    onNavigate?.('market', { marketTab: 'Items' });
+                  }}
+                  className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-xs shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <img src={verifyBadgeImg} alt="Verify" className="w-3.5 h-3.5 object-contain" />
+                  <span>Get Verify Badge</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowMyProfileModal(false)}
+                  className="flex-1 py-2.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+                >
+                  <span>Awesome</span>
+                </button>
+              )}
+            </div>
+
           </div>
         </div>
       )}

@@ -353,6 +353,8 @@ export const getLeaderboardFromDB = async () => {
         avatar: data.avatar || 'avatar-1',
         apples: data.apples || 0,
         level: data.level || 1,
+        isVerified: !!(data.isVerified || data.verifiedBadge),
+        verifiedBadge: !!(data.verifiedBadge || data.isVerified)
       });
     });
     return list;

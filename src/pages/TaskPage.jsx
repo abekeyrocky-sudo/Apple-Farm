@@ -143,8 +143,8 @@ export default function TaskPage({
       {
         id: 'task_offerwall',
         title: 'Offerwall Tasks',
-        reward: 'Up to 10 Diamonds',
-        rewardAmount: 10,
+        reward: 'Unlimited Diamonds',
+        rewardAmount: 'Unlimited',
         rewardCurrency: 'diamond',
         type: 'Daily',
         status: 'Go',

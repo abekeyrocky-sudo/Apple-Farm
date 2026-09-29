@@ -975,14 +975,14 @@ export default function WatchAdsPage({
               <button
                 onClick={() => {
                   setActiveMissionModal(null);
-                  if (!is20AdsCompleted && !isWatching) {
+                  if (!isDailyAdsCompleted && !isWatching) {
                     handleWatchAd();
                   }
                 }}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32] border-t border-emerald-300 font-black text-xs text-white cursor-pointer transition-all flex items-center justify-center gap-2"
               >
                 <Play className="w-3.5 h-3.5 fill-white" />
-                <span>{is20AdsCompleted ? 'Got It' : 'Watch Daily Ads Now'}</span>
+                <span>{isDailyAdsCompleted ? 'Got It' : 'Watch Daily Ads Now'}</span>
               </button>
             </div>
 

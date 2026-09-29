@@ -834,7 +834,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                       </div>
                     </div>
                     <button 
-                      onClick={() => onNavigate?.('market')} 
+                      onClick={() => onNavigate?.('market', { marketTab: 'Items' })} 
                       className="text-[9px] font-black bg-slate-800 text-white px-2 py-0.5 rounded-full flex-shrink-0 hover:bg-black cursor-pointer active:scale-95"
                     >
                       Unlock

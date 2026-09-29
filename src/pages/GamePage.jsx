@@ -15,8 +15,8 @@ const SLICES = [
   { id: 1, type: 'diamond', label: '500', color: '#00A3FF' },
   { id: 2, type: 'apple', label: '100', color: '#FF5E87' },
   { id: 3, type: 'apple', label: '500', color: '#FFCA28' },
-  { id: 4, type: 'apple', label: '200', color: '#A855F7' },
-  { id: 5, type: 'apple', label: '200', color: '#00D2D3' },
+  { id: 4, type: 'apple', label: '1000', color: '#A855F7' },
+  { id: 5, type: 'box', label: 'Box', color: '#00D2D3' },
   { id: 6, type: 'apple', label: '300', color: '#EF4444' },
   { id: 7, type: 'apple', label: '500', color: '#FBBF24' },
 ];
@@ -81,11 +81,11 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
           message: 'Get 50 extra spins voucher from Market or invite friends to get +1 spin per referral!',
           confirmText: 'Get 50x Voucher',
           cancelText: 'Invite Friends',
-          onConfirm: () => onNavigate?.('market'),
+          onConfirm: () => onNavigate?.('market', { marketTab: 'Items' }),
           onCancel: () => onNavigate?.('invite')
         });
       } else {
-        onNavigate?.('market');
+        onNavigate?.('market', { marketTab: 'Items' });
       }
       return;
     }
@@ -127,25 +127,25 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
       }
     }, 140);
 
-    // 🎯 500 Diamonds (Index 0)-এ পড়ার চান্স ১০০% জিরো (0%)
-    // শুধুমাত্র Apple স্লাইসগুলোতেই (Index 1 থেকে 6) ল্যান্ড করবে:
-    // Index 1: 100 Apples (30%)
-    // Index 4: 200 Apples (25%)
-    // Index 5: 200 Apples (20%)
-    // Index 6: 300 Apples (15%)
-    // Index 2/7: 500 Apples (10%)
+    // 🎯 Probabilities:
+    // Index 4 (Mystery Box: 100-1000 Apples + 0.1-3 Diamonds): 15%
+    // Index 3 (1000 Apples): 20%
+    // Index 5 (300 Apples): 15%
+    // Index 2 / 6 (500 Apples): 10% (5% each)
+    // Index 1 (100 Apples): 40% (Base 25% + fallback)
+    // Index 0 (500 Diamonds): 0%
     const rand = Math.random() * 100;
     let targetIndex;
-    if (rand < 30) {
-      targetIndex = 1; // 100 Apples
-    } else if (rand < 55) {
-      targetIndex = 3; // 200 Apples
-    } else if (rand < 75) {
-      targetIndex = 4; // 200 Apples
-    } else if (rand < 90) {
-      targetIndex = 5; // 300 Apples
+    if (rand < 15) {
+      targetIndex = 4; // Mystery Box (15%)
+    } else if (rand < 35) {
+      targetIndex = 3; // 1000 Apples (20%)
+    } else if (rand < 50) {
+      targetIndex = 5; // 300 Apples (15%)
+    } else if (rand < 60) {
+      targetIndex = Math.random() < 0.5 ? 2 : 6; // 500 Apples (10%)
     } else {
-      targetIndex = Math.random() < 0.5 ? 2 : 6; // 500 Apples
+      targetIndex = 1; // 100 Apples (40%)
     }
 
     // হুইল অ্যাঙ্গেল ক্যালকুলেশন (৭টি স্লাইসের টপ পয়েন্টারে ল্যান্ড করার জন্য)
@@ -168,8 +168,20 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
       // বিজয়ী সাউন্ড
       soundManager.playSuccessSound();
 
-      // বিজয়ী আইটেম (নিশ্চিতভাবে Apple স্লাইস)
-      const wonItem = SLICES[targetIndex];
+      // বিজয়ী আইটেম
+      let wonItem = { ...SLICES[targetIndex] };
+      if (wonItem.type === 'box') {
+        // Random 100 to 1000 Apples
+        const possibleApples = [100, 150, 200, 250, 300, 400, 500, 600, 750, 800, 1000];
+        const randomApples = possibleApples[Math.floor(Math.random() * possibleApples.length)];
+        
+        // Random 0.1 to 3 Diamonds
+        const possibleDiamonds = [0.1, 0.2, 0.3, 0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0];
+        const randomDiamonds = possibleDiamonds[Math.floor(Math.random() * possibleDiamonds.length)];
+
+        wonItem.boxApples = randomApples;
+        wonItem.boxDiamonds = randomDiamonds;
+      }
 
       // কনফেটি ফায়ার
       confetti({
@@ -303,11 +315,17 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
                     }}
                     className="absolute flex flex-col items-center justify-center pointer-events-none"
                   >
-                    <img 
-                      src={slice.type === 'diamond' ? diamondImg : appleImg} 
-                      alt={slice.type} 
-                      className="w-5 h-5 object-contain filter drop-shadow" 
-                    />
+                    {slice.type === 'box' ? (
+                      <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 border border-amber-700 shadow-sm flex items-center justify-center filter drop-shadow">
+                        <Gift className="w-3.5 h-3.5 text-amber-950 stroke-[2.8]" />
+                      </div>
+                    ) : (
+                      <img 
+                        src={slice.type === 'diamond' ? diamondImg : appleImg} 
+                        alt={slice.type} 
+                        className="w-5 h-5 object-contain filter drop-shadow" 
+                      />
+                    )}
                     <span className="text-xs font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] mt-0.5">
                       {slice.label}
                     </span>
@@ -339,13 +357,23 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
         {/* Win Alert Badge */}
         {winMessage && (
           <div className="absolute top-2 bg-white/95 border-2 border-emerald-400 text-emerald-800 text-xs font-black px-4 py-1.5 rounded-full shadow-lg animate-bounce flex items-center gap-1.5 z-30">
-            <span>You Won {winMessage.label}</span>
-            <img 
-              src={winMessage.type === 'diamond' ? diamondImg : appleImg} 
-              alt={winMessage.type} 
-              className="w-4 h-4 object-contain inline" 
-            />
-            <span>{winMessage.type === 'apple' ? 'Apples!' : 'Diamonds!'}</span>
+            {winMessage.type === 'box' ? (
+              <>
+                <span>🎁 Mystery Box:</span>
+                <span className="text-emerald-700 font-extrabold">+{winMessage.boxApples} 🍎</span>
+                <span className="text-sky-600 font-extrabold">& +{winMessage.boxDiamonds} 💎</span>
+              </>
+            ) : (
+              <>
+                <span>You Won {winMessage.label}</span>
+                <img 
+                  src={winMessage.type === 'diamond' ? diamondImg : appleImg} 
+                  alt={winMessage.type} 
+                  className="w-4 h-4 object-contain inline" 
+                />
+                <span>{winMessage.type === 'apple' ? 'Apples!' : 'Diamonds!'}</span>
+              </>
+            )}
           </div>
         )}
 
@@ -380,7 +408,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
 
         {/* ----------------- 50x VOUCHER & INVITE BANNER ----------------- */}
         <div 
-          onClick={() => onNavigate?.(voucherSpins === 0 ? 'market' : 'invite')}
+          onClick={() => voucherSpins === 0 ? onNavigate?.('market', { marketTab: 'Items' }) : onNavigate?.('invite')}
           className="w-full bg-[#FFFDF0]/95 backdrop-blur-md rounded-3xl p-3 px-4 border border-amber-200/80 shadow-[0_4px_14px_rgba(0,0,0,0.06)] flex items-center justify-between mt-4 cursor-pointer active:scale-[0.99] transition-transform"
         >
           <div className="flex items-center gap-3">
