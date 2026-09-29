@@ -34,7 +34,7 @@ export default function InviteFriendsPage({
 
   const botUsername = 'AppleFarmOfficialBot';
   const refCode = user?.id || user?.username || '40281';
-  const referralLink = `t.me/${botUsername}?startapp=${refCode}`;
+  const referralLink = `t.me/${botUsername}/App?startapp=${refCode}`;
 
   // রিয়েল ইনভাইট সংখ্যা (কোনো ডামি ডিফল্ট ডাটা নেই)
   const invitedFriendsList = Array.isArray(user?.invitedFriends) ? user.invitedFriends : [];
@@ -86,8 +86,9 @@ export default function InviteFriendsPage({
   // সরাসরি টেলিগ্রামে বন্ধুদের শেয়ার করার ফাংশন
   const handleShareNow = () => {
     soundManager.playClickSound();
+    const fullRefUrl = `https://${referralLink}`;
     const shareText = encodeURIComponent('🍎 Join Apple Farm with me! Grow apples, harvest rewards and earn lifetime commission together!');
-    const fullShareUrl = `https://t.me/share/url?url=https://${referralLink}&text=${shareText}`;
+    const fullShareUrl = `https://t.me/share/url?url=${encodeURIComponent(fullRefUrl)}&text=${shareText}`;
 
     if (window.Telegram?.WebApp?.openTelegramLink) {
       window.Telegram.WebApp.openTelegramLink(fullShareUrl);
@@ -181,7 +182,7 @@ export default function InviteFriendsPage({
                   <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
                 </div>
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                  Apples Comm.
+                  Apples
                 </span>
               </div>
               <span className="text-[9px] font-black bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full">
@@ -218,7 +219,7 @@ export default function InviteFriendsPage({
                   <img src={diamondImg} alt="Diamond" className="w-4 h-4 object-contain" />
                 </div>
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                  Diamonds Comm.
+                  Diamonds
                 </span>
               </div>
               <span className="text-[9px] font-black bg-sky-100 text-sky-700 px-1.5 py-0.2 rounded-full">

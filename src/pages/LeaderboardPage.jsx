@@ -6,6 +6,7 @@ import homeBgImg from '../../assets/home-page-background.png';
 import { getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { getLeaderboardFromDB } from '../firebase';
+import { calculateLevel } from '../utils/levelSystem';
 
 export default function LeaderboardPage({ 
   user = { name: 'Farmer', apples: 0, level: 1, id: null, avatar: 'avatar-1' }, 
@@ -47,13 +48,13 @@ export default function LeaderboardPage({
 
   const userAvatarImg = getAvatarSrc(user.avatar);
 
-  // Top 3 Real Winners from DB
+  // Top 3 Real Winners from DB (Podium)
   const firstPlace = leaderboard[0] || null;
   const secondPlace = leaderboard[1] || null;
   const thirdPlace = leaderboard[2] || null;
 
-  // Rank 4 to 50
-  const otherRankings = leaderboard.slice(3);
+  // Top 10 only: Rank 4 to 10
+  const otherRankings = leaderboard.slice(3, 10);
 
   // Calculate current user's real rank in DB
   const myIndex = leaderboard.findIndex(
@@ -232,7 +233,7 @@ export default function LeaderboardPage({
                       )}
                     </div>
                     <p className="text-[11px] font-bold text-gray-400">
-                      Lv. {item.level || 1}
+                      Lv. {calculateLevel(item.apples || 0)}
                     </p>
                   </div>
                 </div>

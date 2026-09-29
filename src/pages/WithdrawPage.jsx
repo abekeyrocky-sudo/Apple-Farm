@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Check, CheckCircle2, AlertCircle, Wallet, Lock, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Check, CheckCircle2, AlertCircle, Wallet, Lock, ShieldCheck, ExternalLink, History } from 'lucide-react';
 import { TonConnectUI } from '@tonconnect/ui';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import bksImg from '../../assets/bks.png';
 import gramImg from '../../assets/gram.png';
 import CustomTitleBar from '../components/CustomTitleBar';
+import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { soundManager } from '../utils/soundManager';
 
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
@@ -113,6 +114,7 @@ export default function WithdrawPage({
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessingTx, setIsProcessingTx] = useState(false);
   const [txError, setTxError] = useState('');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // TON Connect State
   const [tonConnectUI, setTonConnectUI] = useState(null);
@@ -405,10 +407,23 @@ export default function WithdrawPage({
           </div>
         </div>
 
-        {/* 3. SECTION TITLE */}
-        <h2 className="text-base font-black text-[#192f52] tracking-tight pt-1">
-          Choose Payment Method
-        </h2>
+        {/* 3. SECTION TITLE & HISTORY BUTTON */}
+        <div className="flex items-center justify-between pt-1">
+          <h2 className="text-base font-black text-[#192f52] tracking-tight">
+            Choose Payment Method
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClickSound();
+              setShowHistoryModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 border border-slate-200 text-[#192f52] hover:border-emerald-400 hover:text-emerald-700 active:scale-95 transition-all text-xs font-black shadow-xs cursor-pointer"
+          >
+            <History className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+            <span>History</span>
+          </button>
+        </div>
 
         {/* 4. PAYMENT METHODS LIST */}
         <div className="space-y-2.5 overflow-y-auto max-h-[calc(100vh-230px)] pb-6">
@@ -793,6 +808,13 @@ export default function WithdrawPage({
           </div>
         </div>
       )}
+
+      {/* ----------------- TRANSACTION HISTORY MODAL ----------------- */}
+      <TransactionHistoryModal
+        isOpen={showHistoryModal}
+        userId={user?.id}
+        onClose={() => setShowHistoryModal(false)}
+      />
 
     </div>
   );

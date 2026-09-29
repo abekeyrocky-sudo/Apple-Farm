@@ -41,7 +41,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
         [
           {
             text: '👥 Invite More Friends',
-            url: `https://t.me/share/url?url=https://t.me/AppleFarmOfficialBot?startapp=${param}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
+            url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/AppleFarmOfficialBot/App?startapp=${param}`)}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
             style: 'primary'
           }
         ]

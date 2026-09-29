@@ -16,7 +16,7 @@ import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
-import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB } from './firebase';
+import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions } from './firebase';
 import { calculateLevel, LEVEL_TIERS } from './utils/levelSystem';
 import confetti from 'canvas-confetti';
 import { soundManager } from './utils/soundManager';
@@ -177,6 +177,22 @@ export default function App() {
     }
   }, []);
 
+  // ⚡ ইঞ্জিন ১ & ২ লাইভ লিসেনার (Real-Time Referral Commissions Engine)
+  useEffect(() => {
+    if (user?.id) {
+      const unsub = listenToUserCommissions(user.id, (commData) => {
+        setUser((prev) => ({
+          ...prev,
+          referralApplesCommission: commData.referralApplesCommission,
+          referralDiamondsCommission: commData.referralDiamondsCommission,
+          invitedFriends: commData.invitedFriends && commData.invitedFriends.length > 0 ? commData.invitedFriends : (prev.invitedFriends || []),
+          referralsCount: commData.referralsCount !== undefined ? commData.referralsCount : (prev.referralsCount || 0)
+        }));
+      });
+      return () => unsub();
+    }
+  }, [user?.id]);
+
   // 🎁 GigaPub Offerwall SDK ইনিশিয়ালাইজেশন ও রিওয়ার্ড হ্যান্ডলার
   useEffect(() => {
     if (user?.id) {
@@ -186,6 +202,9 @@ export default function App() {
           ...prev,
           diamonds: Number(((prev.diamonds || 0) + added).toFixed(2)),
         }));
+        if (user?.referredBy && added > 0) {
+          distributeReferralCommission(user.referredBy, user.id, 'diamond', added, 'Offerwall Diamond Offer');
+        }
         showPopupModal({
           type: 'reward',
           title: 'Offer Completed! 💎',
@@ -196,7 +215,7 @@ export default function App() {
         });
       });
     }
-  }, [user?.id]);
+  }, [user?.id, user?.referredBy]);
 
   // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
   const checkCommunityMembership = async () => {
@@ -399,6 +418,9 @@ export default function App() {
     if (user.id) {
       updateUserInDB(user.id, { apples: (user.apples || 0) + amount });
       updateLastActiveTime(user.id);
+      if (user?.referredBy && amount > 0) {
+        distributeReferralCommission(user.referredBy, user.id, 'apple', amount, 'Auto-Bot Offline Harvest');
+      }
     }
 
     addTransaction({
@@ -441,6 +463,15 @@ export default function App() {
         ? { diamonds: (user.diamonds || 0) + amount }
         : { apples: (user.apples || 0) + amount };
       updateUserInDB(user.id, updateData);
+      if (user?.referredBy && amount > 0) {
+        distributeReferralCommission(
+          user.referredBy, 
+          user.id, 
+          isDiamond ? 'diamond' : 'apple', 
+          amount, 
+          `Daily Streak (Day ${reward.day})`
+        );
+      }
     }
 
     addTransaction({
@@ -468,6 +499,9 @@ export default function App() {
     });
   };
 
+  const harvestTapCountRef = React.useRef(0);
+  const harvestTimerRef = React.useRef(null);
+
   const handleHarvestAction = () => {
     setUser((prev) => {
       const newApples = prev.apples + 1;
@@ -478,9 +512,20 @@ export default function App() {
         level: newLevel
       };
     });
-    if (user.id) {
-      harvestAppleInDB(user.id);
-    }
+
+    harvestTapCountRef.current += 1;
+    if (harvestTimerRef.current) clearTimeout(harvestTimerRef.current);
+
+    harvestTimerRef.current = setTimeout(() => {
+      const count = harvestTapCountRef.current;
+      harvestTapCountRef.current = 0;
+      if (user?.id && count > 0) {
+        harvestAppleInDB(user.id, count);
+        if (user?.referredBy) {
+          distributeReferralCommission(user.referredBy, user.id, 'apple', count, 'Tree Tap Harvest');
+        }
+      }
+    }, 800);
   };
 
   const handleBonusWin = (amount, title = 'Bonus Claimed') => {
@@ -496,6 +541,9 @@ export default function App() {
     });
     if (user?.id) {
       updateUserInDB(user.id, { apples: (user.apples || 0) + numAmount });
+      if (user?.referredBy && numAmount > 0) {
+        distributeReferralCommission(user.referredBy, user.id, 'apple', numAmount, title);
+      }
     }
     addTransaction({
       userId: user.id,
@@ -539,6 +587,10 @@ export default function App() {
 
       if (user?.id) {
         updateUserInDB(user.id, { apples: nextApples, diamonds: nextDiamonds });
+        if (user?.referredBy) {
+          if (applesWon > 0) distributeReferralCommission(user.referredBy, user.id, 'apple', applesWon, 'Mystery Box Apples');
+          if (diamondsWon > 0) distributeReferralCommission(user.referredBy, user.id, 'diamond', diamondsWon, 'Mystery Box Diamonds');
+        }
       }
 
       addTransaction({
@@ -568,6 +620,9 @@ export default function App() {
       setUser((prev) => ({ ...prev, diamonds: nextDiamonds }));
       if (user?.id) {
         updateUserInDB(user.id, { diamonds: nextDiamonds });
+        if (user?.referredBy && value > 0) {
+          distributeReferralCommission(user.referredBy, user.id, 'diamond', value, 'Lucky Wheel Diamonds');
+        }
       }
       addTransaction({
         userId: user.id,
@@ -594,6 +649,9 @@ export default function App() {
       });
       if (user?.id) {
         updateUserInDB(user.id, { apples: nextApples });
+        if (user?.referredBy && value > 0) {
+          distributeReferralCommission(user.referredBy, user.id, 'apple', value, 'Lucky Wheel Apples');
+        }
       }
       addTransaction({
         userId: user.id,
@@ -648,6 +706,9 @@ export default function App() {
         category: 'withdraw',
         status: isGram ? 'Completed' : 'Pending'
       });
+
+      // 🔔 বট থেকে ইউজারকে ইনস্ট্যান্ট টেলিগ্রাম নোটিফিকেশন মেসেজ পাঠানো
+      sendWithdrawNotificationToTelegram(user.id, data);
     }
 
     // ⚡ Trigger Cloud Function automated on-chain TON payout

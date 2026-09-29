@@ -304,7 +304,7 @@ export default function WatchAdsPage({
     soundManager.playClickSound();
     const botUsername = 'AppleFarmOfficialBot';
     const refCode = user?.id || user?.username || '40281';
-    const referralLink = `https://t.me/${botUsername}?startapp=${refCode}`;
+    const referralLink = `https://t.me/${botUsername}/App?startapp=${refCode}`;
     const shareText = encodeURIComponent('💎 Spin and win 549 Diamonds Jackpot in Apple Farm! Join now!');
     const fullShareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
 

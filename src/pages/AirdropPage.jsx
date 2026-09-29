@@ -41,17 +41,34 @@ import {
   formatTokenNumber 
 } from '../utils/airdropSystem';
 
+// Helper to pad 2 digits
+const pad = (num) => String(num || 0).padStart(2, '0');
+
+// Calculate real remaining time until Snapshot (14 Oct 2026 00:00:00)
+const getSnapshotTimeLeft = () => {
+  const targetDate = new Date('2026-10-14T00:00:00');
+  const now = new Date();
+  const diff = targetDate.getTime() - now.getTime();
+
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return { days, hours, minutes, seconds };
+};
+
 export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, onShowPopup }) {
   // Navigation Tabs: 'tasks' | 'allocation' | 'roadmap'
   const [activeTab, setActiveTab] = useState('tasks');
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
 
-  // Live ticking countdown: 08:09:17 style
-  const [timeLeft, setTimeLeft] = useState({
-    hours: 8,
-    minutes: 9,
-    seconds: 17
-  });
+  // Live ticking countdown to Snapshot Date (14 Oct 2026)
+  const [timeLeft, setTimeLeft] = useState(getSnapshotTimeLeft);
 
   const [copiedContract, setCopiedContract] = useState(false);
 
@@ -129,16 +146,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
   // Countdown timer effect
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: 59, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return { hours: 24, minutes: 0, seconds: 0 };
-      });
+      setTimeLeft(getSnapshotTimeLeft());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -713,7 +721,10 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
             {/* Countdown & Reserve Slot Button */}
             <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-slate-100 shadow-sm text-center">
               <p className="text-xs font-bold text-[#567396]">
-                Snapshot Date: <span className="text-[#192f52] font-black">14 Oct</span> • Countdown: <span className="text-[#e74c3c] font-black text-sm">{pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}</span>
+                Snapshot Date: <span className="text-[#192f52] font-black">14 Oct</span> • Countdown:{' '}
+                <span className="text-[#e74c3c] font-black text-sm">
+                  {timeLeft.days}d {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
+                </span>
               </p>
 
               <button
@@ -955,47 +966,41 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
         {activeTab === 'roadmap' && (
           <div className="space-y-3">
             
-            {/* 1. Live STON.fi DEX Trading Card */}
-            <div className="bg-gradient-to-r from-[#0098EA] via-[#0081c7] to-[#005c8a] text-white rounded-3xl p-5 shadow-md border border-sky-300/40">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-white">STON.fi DEX Pool</h3>
-                    <p className="text-xs text-sky-100 font-bold">Pair: APPLE / GRAM</p>
-                  </div>
+            {/* 1. Live STON.fi DEX Trading Card (Green Farm Theme) */}
+            <div className="bg-gradient-to-br from-[#10b981] via-[#059669] to-[#047857] text-white rounded-3xl p-5 shadow-lg border border-emerald-300/40">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
+                  <TrendingUp className="w-5 h-5" />
                 </div>
-
-                <span className="text-[10px] font-black bg-emerald-400 text-emerald-950 px-2.5 py-1 rounded-full animate-pulse shadow-sm whitespace-nowrap flex-shrink-0">
-                  POOL ACTIVE
-                </span>
+                <div>
+                  <h3 className="text-base font-black text-white">STON.fi DEX Pool</h3>
+                  <p className="text-xs text-emerald-100 font-bold">Pair: APPLE / GRAM</p>
+                </div>
               </div>
 
-              <p className="text-xs text-sky-100 font-bold mb-3 leading-relaxed">
+              <p className="text-xs text-emerald-100 font-medium mb-3 leading-relaxed">
                 Liquidity has been provided on STON.fi DEX. Swap $APPLE with GRAM & TON directly on-chain!
               </p>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <a
                   href={AIRDROP_CONFIG.stonfiSwapUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-3 rounded-2xl bg-white text-[#0098EA] text-xs font-black flex items-center justify-center gap-1.5 shadow-md hover:bg-sky-50 active:scale-95 transition-all text-center"
+                  className="py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-300 to-yellow-400 text-amber-950 text-[11px] font-black flex items-center justify-center gap-1 shadow-sm hover:brightness-105 active:scale-95 transition-all text-center cursor-pointer"
                 >
-                  <span>Trade on STON.fi</span>
-                  <ExternalLink className="w-4 h-4" />
+                  <span>Trade Now</span>
+                  <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
                 </a>
 
                 <a
                   href={AIRDROP_CONFIG.stonfiPoolUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-3 rounded-2xl bg-white/20 border border-white/40 text-white text-xs font-black flex items-center justify-center gap-1.5 hover:bg-white/30 active:scale-95 transition-all text-center"
+                  className="py-2.5 px-2 rounded-xl bg-black/15 border border-white/30 text-white text-[11px] font-black flex items-center justify-center gap-1 hover:bg-black/25 active:scale-95 transition-all text-center cursor-pointer"
                 >
                   <span>View Pool</span>
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
                 </a>
               </div>
             </div>

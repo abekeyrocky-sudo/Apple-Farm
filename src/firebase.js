@@ -13,7 +13,8 @@ import {
   query,
   orderBy,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -58,7 +59,7 @@ const sendReferralNotificationToTelegram = async (referrerChatId, friendName) =>
       [
         {
           text: '👥 Invite More Friends',
-          url: `https://t.me/share/url?url=https://t.me/AppleFarmOfficialBot?startapp=${referrerChatId}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
+          url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/AppleFarmOfficialBot/App?startapp=${referrerChatId}`)}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
           style: 'primary'
         }
       ]
@@ -112,6 +113,79 @@ const sendReferralNotificationToTelegram = async (referrerChatId, friendName) =>
     }
   } catch (err) {
     console.warn('Referral Telegram notification error:', err);
+  }
+};
+
+// ⚡ ব্যবহারকারী উইথড্র দিলে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
+export const sendWithdrawNotificationToTelegram = async (userId, withdrawData) => {
+  if (!userId) return;
+  try {
+    const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+    const isGram = !!withdrawData.gramAmount;
+    
+    let text = '';
+    if (isGram) {
+      text = `⚡ *GRAM Withdrawal Request Submitted!* 💎\n\n` +
+        `📦 *Amount:* \`${withdrawData.gramAmount} GRAM\`\n` +
+        `🍎 *Cost:* \`${withdrawData.amount || 0} Apples & ${withdrawData.diamonds || 0} Diamonds\`\n` +
+        `👛 *Destination:* \`${withdrawData.account ? withdrawData.account.slice(0, 8) + '...' + withdrawData.account.slice(-6) : 'Connected TON Wallet'}\`\n` +
+        `⏳ *Status:* \`Processing on TON Blockchain...\`\n\n` +
+        `🚀 _Your crypto payout is being broadcasted to the TON network!_`;
+    } else {
+      text = `⚡ *Withdrawal Request Submitted!* 💸\n\n` +
+        `💰 *Amount:* \`${withdrawData.amount} Apples\` (৳${withdrawData.bdtAmount || Math.round(withdrawData.amount / 100)})\n` +
+        `💳 *Method:* \`${withdrawData.method || 'bKash'}\`\n` +
+        `📱 *Account:* \`${withdrawData.account || ''}\`\n` +
+        `⏳ *Status:* \`Pending Approval\`\n\n` +
+        `🔔 _You will receive payout confirmation once processed!_`;
+    }
+
+    const inline_keyboard = [
+      [
+        {
+          text: 'Play Apple Farm 🍎',
+          web_app: { url: 'https://apple-farm-plum.vercel.app' },
+          style: 'success'
+        }
+      ],
+      [
+        {
+          text: '📢 Official Payout Proofs',
+          url: 'https://t.me/AppleFarmPayouts',
+          style: 'primary'
+        }
+      ]
+    ];
+
+    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+
+    let res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: userId,
+        photo: photoUrl,
+        caption: text,
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard }
+      })
+    });
+
+    let resData = await res.json().catch(() => ({}));
+    if (!resData.ok) {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: userId,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard }
+        })
+      });
+    }
+  } catch (err) {
+    console.warn('Withdraw Telegram notification error:', err);
   }
 };
 
@@ -253,6 +327,8 @@ export const syncUserWithFirebase = async (tgUser) => {
         ...existing, 
         avatar: existing.avatar || 'avatar-1',
         name: fullName || existing.name,
+        referralApplesCommission: Number(existing.referralApplesCommission || 0),
+        referralDiamondsCommission: Number(existing.referralDiamondsCommission || 0),
         invitedFriends: existing.invitedFriends || [],
         claimedReferMissions: existing.claimedReferMissions || {}
       };
@@ -268,6 +344,8 @@ export const syncUserWithFirebase = async (tgUser) => {
       diamonds: 0.0,
       level: 1,
       energy: 100,
+      referralApplesCommission: 0,
+      referralDiamondsCommission: 0.0,
       invitedFriends: [],
       claimedReferMissions: {},
       createdAt: new Date().toISOString()
@@ -275,13 +353,76 @@ export const syncUserWithFirebase = async (tgUser) => {
   }
 };
 
+// ⚡ ইঞ্জিন ১ & ২: ১০% লাইফটাইম রেফারেল কমিশন ডিস্ট্রিবিউশন ইঞ্জিন (Apples & Diamonds)
+export const distributeReferralCommission = async (referrerId, earnerUserId, rewardType, amount, sourceName = 'Farm Activity') => {
+  if (!referrerId || !earnerUserId || !amount || amount <= 0 || !db) return;
+  const refIdStr = referrerId.toString().trim();
+  const earnerIdStr = earnerUserId.toString().trim();
+
+  // নিজের রেফারে নিজে কমিশন ক্রেডিট হবে না
+  if (refIdStr === earnerIdStr) return;
+
+  try {
+    const referrerRef = doc(db, "users", refIdStr);
+    
+    if (rewardType === 'apple') {
+      // ১০% অ্যাপেলস কমিশন
+      const commApples = Math.max(1, Math.floor(amount * 0.10));
+      if (commApples <= 0) return;
+
+      await updateDoc(referrerRef, {
+        referralApplesCommission: increment(commApples),
+        totalReferralApplesEarned: increment(commApples)
+      });
+      console.log(`[Referral Engine 1] +${commApples} 🍎 sent to Referrer ${refIdStr} from ${earnerIdStr} (${sourceName})`);
+    } else if (rewardType === 'diamond') {
+      // ১০% ডায়মন্ডস কমিশন
+      const commDiamonds = Number((amount * 0.10).toFixed(2));
+      if (commDiamonds <= 0) return;
+
+      await updateDoc(referrerRef, {
+        referralDiamondsCommission: increment(commDiamonds),
+        totalReferralDiamondsEarned: increment(commDiamonds)
+      });
+      console.log(`[Referral Engine 2] +${commDiamonds} 💎 sent to Referrer ${refIdStr} from ${earnerIdStr} (${sourceName})`);
+    }
+  } catch (err) {
+    console.warn("distributeReferralCommission error:", err);
+  }
+};
+
+// ⚡ রিয়েলটাইম কমিশন সিঙ্ক লিসেনার (লাইভ আপডেট ইঞ্জিন)
+export const listenToUserCommissions = (userId, onCommissionUpdate) => {
+  if (!userId || !db) return () => {};
+  try {
+    const userRef = doc(db, "users", userId.toString());
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        onCommissionUpdate({
+          referralApplesCommission: Number(data.referralApplesCommission || 0),
+          referralDiamondsCommission: Number(data.referralDiamondsCommission || 0),
+          invitedFriends: Array.isArray(data.invitedFriends) ? data.invitedFriends : [],
+          referralsCount: Number(data.referralsCount || (Array.isArray(data.invitedFriends) ? data.invitedFriends.length : 0))
+        });
+      }
+    }, (err) => {
+      console.warn("listenToUserCommissions snapshot error:", err);
+    });
+    return unsubscribe;
+  } catch (e) {
+    console.warn("listenToUserCommissions init error:", e);
+    return () => {};
+  }
+};
+
 // অ্যাপেল হার্ভেস্ট ডাটাবেসে আপডেট
-export const harvestAppleInDB = async (userId) => {
+export const harvestAppleInDB = async (userId, count = 1) => {
   if (!db || !userId) return;
   try {
     const userRef = doc(db, "users", userId.toString());
     await updateDoc(userRef, {
-      apples: increment(1)
+      apples: increment(count)
     });
   } catch (err) {
     console.error("Firebase harvest update error:", err);
@@ -352,7 +493,9 @@ export const getLeaderboardFromDB = async () => {
         username: data.username || '',
         avatar: data.avatar || 'avatar-1',
         apples: data.apples || 0,
-        level: data.level || 1,
+        level: data.apples >= 100 
+          ? Math.min(20, Math.max(1, Math.floor(Math.log2(data.apples / 100)) + 2)) 
+          : (data.level || 1),
         isVerified: !!(data.isVerified || data.verifiedBadge),
         verifiedBadge: !!(data.verifiedBadge || data.isVerified)
       });
