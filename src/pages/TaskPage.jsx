@@ -106,14 +106,40 @@ export default function TaskPage({
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [verifyingTaskId, setVerifyingTaskId] = useState(null);
 
-  // 🎡 Cashback Faded Wheel State
+  // 🎡 Cashback Faded Wheel State (Persistent per user)
+  const [cashbackWheelState, setCashbackWheelState] = useState(() => {
+    return getStoredJson('apple_farm_cashback_wheel_state', user?.id, {
+      hasPendingCashback: false,
+      paidAmount: 0,
+      isClaimed: false,
+      wonPrize: null
+    }) || {
+      hasPendingCashback: false,
+      paidAmount: 0,
+      isClaimed: false,
+      wonPrize: null
+    };
+  });
+
   const [isCashbackWheelOpen, setIsCashbackWheelOpen] = useState(false);
-  const [cashbackPaidAmount, setCashbackPaidAmount] = useState(0);
+  const [cashbackPaidAmount, setCashbackPaidAmount] = useState(() => cashbackWheelState?.paidAmount || 0);
   const [isCashbackSpinning, setIsCashbackSpinning] = useState(false);
   const [cashbackActiveHighlight, setCashbackActiveHighlight] = useState(0);
-  const [cashbackWonPrize, setCashbackWonPrize] = useState(null);
-  const [isCashbackClaimed, setIsCashbackClaimed] = useState(false);
+  const [cashbackWonPrize, setCashbackWonPrize] = useState(() => cashbackWheelState?.wonPrize || null);
+  const [isCashbackClaimed, setIsCashbackClaimed] = useState(() => !!cashbackWheelState?.isClaimed);
   const cashbackSpinTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      const stored = getStoredJson('apple_farm_cashback_wheel_state', user?.id, null);
+      if (stored) {
+        setCashbackWheelState(stored);
+        if (stored.paidAmount) setCashbackPaidAmount(stored.paidAmount);
+        if (stored.isClaimed !== undefined) setIsCashbackClaimed(stored.isClaimed);
+        if (stored.wonPrize) setCashbackWonPrize(stored.wonPrize);
+      }
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     return () => {
@@ -958,6 +984,14 @@ export default function TaskPage({
 
       // 🎁 Trigger Cashback Faded Wheel for job launch!
       const paidAmountNum = Number(totalPayableGram) || 0;
+      const newState = {
+        hasPendingCashback: true,
+        paidAmount: paidAmountNum,
+        isClaimed: false,
+        wonPrize: null
+      };
+      setCashbackWheelState(newState);
+      setStoredJson('apple_farm_cashback_wheel_state', user?.id, newState);
       setCashbackPaidAmount(paidAmountNum);
       setIsCashbackClaimed(false);
       setCashbackWonPrize(null);
@@ -985,31 +1019,11 @@ export default function TaskPage({
       window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
     }
 
-    // 🎯 সুনির্দিষ্ট প্রোবাবিলিটি বণ্টন:
-    // Slot 0 (150% Cashback): 4%
-    // Slot 1 (50% Cashback): 8%
-    // Slot 3 (25% Cashback): 18%
-    // Slot 4 (15% Cashback): 25%
-    // Slot 5 (10% Cashback): 25%
-    // Slot 6 (5% Cashback): 15%
-    // Slot 2 or 7 (Empty): 5%
+    // 🎯 উইনিং সিলেকশন: ইউজার শুধুমাত্র ৫% অথবা ১০% ক্যাশব্যাক পাবে (বাকিগুলো নয়)
+    // Slot 6: 5% Cashback (৬০% চান্স)
+    // Slot 5: 10% Cashback (৪০% চান্স)
     const rand = Math.random() * 100;
-    let winningIndex;
-    if (rand < 4) {
-      winningIndex = 0; // 150% Cashback
-    } else if (rand < 12) {
-      winningIndex = 1; // 50% Cashback
-    } else if (rand < 30) {
-      winningIndex = 3; // 25% Cashback
-    } else if (rand < 55) {
-      winningIndex = 4; // 15% Cashback
-    } else if (rand < 80) {
-      winningIndex = 5; // 10% Cashback
-    } else if (rand < 95) {
-      winningIndex = 6; // 5% Cashback
-    } else {
-      winningIndex = Math.random() < 0.5 ? 2 : 7; // Empty
-    }
+    const winningIndex = rand < 60 ? 6 : 5;
 
     const targetPrize = CASHBACK_WHEEL_ITEMS[winningIndex];
     const fullRounds = 4;
@@ -1109,6 +1123,15 @@ export default function TaskPage({
       });
     }
 
+    const updated = {
+      hasPendingCashback: false,
+      paidAmount: cashbackPaidAmount,
+      isClaimed: true,
+      wonPrize: cashbackWonPrize
+    };
+    setCashbackWheelState(updated);
+    setStoredJson('apple_farm_cashback_wheel_state', user?.id, updated);
+    setIsCashbackClaimed(true);
     setIsCashbackWheelOpen(false);
 
     if (onShowPopup) {
@@ -1119,6 +1142,23 @@ export default function TaskPage({
         confirmText: 'Awesome!'
       });
     }
+  };
+
+  // 🎡 Faded Wheel মডাল বন্ধ করার হ্যান্ডলার
+  const handleCloseCashbackWheel = () => {
+    if (isCashbackSpinning) return;
+    if (isCashbackClaimed || (cashbackWonPrize && cashbackWonPrize.percentage === 0)) {
+      const updated = {
+        hasPendingCashback: false,
+        paidAmount: cashbackPaidAmount,
+        isClaimed: true,
+        wonPrize: cashbackWonPrize
+      };
+      setCashbackWheelState(updated);
+      setStoredJson('apple_farm_cashback_wheel_state', user?.id, updated);
+      setIsCashbackClaimed(true);
+    }
+    setIsCashbackWheelOpen(false);
   };
 
   // 🎮 CASHBACK FADED WHEEL CELL RENDERER (3x3 Perimeter)
@@ -1182,7 +1222,10 @@ export default function TaskPage({
     ? standardTasks
     : standardTasks.filter(t => t.type === activeTab);
 
-  const myPartnerTasks = partnerTasks.filter(t => t.isMyTask);
+  const myPartnerTasks = partnerTasks.filter(t => t.isMyTask || (user?.id && String(t.creatorId) === String(user.id)));
+
+  // ইউজার ১ম ক্যাম্পেইন পোস্ট করলে বা পেন্ডিং ক্যাশব্যাক থাকলে হুইল আনলক হবে
+  const hasAvailableCashback = (cashbackWheelState?.hasPendingCashback || (myPartnerTasks.length > 0 && !cashbackWheelState?.isClaimed)) && !cashbackWheelState?.isClaimed;
 
   return (
     <div className="relative w-full max-w-md mx-auto min-h-screen bg-gradient-to-b from-[#eaf6ff] via-[#f3f9ff] to-[#e8f5e9] flex flex-col justify-between select-none font-sans overflow-hidden">
@@ -1251,10 +1294,18 @@ export default function TaskPage({
               <div className="absolute -right-8 -top-8 w-28 h-28 bg-amber-400/20 rounded-full blur-xl pointer-events-none" />
               <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-emerald-400/20 rounded-full blur-lg pointer-events-none" />
 
-              {/* Top Tag Pill */}
-              <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs mb-2">
-                <Sparkles className="w-3 h-3 fill-amber-200 text-amber-200" />
-                <span>1st Campaign Bonus</span>
+              {/* Top Tag Pill & Status Badge */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+                  <Sparkles className="w-3 h-3 fill-amber-200 text-amber-200" />
+                  <span>{cashbackWheelState?.isClaimed ? 'Campaign Bonus Claimed' : '1st Campaign Bonus'}</span>
+                </div>
+                {hasAvailableCashback && (
+                  <span className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full animate-bounce-gentle">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    Wheel Ready!
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-3">
@@ -1263,13 +1314,27 @@ export default function TaskPage({
                     Get Up To <span className="text-amber-600 font-black">150% Cashback</span>!
                   </h3>
                   <p className="text-[11px] font-bold text-[#567396] leading-snug">
-                    Launch your 1st promotion task & spin the exclusive Faded Wheel for instant refund in GRAM!
+                    {hasAvailableCashback
+                      ? 'Your exclusive Faded Wheel is ready! Click Claim Cashback below to spin.'
+                      : 'Launch your 1st promotion task & spin the exclusive Faded Wheel for instant refund in GRAM!'}
                   </p>
                 </div>
 
                 {/* Right Graphic Preview */}
-                <div className="flex-shrink-0 relative">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-400/80 flex flex-col items-center justify-center text-white shadow-md transform rotate-2">
+                <div 
+                  onClick={() => {
+                    if (hasAvailableCashback) {
+                      soundManager.play('click');
+                      if (cashbackPaidAmount <= 0) {
+                        const userPaid = myPartnerTasks.find(t => t.totalPaidGram)?.totalPaidGram || 0.5;
+                        setCashbackPaidAmount(Number(userPaid));
+                      }
+                      setIsCashbackWheelOpen(true);
+                    }
+                  }}
+                  className={`flex-shrink-0 relative ${hasAvailableCashback ? 'cursor-pointer animate-bounce-gentle' : ''}`}
+                >
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-400/80 flex flex-col items-center justify-center text-white shadow-md transform rotate-2 ${hasAvailableCashback ? 'ring-4 ring-amber-400/50' : ''}`}>
                     <Crown className="w-6 h-6 fill-amber-100 text-amber-900" />
                     <span className="text-[8px] font-black text-amber-950 uppercase tracking-tight -mt-0.5">
                       150%
@@ -1280,18 +1345,51 @@ export default function TaskPage({
                 </div>
               </div>
 
-              {/* Quick Launch CTA Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.play('click');
-                  setIsPostModalOpen(true);
-                }}
-                className="mt-3 w-full py-2.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Launch Campaign & Get Cashback</span>
-              </button>
+              {/* Dynamic Action Button: Changes to 'Claim Cashback' when 1st job posted */}
+              {hasAvailableCashback ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundManager.play('click');
+                    if (cashbackPaidAmount <= 0) {
+                      const userPaid = myPartnerTasks.find(t => t.totalPaidGram)?.totalPaidGram || 0.5;
+                      setCashbackPaidAmount(Number(userPaid));
+                    }
+                    setIsCashbackWheelOpen(true);
+                  }}
+                  className="mt-3 w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 hover:brightness-110 active:scale-95 text-slate-950 font-black text-xs shadow-[0_4px_15px_rgba(245,158,11,0.5)] border-t border-yellow-200 transition-all cursor-pointer flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <RotateCw className="w-4 h-4 animate-spin text-slate-900" />
+                  <span className="tracking-wide uppercase font-black">Claim Cashback</span>
+                  <span className="bg-amber-950/20 text-amber-950 text-[10px] px-1.5 py-0.5 rounded-md font-black">
+                    Faded Wheel
+                  </span>
+                </button>
+              ) : cashbackWheelState?.isClaimed ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundManager.play('click');
+                    setIsPostModalOpen(true);
+                  }}
+                  className="mt-3 w-full py-2.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Launch Another Campaign</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundManager.play('click');
+                    setIsPostModalOpen(true);
+                  }}
+                  className="mt-3 w-full py-2.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Launch Campaign & Get Cashback</span>
+                </button>
+              )}
             </div>
 
             {/* Sub-header with Explore/My Tasks and + Post */}
@@ -1718,7 +1816,7 @@ export default function TaskPage({
             {/* Close Button (only when not spinning) */}
             {!isCashbackSpinning && (
               <button 
-                onClick={() => setIsCashbackWheelOpen(false)}
+                onClick={handleCloseCashbackWheel}
                 className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -1814,7 +1912,7 @@ export default function TaskPage({
                 </button>
               ) : (
                 <button 
-                  onClick={() => setIsCashbackWheelOpen(false)}
+                  onClick={handleCloseCashbackWheel}
                   disabled={isCashbackSpinning}
                   className="w-full py-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 font-black text-xs text-slate-700 shadow-sm transition-all cursor-pointer disabled:opacity-50"
                 >

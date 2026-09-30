@@ -13,6 +13,7 @@ import { createWithdrawController } from './src/controllers/withdrawController.j
 import { createTaskController } from './src/controllers/taskController.js';
 import { createAdsController } from './src/controllers/adsController.js';
 import { createBotController } from './src/controllers/botController.js';
+import { createReferralMissionController } from './src/controllers/referralMissionController.js';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ const withdrawCtrl = createWithdrawController(db, adminHelper);
 const taskCtrl = createTaskController(db, adminHelper);
 const adsCtrl = createAdsController(db, adminHelper);
 const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL);
+const referralMissionCtrl = createReferralMissionController(db, adminHelper);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -242,6 +244,7 @@ apiRouter.post('/spin/play', spinCtrl.playSpin);
 apiRouter.post('/tasks/claim', taskCtrl.claimTask);
 apiRouter.post('/ads/claim', adsCtrl.claimAdReward);
 apiRouter.post('/withdraw/submit', withdrawCtrl.submitWithdraw);
+apiRouter.post('/referral/claim-mission', referralMissionCtrl.claimMission);
 
 app.use('/api', apiRouter);
 

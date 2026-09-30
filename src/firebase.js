@@ -37,7 +37,7 @@ try {
   console.warn("Firebase initialization warning (replace placeholder config in src/firebase.js):", error);
 }
 
-export { db };
+export { db, increment };
 
 const FUNCTIONS_URL = (import.meta.env.VITE_FUNCTIONS_URL || 'https://api-duztzw2gwa-uc.a.run.app/api').replace(/\/api$/, '');
 
@@ -314,6 +314,19 @@ export const harvestAppleInDB = async (userId, count = 1) => {
     });
   } catch (err) {
     console.error("Firebase harvest update error:", err);
+  }
+};
+
+// ডায়মন্ড ডাটাবেসে নিরাপদে বাড়ানো (Atomic Increment)
+export const addDiamondsInDB = async (userId, count = 1) => {
+  if (!db || !userId) return;
+  try {
+    const userRef = doc(db, "users", userId.toString());
+    await updateDoc(userRef, {
+      diamonds: increment(Number(count))
+    });
+  } catch (err) {
+    console.error("Firebase addDiamondsInDB error:", err);
   }
 };
 

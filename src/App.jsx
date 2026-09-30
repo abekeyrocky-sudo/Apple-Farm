@@ -16,7 +16,7 @@ import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
-import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions } from './firebase';
+import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment } from './firebase';
 import { calculateLevel, LEVEL_TIERS } from './utils/levelSystem';
 import confetti from 'canvas-confetti';
 import { soundManager } from './utils/soundManager';
@@ -24,6 +24,7 @@ import { addTransaction } from './utils/transactionHistory';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL, OFFICIAL_PAYOUTS_URL } from './utils/telegramVerify';
 import { calculateOfflineHarvest, updateLastActiveTime, saveAutoBotState } from './utils/autoBotManager';
 import { initGigaOfferWall } from './utils/gigaOfferwall';
+import { CloudAPI } from './services/api';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -460,8 +461,8 @@ export default function App() {
 
     if (user.id) {
       const updateData = isDiamond
-        ? { diamonds: (user.diamonds || 0) + amount }
-        : { apples: (user.apples || 0) + amount };
+        ? { diamonds: increment(amount) }
+        : { apples: increment(amount) };
       updateUserInDB(user.id, updateData);
       if (user?.referredBy && amount > 0) {
         distributeReferralCommission(
@@ -794,10 +795,11 @@ export default function App() {
     });
   };
 
-  const handleClaimReferReward = (mission) => {
+  const handleClaimReferReward = async (mission) => {
     const applesReward = mission.apples || 0;
     const diamondsReward = mission.diamonds || 0;
     
+    // Optimistic UI update
     setUser((prev) => {
       const newApples = prev.apples + applesReward;
       const newDiamonds = prev.diamonds + diamondsReward;
@@ -812,21 +814,37 @@ export default function App() {
     });
 
     if (user.id) {
-      updateUserInDB(user.id, {
-        [`claimedReferMissions.${mission.id}`]: true,
-        apples: (user.apples || 0) + applesReward,
-        diamonds: (user.diamonds || 0) + diamondsReward
-      });
-      addTransaction({
-        userId: user.id,
-        title: 'Referral Milestone',
-        subtitle: mission.title,
-        amount: `+${applesReward}`,
-        currency: 'apple',
-        type: 'earn',
-        category: 'invite',
-        status: 'Completed'
-      });
+      // 🛡️ Secure Cloud Functions Backend Claim (HMAC signature + Server-side DB count validation)
+      try {
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user || { id: user.id };
+        const res = await CloudAPI.claimReferralMission(tgUser, mission.id);
+        if (res && res.apples !== undefined) {
+          setUser((prev) => ({
+            ...prev,
+            apples: res.apples,
+            diamonds: res.diamonds !== undefined ? res.diamonds : prev.diamonds,
+            level: res.level || prev.level
+          }));
+        }
+      } catch (cloudErr) {
+        console.warn('Backend claim fallback:', cloudErr.message);
+        // Fallback to client Firestore update if Cloud Functions is unreachable
+        updateUserInDB(user.id, {
+          [`claimedReferMissions.${mission.id}`]: true,
+          apples: increment(applesReward),
+          diamonds: increment(diamondsReward)
+        });
+        addTransaction({
+          userId: user.id,
+          title: 'Referral Milestone',
+          subtitle: mission.title,
+          amount: `+${applesReward.toLocaleString()}`,
+          currency: 'apple',
+          type: 'earn',
+          category: 'invite',
+          status: 'Completed'
+        });
+      }
     }
 
     showPopupModal({

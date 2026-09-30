@@ -1,18 +1,23 @@
 import { soundManager } from './soundManager';
 import { addTransaction } from './transactionHistory';
-import { updateUserInDB } from '../firebase';
+import { addDiamondsInDB } from '../firebase';
 import confetti from 'canvas-confetti';
 
 const GIGA_PROJECT_ID = '8374';
 let isInitialized = false;
 let currentRewardCallback = null;
+let currentUserId = 'guest';
 
 export function initGigaOfferWall(user, onRewardCallback) {
   if (onRewardCallback) {
     currentRewardCallback = onRewardCallback;
   }
 
-  const userId = user?.id ? user.id.toString() : 'guest';
+  if (user?.id) {
+    currentUserId = user.id.toString();
+  }
+
+  const userId = currentUserId;
 
   // Ensure Giga SDK Callback queue exists
   window.loadGigaSDKCallbacks = window.loadGigaSDKCallbacks || [];
@@ -43,11 +48,9 @@ export function initGigaOfferWall(user, onRewardCallback) {
                 });
               }
 
-              // 2. Persist to Firestore DB
+              // 2. Persist to Firestore DB (Atomic Increment: keeps previous balance safe)
               if (rewardUserId && rewardUserId !== 'guest') {
-                updateUserInDB(rewardUserId, {
-                  diamonds: (user?.diamonds || 0) + rewardDiamonds,
-                });
+                await addDiamondsInDB(rewardUserId, rewardDiamonds);
               }
 
               // 3. Record in Transaction History

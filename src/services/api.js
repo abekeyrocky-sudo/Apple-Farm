@@ -81,4 +81,9 @@ export const CloudAPI = {
       gramAmount,
     });
   },
+
+  // Claim Referral Mission (Secure Backend Verification)
+  claimReferralMission: async (tgUser, missionId) => {
+    return await request('/referral/claim-mission', { user: tgUser, missionId });
+  },
 };

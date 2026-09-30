@@ -8,13 +8,13 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { getAvatarSrc } from '../utils/avatars';
 
-// 🎁 রেফারেল মিশন ডেটা
+// 🎁 রেফারেল মিশন ডেটা (Apples reward 5x boosted)
 const REFER_MISSIONS = [
-  { id: 1, target: 1, title: 'Invite 1 Friend', apples: 300, diamonds: 0 },
-  { id: 2, target: 3, title: 'Invite 3 Friends', apples: 1000, diamonds: 1 },
-  { id: 3, target: 5, title: 'Invite 5 Friends', apples: 2500, diamonds: 3 },
-  { id: 4, target: 10, title: 'Invite 10 Friends', apples: 6000, diamonds: 8 },
-  { id: 5, target: 25, title: 'Invite 25 Friends', apples: 20000, diamonds: 25 },
+  { id: 1, target: 1, title: 'Invite 1 Friend', apples: 1500, diamonds: 0 },
+  { id: 2, target: 3, title: 'Invite 3 Friends', apples: 5000, diamonds: 1 },
+  { id: 3, target: 5, title: 'Invite 5 Friends', apples: 12500, diamonds: 3 },
+  { id: 4, target: 10, title: 'Invite 10 Friends', apples: 30000, diamonds: 8 },
+  { id: 5, target: 25, title: 'Invite 25 Friends', apples: 100000, diamonds: 25 },
 ];
 
 export default function InviteFriendsPage({ 
