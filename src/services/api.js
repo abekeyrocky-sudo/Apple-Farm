@@ -71,12 +71,14 @@ export const CloudAPI = {
   },
 
   // Submit Withdrawal
-  submitWithdraw: async (tgUser, amount, method, accountNumber) => {
+  submitWithdraw: async (tgUser, amount, method, accountNumber, diamonds = 0, gramAmount = null) => {
     return await request('/withdraw/submit', {
       user: tgUser,
       amount,
+      diamonds,
       method,
       accountNumber,
+      gramAmount,
     });
   },
 };

@@ -27,7 +27,8 @@ export function getTonClient() {
  */
 export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Apple Farm Payout') {
   try {
-    if (!MASTER_MNEMONIC) {
+    const cleanMnemonic = (process.env.MASTER_WALLET_MNEMONIC || MASTER_MNEMONIC).replace(/['"]/g, '').trim();
+    if (!cleanMnemonic) {
       console.error('[TON Auto Payout Security Alert] MASTER_WALLET_MNEMONIC is not set in environment variables!');
       return {
         success: false,
@@ -36,7 +37,7 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
     }
 
     const client = getTonClient();
-    const mnemonicWords = MASTER_MNEMONIC.trim().split(/\s+/);
+    const mnemonicWords = cleanMnemonic.split(/\s+/);
     const keyPair = await mnemonicToPrivateKey(mnemonicWords);
 
     const wallet = WalletContractV5R1.create({
@@ -49,6 +50,25 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
     // Validate recipient address
     const targetAddress = Address.parse(recipientAddress.trim());
 
+    // Fetch master wallet balance and current seqno
+    let currentBalance = 0n;
+    try {
+      currentBalance = await contract.getBalance();
+    } catch (balErr) {
+      console.warn('[TON Auto Payout] Balance check warning:', balErr.message);
+    }
+
+    // Convert amount string (e.g. "0.05") to nanotons
+    const nanoAmount = toNano(String(amountInTon));
+
+    if (currentBalance > 0n && currentBalance < nanoAmount + toNano('0.01')) {
+      console.error(`[TON Auto Payout Error] Insufficient Master Wallet balance: ${currentBalance} nanotons, requested: ${nanoAmount}`);
+      return {
+        success: false,
+        error: `Master wallet has insufficient TON balance for payout (${amountInTon} TON requested).`,
+      };
+    }
+
     // Fetch current seqno
     let seqno = 0;
     try {
@@ -57,9 +77,6 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
       console.warn('Seqno fetch notice (wallet may be uninitialized or first tx):', e.message);
       seqno = 0;
     }
-
-    // Convert amount string (e.g. "0.05") to nanotons
-    const nanoAmount = toNano(String(amountInTon));
 
     console.log(`[TON Auto Payout] Sending ${amountInTon} TON to ${targetAddress.toString()} with seqno ${seqno}...`);
 
