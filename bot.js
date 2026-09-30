@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
 dotenv.config();
 
@@ -12,6 +14,10 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBAPP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.app';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
+// 👑 Admin Telegram User IDs authorized for /broadcast
+const rawAdminIds = process.env.ADMIN_IDS || process.env.ADMIN_ID || '40281,6406305689';
+const ADMIN_IDS = rawAdminIds.split(',').map(s => s.trim()).filter(Boolean);
+
 if (!TOKEN || TOKEN === 'YOUR_BOT_TOKEN_HERE') {
   console.log('\n=============================================================');
   console.log('⚠️ [BOT WARNING] TELEGRAM_BOT_TOKEN সেট করা হয়নি!');
@@ -21,6 +27,28 @@ if (!TOKEN || TOKEN === 'YOUR_BOT_TOKEN_HERE') {
 }
 
 const TELEGRAM_API = `https://api.telegram.org/bot${TOKEN}`;
+
+// 🔥 Firebase Firestore Init
+const firebaseConfig = {
+  apiKey: "AIzaSyApQV0kYECIKMW95yAmwBANNfq9N6LV4c",
+  authDomain: "phrasal-faculty-476911-h7.firebaseapp.com",
+  projectId: "phrasal-faculty-476911-h7",
+  storageBucket: "phrasal-faculty-476911-h7.firebasestorage.app",
+  messagingSenderId: "352640663359",
+  appId: "1:352640663359:web:65043d80f86a6e48dddd8a"
+};
+
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getFirestore(app);
+
+// 📬 Interactive Broadcast Sessions State
+// Key: chatId, Value: { step: 'WAITING_FOR_IMAGE' | 'WAITING_FOR_TEXT' | 'WAITING_FOR_CONFIRM', photoFileId, text }
+const broadcastSessions = new Map();
+
+function isAdmin(userId) {
+  if (ADMIN_IDS.length === 0) return true;
+  return ADMIN_IDS.includes(String(userId));
+}
 
 // টেলিগ্রাম মেথড কল করার হেল্পার
 async function callTelegram(method, body, isFormData = false) {
@@ -34,6 +62,281 @@ async function callTelegram(method, body, isFormData = false) {
   } catch (err) {
     console.error(`[API Error] ${method}:`, err.message);
     return { ok: false, error: err.message };
+  }
+}
+
+// ----------------- /broadcast কমান্ড ইনিশিয়েট -----------------
+async function handleBroadcastCommand(message) {
+  const chatId = message.chat.id;
+  const userId = message.from.id;
+
+  if (!isAdmin(userId)) {
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '⛔ *Unauthorized Access*\n\nOnly authorized administrators can use the /broadcast command.',
+      parse_mode: 'Markdown'
+    });
+    return;
+  }
+
+  // নতুন ব্রডকাস্ট সেশন শুরু করা
+  broadcastSessions.set(chatId, {
+    step: 'WAITING_FOR_IMAGE',
+    photoFileId: null,
+    text: null,
+    startedAt: Date.now()
+  });
+
+  await callTelegram('sendMessage', {
+    chat_id: chatId,
+    text: '📢 *Push Broadcast Wizard (Step 1/2)*\n\n' +
+      '📸 *Send me image:*\n' +
+      'Please send the photo/image you want to broadcast to all users.\n\n' +
+      '_(Or send /skip if you want to send a text-only broadcast, or /cancel to abort)_',
+    parse_mode: 'Markdown'
+  });
+}
+
+// ----------------- ব্রডকাস্ট স্টেপ মেসেজ হ্যান্ডলার -----------------
+async function handleBroadcastSessionMessage(message) {
+  const chatId = message.chat.id;
+  const session = broadcastSessions.get(chatId);
+  if (!session) return;
+
+  const text = (message.text || '').trim();
+
+  // যে কোনো সময় বাতিল করার অপশন
+  if (text === '/cancel') {
+    broadcastSessions.delete(chatId);
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '❌ *Broadcast cancelled.* No messages were sent.',
+      parse_mode: 'Markdown'
+    });
+    return;
+  }
+
+  // STEP 1: ছবি রিসিভ করা
+  if (session.step === 'WAITING_FOR_IMAGE') {
+    if (message.photo && message.photo.length > 0) {
+      // সর্বোচ্চ রেজোলিউশনের ছবি সিলেক্ট করা
+      const photo = message.photo[message.photo.length - 1];
+      session.photoFileId = photo.file_id;
+
+      // যদি ছবির সাথেই ক্যাপশন দেওয়া থাকে
+      if (message.caption) {
+        session.text = message.caption;
+        session.step = 'WAITING_FOR_CONFIRM';
+        await sendBroadcastPreview(chatId, session);
+        return;
+      }
+
+      session.step = 'WAITING_FOR_TEXT';
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: '✍️ *Image received!*\n\n' +
+          'Now send me the text / caption message for the broadcast:\n' +
+          '_(You can use emojis and formatting)_',
+        parse_mode: 'Markdown'
+      });
+      return;
+    }
+
+    if (text === '/skip') {
+      session.photoFileId = null;
+      session.step = 'WAITING_FOR_TEXT';
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: '✍️ *Image skipped (Text-only broadcast)*\n\n' +
+          'Now send me the text message you want to broadcast to everyone:',
+        parse_mode: 'Markdown'
+      });
+      return;
+    }
+
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '⚠️ Please send an image/photo, or send /skip for text-only broadcast, or /cancel to abort.'
+    });
+    return;
+  }
+
+  // STEP 2: টেক্সট রিসিভ করা এবং প্রিভিউ পাঠানো
+  if (session.step === 'WAITING_FOR_TEXT') {
+    const messageContent = message.text || message.caption;
+    if (!messageContent) {
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: '⚠️ Please send the text message for the broadcast, or /cancel to abort.'
+      });
+      return;
+    }
+
+    session.text = messageContent;
+    session.step = 'WAITING_FOR_CONFIRM';
+    await sendBroadcastPreview(chatId, session);
+    return;
+  }
+}
+
+// ----------------- ব্রডকাস্ট প্রিভিউ ও কনফার্মেশন বাটন পাঠানো -----------------
+async function sendBroadcastPreview(chatId, session) {
+  const confirmKeyboard = [
+    [
+      {
+        text: '✅ Confirm & Send Broadcast',
+        callback_data: 'broadcast_confirm'
+      }
+    ],
+    [
+      {
+        text: '❌ Decline & Cancel',
+        callback_data: 'broadcast_cancel'
+      }
+    ]
+  ];
+
+  const previewNotice = '\n\n━━━━━━━━━━━━━━━━━━━━\n' +
+    '⚠️ *Broadcast Preview above.*\n' +
+    'Are you sure you want to broadcast this message to all registered users?\n' +
+    'Click *Confirm* to send, or *Decline* to cancel:';
+
+  if (session.photoFileId) {
+    let res = await callTelegram('sendPhoto', {
+      chat_id: chatId,
+      photo: session.photoFileId,
+      caption: session.text + previewNotice,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: confirmKeyboard }
+    });
+
+    if (!res.ok) {
+      await callTelegram('sendPhoto', {
+        chat_id: chatId,
+        photo: session.photoFileId,
+        caption: session.text + '\n\n[Broadcast Preview] Confirm or Decline below:',
+        reply_markup: { inline_keyboard: confirmKeyboard }
+      });
+    }
+  } else {
+    let res = await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: session.text + previewNotice,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: confirmKeyboard }
+    });
+
+    if (!res.ok) {
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: session.text + '\n\n[Broadcast Preview] Confirm or Decline below:',
+        reply_markup: { inline_keyboard: confirmKeyboard }
+      });
+    }
+  }
+}
+
+// ----------------- আসল ব্রডকাস্ট এক্সিকিউশন -----------------
+async function executeBroadcast(adminChatId, session) {
+  try {
+    const usersSnap = await getDocs(collection(db, 'users'));
+    const targetIds = new Set();
+
+    usersSnap.forEach(d => {
+      const uid = d.id;
+      if (/^\d+$/.test(uid)) {
+        targetIds.add(uid);
+      }
+    });
+
+    const total = targetIds.size;
+    console.log(`📢 [BROADCAST START] Sending to ${total} users...`);
+
+    if (total === 0) {
+      await callTelegram('sendMessage', {
+        chat_id: adminChatId,
+        text: '⚠️ No registered users found in Firestore database to broadcast to.'
+      });
+      return;
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    const broadcastMarkup = {
+      inline_keyboard: [
+        [
+          { text: '🍎 Play Apple Farm', web_app: { url: WEBAPP_URL } }
+        ],
+        [
+          { text: '📢 Community Channel', url: CHANNEL_URL }
+        ]
+      ]
+    };
+
+    for (const uid of targetIds) {
+      try {
+        let res;
+        if (session.photoFileId) {
+          res = await callTelegram('sendPhoto', {
+            chat_id: uid,
+            photo: session.photoFileId,
+            caption: session.text,
+            parse_mode: 'Markdown',
+            reply_markup: broadcastMarkup
+          });
+          if (!res.ok) {
+            res = await callTelegram('sendPhoto', {
+              chat_id: uid,
+              photo: session.photoFileId,
+              caption: session.text,
+              reply_markup: broadcastMarkup
+            });
+          }
+        } else {
+          res = await callTelegram('sendMessage', {
+            chat_id: uid,
+            text: session.text,
+            parse_mode: 'Markdown',
+            reply_markup: broadcastMarkup
+          });
+          if (!res.ok) {
+            res = await callTelegram('sendMessage', {
+              chat_id: uid,
+              text: session.text,
+              reply_markup: broadcastMarkup
+            });
+          }
+        }
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        failCount++;
+      }
+
+      // Safe Telegram rate limiting (approx 22-25 messages/sec)
+      await new Promise(r => setTimeout(r, 45));
+    }
+
+    await callTelegram('sendMessage', {
+      chat_id: adminChatId,
+      text: `🎉 *Broadcast Successfully Completed!*\n\n` +
+        `📊 *Total Target Users:* ${total}\n` +
+        `✅ *Successfully Sent:* ${successCount}\n` +
+        `❌ *Failed / Blocked:* ${failCount}`,
+      parse_mode: 'Markdown'
+    });
+    console.log(`📢 [BROADCAST FINISHED] Sent: ${successCount}, Failed: ${failCount}`);
+  } catch (err) {
+    console.error('[Broadcast Error]:', err);
+    await callTelegram('sendMessage', {
+      chat_id: adminChatId,
+      text: `❌ *Broadcast Error:* ${err.message}`
+    });
   }
 }
 
@@ -142,7 +445,6 @@ async function handleStartCommand(message, param) {
   const primaryPhotoUrl = 'https://apple-farm-plum.vercel.app/start-image.jpg';
   const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
 
-  // 1. Try sending via primary CDN photo URL
   let result = await callTelegram('sendPhoto', {
     chat_id: chatId,
     photo: primaryPhotoUrl,
@@ -151,9 +453,7 @@ async function handleStartCommand(message, param) {
     reply_markup: { inline_keyboard }
   });
 
-  // 2. Try sending via fallback GitHub URL if primary fails
   if (!result.ok) {
-    console.warn('[sendPhoto CDN URL failed, trying GitHub raw URL]:', result);
     result = await callTelegram('sendPhoto', {
       chat_id: chatId,
       photo: fallbackPhotoUrl,
@@ -163,9 +463,7 @@ async function handleStartCommand(message, param) {
     });
   }
 
-  // 3. Try sending via local file buffer if URL fails
   if (!result.ok) {
-    console.warn('[sendPhoto URL failed, trying local file upload]:', result);
     const startImagePath = path.join(__dirname, 'assets', 'start-image.jpg');
     const fallbackBannerPath = path.join(__dirname, 'assets', 'invite-banner.png');
     const imagePath = fs.existsSync(startImagePath) ? startImagePath : fallbackBannerPath;
@@ -186,9 +484,7 @@ async function handleStartCommand(message, param) {
     }
   }
 
-  // 4. Final fallback to text message if photo fails
   if (!result.ok) {
-    console.warn('[All photo sends failed, sending text message]:', result);
     await callTelegram('sendMessage', {
       chat_id: chatId,
       text: caption,
@@ -249,6 +545,42 @@ async function handleHelpCommand(message) {
 // ----------------- Callback Query হ্যান্ডলার -----------------
 async function handleCallbackQuery(cq) {
   const chatId = cq.message?.chat?.id;
+
+  // ব্রডকাস্ট ডিক্লাইন / ক্যানসেল
+  if (cq.data === 'broadcast_cancel') {
+    await callTelegram('answerCallbackQuery', { callback_query_id: cq.id, text: 'Broadcast cancelled' });
+    broadcastSessions.delete(chatId);
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '❌ *Broadcast Declined & Cancelled.*\nNo messages were sent.',
+      parse_mode: 'Markdown'
+    });
+    return;
+  }
+
+  // ব্রডকাস্ট কনফার্ম ও এক্সিকিউশন
+  if (cq.data === 'broadcast_confirm') {
+    const session = broadcastSessions.get(chatId);
+    if (!session || !session.text) {
+      await callTelegram('answerCallbackQuery', { callback_query_id: cq.id, text: 'Session expired!' });
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: '⚠️ Broadcast session expired or not found. Type /broadcast to start again.'
+      });
+      return;
+    }
+
+    await callTelegram('answerCallbackQuery', { callback_query_id: cq.id, text: 'Broadcasting started!' });
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '🚀 *Broadcasting started!*\n\nFetching user list from Firestore and sending notifications. Please wait...',
+      parse_mode: 'Markdown'
+    });
+
+    executeBroadcast(chatId, session);
+    broadcastSessions.delete(chatId);
+    return;
+  }
   
   if (cq.data === 'help_info') {
     await callTelegram('answerCallbackQuery', { callback_query_id: cq.id });
@@ -306,9 +638,9 @@ async function startPolling() {
   console.log('---------------------------------------------------------');
   console.log('🤖 [Apple Farm Bot] Online & Polling for messages...');
   console.log(`🌐 Mini App URL: ${WEBAPP_URL}`);
+  console.log(`👑 Admin IDs: ${ADMIN_IDS.join(', ') || 'All Allowed'}`);
   console.log('---------------------------------------------------------');
 
-  // পুরানো কোনো Webhook সেট থাকলে তা মুছে ফেলে Polling ক্লিয়ার করা
   try {
     await callTelegram('deleteWebhook', { drop_pending_updates: false });
   } catch (e) {
@@ -326,10 +658,19 @@ async function startPolling() {
         for (const update of res.result) {
           lastUpdateId = update.update_id;
 
-          if (update.message && update.message.text) {
-            const text = update.message.text.trim();
+          if (update.message) {
+            const chatId = update.message.chat?.id;
+            const text = (update.message.text || '').trim();
 
-            if (text.startsWith('/start')) {
+            // চেক করা ইউজার একটিভ ব্রডকাস্ট কনভার্সেশনে আছেন কিনা
+            if (chatId && broadcastSessions.has(chatId)) {
+              await handleBroadcastSessionMessage(update.message);
+              continue;
+            }
+
+            if (text.startsWith('/broadcast')) {
+              await handleBroadcastCommand(update.message);
+            } else if (text.startsWith('/start')) {
               const parts = text.split(' ');
               const param = parts.length > 1 ? parts.slice(1).join(' ') : null;
               await handleStartCommand(update.message, param);
