@@ -47,7 +47,7 @@ const spinCtrl = createSpinController(db, adminHelper);
 const withdrawCtrl = createWithdrawController(db, adminHelper);
 const taskCtrl = createTaskController(db, adminHelper);
 const adsCtrl = createAdsController(db, adminHelper);
-const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL);
+const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL, db);
 const referralMissionCtrl = createReferralMissionController(db, adminHelper);
 
 // Health check route

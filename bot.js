@@ -80,7 +80,8 @@ async function handleBroadcastCommand(message) {
   }
 
   // নতুন ব্রডকাস্ট সেশন শুরু করা
-  broadcastSessions.set(chatId, {
+  const sessionKey = String(chatId);
+  broadcastSessions.set(sessionKey, {
     step: 'WAITING_FOR_IMAGE',
     photoFileId: null,
     text: null,
@@ -100,14 +101,18 @@ async function handleBroadcastCommand(message) {
 // ----------------- ব্রডকাস্ট স্টেপ মেসেজ হ্যান্ডলার -----------------
 async function handleBroadcastSessionMessage(message) {
   const chatId = message.chat.id;
-  const session = broadcastSessions.get(chatId);
+  const sessionKey = String(chatId);
+  const session = broadcastSessions.get(sessionKey);
   if (!session) return;
 
   const text = (message.text || '').trim();
 
-  // যে কোনো সময় বাতিল করার অপশন
+  // যদি এডমিন আবার /broadcast বা /cancel দেয়
+  if (text === '/broadcast') {
+    return handleBroadcastCommand(message);
+  }
   if (text === '/cancel') {
-    broadcastSessions.delete(chatId);
+    broadcastSessions.delete(sessionKey);
     await callTelegram('sendMessage', {
       chat_id: chatId,
       text: '❌ *Broadcast cancelled.* No messages were sent.',
@@ -545,11 +550,13 @@ async function handleHelpCommand(message) {
 // ----------------- Callback Query হ্যান্ডলার -----------------
 async function handleCallbackQuery(cq) {
   const chatId = cq.message?.chat?.id;
+  const sessionKey = String(chatId);
+  console.log(`🔘 [CALLBACK QUERY] data: "${cq.data}" from: ${cq.from?.id} (chatId: ${chatId})`);
 
   // ব্রডকাস্ট ডিক্লাইন / ক্যানসেল
   if (cq.data === 'broadcast_cancel') {
     await callTelegram('answerCallbackQuery', { callback_query_id: cq.id, text: 'Broadcast cancelled' });
-    broadcastSessions.delete(chatId);
+    broadcastSessions.delete(sessionKey);
     await callTelegram('sendMessage', {
       chat_id: chatId,
       text: '❌ *Broadcast Declined & Cancelled.*\nNo messages were sent.',
@@ -560,7 +567,9 @@ async function handleCallbackQuery(cq) {
 
   // ব্রডকাস্ট কনফার্ম ও এক্সিকিউশন
   if (cq.data === 'broadcast_confirm') {
-    const session = broadcastSessions.get(chatId);
+    const session = broadcastSessions.get(sessionKey);
+    console.log(`📢 [BROADCAST CONFIRM] session found:`, Boolean(session), session);
+
     if (!session || !session.text) {
       await callTelegram('answerCallbackQuery', { callback_query_id: cq.id, text: 'Session expired!' });
       await callTelegram('sendMessage', {
@@ -577,8 +586,10 @@ async function handleCallbackQuery(cq) {
       parse_mode: 'Markdown'
     });
 
-    executeBroadcast(chatId, session);
-    broadcastSessions.delete(chatId);
+    // সেশন কপি করে ব্রডকাস্ট শুরু করা
+    const activeSession = { ...session };
+    broadcastSessions.delete(sessionKey);
+    executeBroadcast(chatId, activeSession);
     return;
   }
   
@@ -642,6 +653,7 @@ async function startPolling() {
   console.log('---------------------------------------------------------');
 
   try {
+    // নিশ্চিত হওয়া যে কোনো Webhook সেট নেই এবং pending updates ড্রপ করা হচ্ছে না
     await callTelegram('deleteWebhook', { drop_pending_updates: false });
   } catch (e) {
     // ignore
@@ -652,6 +664,7 @@ async function startPolling() {
       const res = await callTelegram('getUpdates', {
         offset: lastUpdateId + 1,
         timeout: 25,
+        allowed_updates: ['message', 'callback_query', 'channel_post']
       });
 
       if (res.ok && Array.isArray(res.result)) {
@@ -663,7 +676,7 @@ async function startPolling() {
             const text = (update.message.text || '').trim();
 
             // চেক করা ইউজার একটিভ ব্রডকাস্ট কনভার্সেশনে আছেন কিনা
-            if (chatId && broadcastSessions.has(chatId)) {
+            if (chatId && broadcastSessions.has(String(chatId))) {
               await handleBroadcastSessionMessage(update.message);
               continue;
             }
