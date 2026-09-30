@@ -10,9 +10,64 @@ import gramImg from '../../assets/gram.png';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
 
+import { beginCell, toNano, Address } from '@ton/core';
+import { AIRDROP_CONFIG } from '../utils/airdropSystem';
+
 // Master Staking Vault Address (অন-চেইন স্ট্যাকিং রিসিভ অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
 const STONFI_SWAP_URL = 'https://app.ston.fi/swap';
+
+// 🔍 Helper: Resolve user's Jetton Wallet address for $APPLE Jetton
+async function getUserAppleJettonWallet(userRawAddress) {
+  const minterAddress = AIRDROP_CONFIG.contractAddress; // 'EQDz-8DoxesPcoqzU9FJmOEdYf4ri9rDwaVTtDVEB_rZ4GHC'
+  try {
+    const res = await fetch(`https://tonapi.io/v2/blockchain/accounts/${minterAddress}/methods/get_wallet_address?args=${encodeURIComponent(userRawAddress)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.decoded?.jetton_wallet_address) {
+        return data.decoded.jetton_wallet_address;
+      }
+    }
+  } catch (err) {
+    console.warn('TonAPI get_wallet_address error:', err);
+  }
+
+  try {
+    const res2 = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(userRawAddress)}/jettons`);
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const match = data2.balances?.find(b => 
+        b.jetton?.address === minterAddress || 
+        b.jetton?.symbol === 'APPLE'
+      );
+      if (match?.wallet_address?.address) {
+        return match.wallet_address.address;
+      }
+    }
+  } catch (err2) {
+    console.warn('TonAPI accounts jettons fallback error:', err2);
+  }
+  return null;
+}
+
+// 📦 Build TEP-74 Standard Jetton Transfer Payload (Cell -> Base64 BOC)
+function buildJettonTransferPayload(amountTokens, destinationAddress, responseAddress) {
+  // $APPLE has 9 decimals
+  const nanoAmount = BigInt(Math.floor(Number(amountTokens) * 1e9));
+
+  const body = beginCell()
+    .storeUint(0x0f8a7ea5, 32) // opcode: jetton transfer (0x0f8a7ea5)
+    .storeUint(0, 64) // query_id
+    .storeCoins(nanoAmount) // jetton amount to transfer to master wallet
+    .storeAddress(Address.parse(destinationAddress)) // to: master wallet
+    .storeAddress(Address.parse(responseAddress)) // response_destination: user wallet for excess gas refund
+    .storeBit(0) // null custom_payload
+    .storeCoins(toNano('0.01')) // forward_ton_amount (notification to master wallet)
+    .storeBit(0) // empty forward_payload
+    .endCell();
+
+  return body.toBoc().toString('base64');
+}
 
 // Pool Configurations
 const POOL_CONFIGS = {
@@ -95,6 +150,30 @@ export default function StakingPage({
   const [inputAmount, setInputAmount] = useState('');
   const [toastMsg, setToastMsg] = useState('');
 
+  const [walletAppleBalance, setWalletAppleBalance] = useState(null);
+
+  const fetchWalletAppleBalance = async (rawAddr) => {
+    if (!rawAddr) return;
+    try {
+      const res = await fetch(`https://tonapi.io/v2/accounts/${encodeURIComponent(rawAddr)}/jettons`);
+      if (res.ok) {
+        const data = await res.json();
+        const appleJetton = data.balances?.find(b => 
+          b.jetton?.address === AIRDROP_CONFIG.contractAddress || 
+          b.jetton?.symbol === 'APPLE'
+        );
+        if (appleJetton) {
+          const balanceTokens = Number(appleJetton.balance) / 1e9;
+          setWalletAppleBalance(balanceTokens);
+        } else {
+          setWalletAppleBalance(0);
+        }
+      }
+    } catch (e) {
+      console.warn('fetchWalletAppleBalance error:', e);
+    }
+  };
+
   // Save staking data to LocalStorage whenever it changes
   const saveStakingData = (newData) => {
     setStakingData(newData);
@@ -118,6 +197,7 @@ export default function StakingPage({
         setIsWalletConnected(true);
         const rawAddr = tonConnect.wallet.account.address;
         setWalletAddress(rawAddr ? rawAddr.slice(0, 4) + '...' + rawAddr.slice(-4) : 'Connected');
+        fetchWalletAppleBalance(rawAddr);
       }
 
       const unsubscribe = tonConnect.onStatusChange((wallet) => {
@@ -125,10 +205,12 @@ export default function StakingPage({
           setIsWalletConnected(true);
           const rawAddr = wallet.account.address;
           setWalletAddress(rawAddr ? rawAddr.slice(0, 4) + '...' + rawAddr.slice(-4) : 'Connected');
+          fetchWalletAppleBalance(rawAddr);
           showToast('TON Wallet Connected');
         } else {
           setIsWalletConnected(false);
           setWalletAddress('');
+          setWalletAppleBalance(null);
         }
       });
 
@@ -319,20 +401,44 @@ export default function StakingPage({
         return;
       }
 
+      if (walletAppleBalance !== null && amount > walletAppleBalance) {
+        showToast(`Insufficient $APPLE tokens in wallet (You have ${walletAppleBalance.toLocaleString()} $APPLE)`);
+        return;
+      }
+
       setIsProcessingOnChainStake(true);
       try {
-        // TonConnect অন-চেইন ট্রানজাকশন রিকোয়েস্ট (Staking Vault Contract / Master Address)
+        const userWalletRaw = tonConnectUI.wallet.account.address;
+
+        showToast('Preparing on-chain $APPLE stake transaction...');
+        
+        // 1. Resolve user's Jetton Wallet for $APPLE
+        const userJettonWallet = await getUserAppleJettonWallet(userWalletRaw);
+        if (!userJettonWallet) {
+          showToast('Could not find your $APPLE wallet or 0 balance.');
+          setIsProcessingOnChainStake(false);
+          return;
+        }
+
+        // 2. Build TEP-74 Jetton transfer message payload (0x0f8a7ea5)
+        const payloadBoc = buildJettonTransferPayload(amount, MASTER_WALLET_ADDRESS, userWalletRaw);
+
+        // 3. TonConnect on-chain transaction: sent to user's Jetton wallet with 0.05 TON gas
         const transaction = {
           validUntil: Math.floor(Date.now() / 1000) + 360, // 6 minutes
           messages: [
             {
-              address: MASTER_WALLET_ADDRESS,
-              amount: '50000000', // 0.05 TON Staking gas & vault transfer
+              address: userJettonWallet,
+              amount: '50000000', // 0.05 TON for Jetton execution & forward gas
+              payload: payloadBoc,
             }
           ]
         };
 
         await tonConnectUI.sendTransaction(transaction);
+
+        // Fetch refreshed wallet balance
+        setTimeout(() => fetchWalletAppleBalance(userWalletRaw), 4000);
 
         // অন-চেইন স্টেক সফল: লোকাল স্টেট ও ডাটাবেস আপডেট
         const currentData = stakingData[selectedPoolId] || { staked: 0 };
@@ -864,10 +970,12 @@ export default function StakingPage({
             <div className="bg-emerald-50/80 p-2.5 rounded-2xl border border-emerald-100 mb-3 flex items-center justify-between text-xs font-bold text-[#145a32]">
               <span className="flex items-center gap-1.5">
                 <Coins className="w-4 h-4 text-emerald-600" />
-                <span>{activePoolConfig.isOnChain ? 'TON Wallet Connected:' : 'Available Apples:'}</span>
+                <span>{activePoolConfig.isOnChain ? 'Wallet $APPLE Balance:' : 'Available Apples:'}</span>
               </span>
               <span className="font-black text-xs">
-                {activePoolConfig.isOnChain ? (walletAddress || 'Connected') : (user.apples || 0).toLocaleString()}
+                {activePoolConfig.isOnChain 
+                  ? (walletAppleBalance !== null ? `${walletAppleBalance.toLocaleString()} $APPLE` : (walletAddress ? 'Loading...' : 'Not Connected')) 
+                  : (user.apples || 0).toLocaleString()}
               </span>
             </div>
 
@@ -888,15 +996,19 @@ export default function StakingPage({
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-base font-black text-[#1c324f] focus:outline-none focus:border-emerald-500"
                     required
                   />
-                  {!activePoolConfig.isOnChain && (
-                    <button
-                      type="button"
-                      onClick={() => setInputAmount(String(user.apples || 0))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#2ecc71] text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl active:scale-95 cursor-pointer"
-                    >
-                      MAX
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activePoolConfig.isOnChain) {
+                        setInputAmount(String(Math.floor(walletAppleBalance || 0)));
+                      } else {
+                        setInputAmount(String(user.apples || 0));
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#2ecc71] text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl active:scale-95 cursor-pointer"
+                  >
+                    MAX
+                  </button>
                 </div>
               </div>
 
