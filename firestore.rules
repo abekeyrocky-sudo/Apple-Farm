@@ -3,21 +3,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users collection: users can read their own data
+    // 👤 Users collection
     match /users/{userId} {
+      // Allow reading user profiles (needed for leaderboards, user profile loading)
       allow read: if true;
-      allow write: if true; // In production, write permissions are controlled via Cloud Functions admin SDK
+      
+      // Allow user creation or update from client, but strictly disallow deletion
+      allow create, update: if true;
+      allow delete: if false;
+
+      // 💳 User subcollections (transactions & commission logs)
+      match /transactions/{txId} {
+        allow read, create: if true;
+        allow update, delete: if false;
+      }
+      
+      match /commission_logs/{logId} {
+        allow read, create: if true;
+        allow update, delete: if false;
+      }
     }
     
-    // Withdrawals collection
+    // 💸 Withdrawals collection: Users can create and read, but CANNOT tamper or delete once submitted
     match /withdrawals/{withdrawalId} {
-      allow read, create: if true;
-      allow update, delete: if false;
+      allow read: if true;
+      allow create: if request.resource.data.apples >= 0;
+      allow update, delete: if false; // Only Cloud Functions Admin SDK can update status to completed/failed
     }
 
-    // Default catch-all
+    // 🎯 Partner tasks / Sponsored tasks
+    match /partner_tasks/{taskId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // 🔒 System settings / Security / Admin only
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if false; // Admin only via Cloud Functions
+    }
+
+    // 🚫 Root Catch-all: strictly prevent arbitrary wildcard writes
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

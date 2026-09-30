@@ -14,6 +14,17 @@ export function validateTelegramWebAppData(initData, botToken) {
     const hash = urlParams.get('hash');
     if (!hash) return null;
 
+    // Check expiration / replay attack (48 hours window)
+    const authDate = urlParams.get('auth_date');
+    if (authDate) {
+      const authTimestamp = parseInt(authDate, 10);
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      if (currentTimestamp - authTimestamp > 172800) { // 48 hours
+        console.warn('[Telegram Auth] Expired auth_date received:', authDate);
+        return null;
+      }
+    }
+
     urlParams.delete('hash');
 
     // Sort params alphabetically
@@ -55,28 +66,23 @@ export function telegramAuthMiddleware(botToken) {
   return (req, res, next) => {
     const initData = req.headers['x-telegram-init-data'] || req.headers['authorization'];
     
-    // In dev / test mode without initData, allow mock fallback if provided
+    // In dev / localhost test mode without initData, allow dev farmer fallback
     if (!initData) {
-      if (req.body?.user?.id || req.query?.userId) {
+      const isLocalOrDev = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+      if (isLocalOrDev && (req.body?.user?.id === 40281 || req.query?.userId === '40281')) {
         req.telegramUser = {
-          id: req.body?.user?.id || req.query?.userId || 40281,
-          first_name: req.body?.user?.name || 'Farmer',
-          username: req.body?.user?.username || ''
+          id: 40281,
+          first_name: 'Dev Farmer',
+          username: 'dev_farmer'
         };
         return next();
       }
-      return res.status(401).json({ error: 'Missing Telegram authorization initData' });
+      return res.status(401).json({ error: 'Unauthorized: Missing Telegram WebApp initData signature' });
     }
 
     const validatedUser = validateTelegramWebAppData(initData, botToken);
     if (!validatedUser) {
-      // If production validation fails, we can either reject or fallback for testing
-      console.warn('Invalid Telegram WebApp signature, proceeding with payload fallback');
-      if (req.body?.user?.id) {
-        req.telegramUser = req.body.user;
-        return next();
-      }
-      return res.status(401).json({ error: 'Invalid Telegram WebApp signature' });
+      return res.status(401).json({ error: 'Unauthorized: Invalid or expired Telegram signature' });
     }
 
     req.telegramUser = validatedUser;
