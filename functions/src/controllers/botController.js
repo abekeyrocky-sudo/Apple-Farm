@@ -190,6 +190,18 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
       return true;
     }
 
+    // STEP 3: কনফার্মেশনের অপেক্ষায় থাকাকালীন মেসেজ আসলে ইউজারকে বাটন ব্যবহারের অনুরোধ করা
+    if (session.step === 'WAITING_FOR_CONFIRM') {
+      await callTelegram('sendMessage', {
+        chat_id: chatId,
+        text: '⚠️ *Broadcast preview is waiting for your confirmation!*\n\n' +
+          'Please tap **✅ Confirm & Send Broadcast** or **❌ Decline & Cancel** on the preview above.\n' +
+          '_(Or send /cancel to abort, or /broadcast to start over)_',
+        parse_mode: 'Markdown'
+      });
+      return true;
+    }
+
     return false;
   }
 
@@ -655,23 +667,30 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
           const chatId = update.message.chat?.id;
           const text = (update.message.text || '').trim();
 
-          // চেক করা ইউজার একটিভ ব্রডকাস্ট সেশনে আছেন কিনা
+          // কমান্ড আসলে সেশন বাতিল করে সরাসরি কমান্ড রান করা
+          if (text.startsWith('/start')) {
+            if (chatId) await deleteSession(chatId);
+            const parts = text.split(' ');
+            const param = parts.length > 1 ? parts.slice(1).join(' ') : null;
+            await handleStartCommand(update.message, param);
+            return res.status(200).json({ ok: true });
+          } else if (text.startsWith('/help')) {
+            if (chatId) await deleteSession(chatId);
+            await handleHelpCommand(update.message);
+            return res.status(200).json({ ok: true });
+          } else if (text.startsWith('/broadcast')) {
+            if (chatId) await deleteSession(chatId);
+            await handleBroadcastCommand(update.message);
+            return res.status(200).json({ ok: true });
+          }
+
+          // চেক করা ইউজার একটিভ ব্রডকাস্ট সেশনে আছেন কিনা (ছবি বা টেক্সট প্রেরণের জন্য)
           const session = chatId ? await getSession(chatId) : null;
           if (session) {
             const handled = await handleBroadcastSessionMessage(update.message);
             if (handled) {
               return res.status(200).json({ ok: true });
             }
-          }
-
-          if (text.startsWith('/broadcast')) {
-            await handleBroadcastCommand(update.message);
-          } else if (text.startsWith('/start')) {
-            const parts = text.split(' ');
-            const param = parts.length > 1 ? parts.slice(1).join(' ') : null;
-            await handleStartCommand(update.message, param);
-          } else if (text.startsWith('/help')) {
-            await handleHelpCommand(update.message);
           }
         } else if (update.callback_query) {
           await handleCallbackQuery(update.callback_query);

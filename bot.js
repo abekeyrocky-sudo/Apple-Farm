@@ -182,6 +182,18 @@ async function handleBroadcastSessionMessage(message) {
     await sendBroadcastPreview(chatId, session);
     return;
   }
+
+  // STEP 3: কনফার্মেশনের অপেক্ষায় থাকাকালীন মেসেজ আসলে ইউজারকে বাটন ব্যবহারের অনুরোধ করা
+  if (session.step === 'WAITING_FOR_CONFIRM') {
+    await callTelegram('sendMessage', {
+      chat_id: chatId,
+      text: '⚠️ *Broadcast preview is waiting for your confirmation!*\n\n' +
+        'Please tap **✅ Confirm & Send Broadcast** or **❌ Decline & Cancel** on the preview above.\n' +
+        '_(Or send /cancel to abort, or /broadcast to start over)_',
+      parse_mode: 'Markdown'
+    });
+    return;
+  }
 }
 
 // ----------------- ব্রডকাস্ট প্রিভিউ ও কনফার্মেশন বাটন পাঠানো -----------------
@@ -675,20 +687,27 @@ async function startPolling() {
             const chatId = update.message.chat?.id;
             const text = (update.message.text || '').trim();
 
-            // চেক করা ইউজার একটিভ ব্রডকাস্ট কনভার্সেশনে আছেন কিনা
-            if (chatId && broadcastSessions.has(String(chatId))) {
-              await handleBroadcastSessionMessage(update.message);
-              continue;
-            }
-
-            if (text.startsWith('/broadcast')) {
-              await handleBroadcastCommand(update.message);
-            } else if (text.startsWith('/start')) {
+            // যদি এডমিন /start বা /help দিতে চায়, সেশন বাতিল করে স্বাভাবিক কমান্ড রান হবে
+            if (text.startsWith('/start')) {
+              broadcastSessions.delete(String(chatId));
               const parts = text.split(' ');
               const param = parts.length > 1 ? parts.slice(1).join(' ') : null;
               await handleStartCommand(update.message, param);
+              continue;
             } else if (text.startsWith('/help')) {
+              broadcastSessions.delete(String(chatId));
               await handleHelpCommand(update.message);
+              continue;
+            } else if (text.startsWith('/broadcast')) {
+              broadcastSessions.delete(String(chatId));
+              await handleBroadcastCommand(update.message);
+              continue;
+            }
+
+            // চেক করা ইউজার একটিভ ব্রডকাস্ট কনভার্সেশনে আছেন কিনা (ছবি বা টেক্সট পাঠানোর স্টেপ)
+            if (chatId && broadcastSessions.has(String(chatId))) {
+              await handleBroadcastSessionMessage(update.message);
+              continue;
             }
           } else if (update.callback_query) {
             await handleCallbackQuery(update.callback_query);
