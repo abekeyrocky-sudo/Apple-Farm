@@ -529,8 +529,32 @@ export default function App() {
     }, 800);
   };
 
-  const handleBonusWin = (amount, title = 'Bonus Claimed') => {
+  const handleBonusWin = (amount, title = 'Bonus Claimed', type = 'apple') => {
     const numAmount = Number(amount || 0);
+    const rewardType = (type === 'diamond' || type === 'diamonds') ? 'diamond' : 'apple';
+
+    if (rewardType === 'diamond') {
+      const nextDiamonds = Number(((user.diamonds || 0) + numAmount).toFixed(2));
+      setUser((prev) => ({
+        ...prev,
+        diamonds: nextDiamonds
+      }));
+      if (user?.id) {
+        updateUserInDB(user.id, { diamonds: nextDiamonds });
+        if (user?.referredBy && numAmount > 0) {
+          distributeReferralCommission(user.referredBy, user.id, 'diamond', numAmount, title);
+        }
+      }
+      showPopupModal({
+        type: 'reward',
+        title: title,
+        message: `Congratulations. You received +${numAmount} Diamonds into your balance.`,
+        rewardAmount: numAmount,
+        rewardType: 'diamond'
+      });
+      return;
+    }
+
     setUser((prev) => {
       const newApples = (prev.apples || 0) + numAmount;
       const newLevel = calculateLevel(newApples);
@@ -546,16 +570,6 @@ export default function App() {
         distributeReferralCommission(user.referredBy, user.id, 'apple', numAmount, title);
       }
     }
-    addTransaction({
-      userId: user.id,
-      title: title,
-      subtitle: 'Apple Farm Reward',
-      amount: `+${numAmount}`,
-      currency: 'apple',
-      type: 'earn',
-      category: 'task',
-      status: 'Completed'
-    });
     showPopupModal({
       type: 'reward',
       title: title,
@@ -1025,7 +1039,7 @@ export default function App() {
             onBack={() => setCurrentTab('home')}
             onNavigate={handleNavigate}
             onLogout={() => setCurrentTab('home')}
-            onRedeemBonus={(amount) => handleBonusWin(amount, 'Code Redeemed!')}
+            onRedeemBonus={(amount, type) => handleBonusWin(amount, 'Code Redeemed!', type)}
             onUpdateAvatar={handleUpdateAvatar}
             onShowPopup={showPopupModal}
           />

@@ -464,3 +464,65 @@ export const incrementPartnerTaskJoinedInDB = async (taskId) => {
     console.error("Firebase incrementPartnerTask error:", err);
   }
 };
+
+// 🎁 Cloud Firestore Promo Code / Redeem System
+export const redeemPromoCodeInDB = async (code, userId) => {
+  if (!db || !code || !userId) {
+    return { success: false, message: 'Invalid request' };
+  }
+  const cleanCode = code.trim().toUpperCase();
+  const codeRef = doc(db, "promo_codes", cleanCode);
+  
+  try {
+    const snap = await getDoc(codeRef);
+    if (!snap.exists()) {
+      return { success: false, message: 'Invalid promo code!' };
+    }
+    const data = snap.data();
+    
+    // 1. Check if active
+    if (data.active === false) {
+      return { success: false, message: 'This promo code is expired or inactive!' };
+    }
+    
+    // 2. Check if already claimed by this user
+    const claimedBy = Array.isArray(data.claimed_by) ? data.claimed_by.map(String) : [];
+    if (claimedBy.includes(String(userId))) {
+      return { success: false, message: 'You have already redeemed this promo code!' };
+    }
+    
+    // 3. Check max claims limit
+    const currentClaims = Number(data.current_claims || 0);
+    const maxClaims = Number(data.max_claims || 0);
+    if (maxClaims > 0 && currentClaims >= maxClaims) {
+      return { success: false, message: 'This promo code has reached its maximum claim limit!' };
+    }
+    
+    // 4. Update promo_codes document in Firestore
+    const newClaimsCount = currentClaims + 1;
+    const updatePayload = {
+      current_claims: increment(1),
+      claimed_by: arrayUnion(String(userId))
+    };
+    if (maxClaims > 0 && newClaimsCount >= maxClaims) {
+      updatePayload.active = false;
+    }
+    await updateDoc(codeRef, updatePayload);
+    
+    // 5. Reward details
+    const rewardAmount = Number(data.reward_amount || 0);
+    const rawType = (data.reward_type || 'apple').toLowerCase();
+    const rewardType = (rawType === 'diamond' || rawType === 'diamonds') ? 'diamond' : 'apple';
+    
+    return {
+      success: true,
+      rewardAmount,
+      rewardType,
+      message: `Code Redeemed! +${rewardAmount} ${rewardType === 'diamond' ? 'Diamonds' : 'Apples'}`
+    };
+  } catch (err) {
+    console.error("redeemPromoCodeInDB error:", err);
+    return { success: false, message: err.message || 'Failed to redeem promo code' };
+  }
+};
+

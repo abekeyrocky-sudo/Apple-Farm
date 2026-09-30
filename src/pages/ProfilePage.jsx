@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ShieldAlert, ChevronRight, Award, ArrowRight, Calendar, Copy, CheckCheck, Sparkles, Bot, X, ExternalLink } from 'lucide-react';
+import { User, Trophy, Camera, Check, Store, Volume2, VolumeX, Music, Smartphone, ShieldCheck, ShieldAlert, ChevronRight, Award, ArrowRight, Calendar, Copy, CheckCheck, Sparkles, Bot, X, ExternalLink, Loader2 } from 'lucide-react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
 import verifyBadgeImg from '../../assets/verify-badge.png';
@@ -9,6 +9,7 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { addTransaction } from '../utils/transactionHistory';
+import { redeemPromoCodeInDB } from '../firebase';
 
 export default function ProfilePage({ 
   user = { name: 'Farmer', id: null, level: 1, apples: 0, avatar: 'avatar-1' }, 
@@ -28,6 +29,9 @@ export default function ProfilePage({
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemSuccess, setRedeemSuccess] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [redeemError, setRedeemError] = useState('');
+  const [redeemSuccessMsg, setRedeemSuccessMsg] = useState('');
   const [copiedId, setCopiedId] = useState(false);
 
   // সাউন্ড ও হ্যাপটিক সেটিংস স্টেট
@@ -203,31 +207,56 @@ export default function ProfilePage({
     }
   };
 
-  const handleRedeemSubmit = (e) => {
+  const handleRedeemSubmit = async (e) => {
     e.preventDefault();
-    if (!redeemInput) return;
-    setRedeemSuccess(true);
-    addTransaction({
-      userId: user?.id,
-      title: 'Redeem Promo Code',
-      subtitle: `Code: ${redeemInput.toUpperCase()}`,
-      amount: '+500',
-      currency: 'apple',
-      type: 'earn',
-      category: 'redeem',
-      status: 'Completed'
-    });
-    if (onRedeemBonus) {
-      onRedeemBonus(500);
+    if (!redeemInput || isRedeeming) return;
+
+    setRedeemError('');
+    setIsRedeeming(true);
+
+    try {
+      const res = await redeemPromoCodeInDB(redeemInput, user?.id);
+      if (!res.success) {
+        setRedeemError(res.message);
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+        }
+        return;
+      }
+
+      setRedeemSuccess(true);
+      setRedeemSuccessMsg(res.message);
+
+      addTransaction({
+        userId: user?.id,
+        title: 'Redeem Promo Code',
+        subtitle: `Code: ${redeemInput.toUpperCase()}`,
+        amount: `+${res.rewardAmount}`,
+        currency: res.rewardType,
+        type: 'earn',
+        category: 'redeem',
+        status: 'Completed'
+      });
+
+      if (onRedeemBonus) {
+        onRedeemBonus(res.rewardAmount, res.rewardType);
+      }
+
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+
+      setTimeout(() => {
+        setRedeemSuccess(false);
+        setShowRedeemModal(false);
+        setRedeemInput('');
+        setRedeemSuccessMsg('');
+      }, 2000);
+    } catch (err) {
+      setRedeemError('Network error. Please try again.');
+    } finally {
+      setIsRedeeming(false);
     }
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
-    setTimeout(() => {
-      setRedeemSuccess(false);
-      setShowRedeemModal(false);
-      setRedeemInput('');
-    }, 1500);
   };
 
   return (
@@ -424,24 +453,41 @@ export default function ProfilePage({
                 </button>
               </div>
             ) : redeemSuccess ? (
-              <div className="py-4 text-center text-emerald-600 font-black text-sm flex flex-col items-center gap-1">
-                <span className="text-2xl">🎉</span>
-                <span>Code Redeemed! +500 Apples</span>
+              <div className="py-4 text-center text-emerald-600 font-black text-sm flex flex-col items-center gap-1.5">
+                <span className="text-3xl">🎉</span>
+                <span>{redeemSuccessMsg || 'Code Redeemed Successfully!'}</span>
               </div>
             ) : (
               <form onSubmit={handleRedeemSubmit} className="space-y-3">
+                {redeemError && (
+                  <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold text-center">
+                    {redeemError}
+                  </div>
+                )}
                 <input 
                   type="text" 
-                  placeholder="Enter your code (e.g. APPLE2026)"
+                  placeholder="Enter code (e.g. 1STSEP)"
                   value={redeemInput}
-                  onChange={(e) => setRedeemInput(e.target.value)}
+                  onChange={(e) => {
+                    setRedeemInput(e.target.value);
+                    if (redeemError) setRedeemError('');
+                  }}
                   required
-                  className="w-full text-xs font-bold p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-farm-light-green uppercase tracking-wider"
+                  disabled={isRedeeming}
+                  className="w-full text-xs font-bold p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-farm-light-green uppercase tracking-wider disabled:opacity-50"
                 />
                 <button 
                   type="submit" 
-                  className="w-full py-2.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all">
-                  Claim 500 Apples
+                  disabled={isRedeeming}
+                  className="w-full py-2.5 bg-gradient-to-r from-[#2ecc71] to-[#1e8a4a] text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer">
+                  {isRedeeming ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verifying Code...</span>
+                    </>
+                  ) : (
+                    <span>Redeem Code</span>
+                  )}
                 </button>
               </form>
             )}
