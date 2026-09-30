@@ -14,7 +14,8 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  runTransaction
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -465,60 +466,93 @@ export const incrementPartnerTaskJoinedInDB = async (taskId) => {
   }
 };
 
-// 🎁 Cloud Firestore Promo Code / Redeem System
+// 🎁 Cloud Firestore Promo Code / Redeem System (Atomic & Secure)
 export const redeemPromoCodeInDB = async (code, userId) => {
   if (!db || !code || !userId) {
     return { success: false, message: 'Invalid request' };
   }
   const cleanCode = code.trim().toUpperCase();
   const codeRef = doc(db, "promo_codes", cleanCode);
-  
+  const userRef = doc(db, "users", userId.toString());
+
   try {
-    const snap = await getDoc(codeRef);
-    if (!snap.exists()) {
-      return { success: false, message: 'Invalid promo code!' };
-    }
-    const data = snap.data();
-    
-    // 1. Check if active
-    if (data.active === false) {
-      return { success: false, message: 'This promo code is expired or inactive!' };
-    }
-    
-    // 2. Check if already claimed by this user
-    const claimedBy = Array.isArray(data.claimed_by) ? data.claimed_by.map(String) : [];
-    if (claimedBy.includes(String(userId))) {
-      return { success: false, message: 'You have already redeemed this promo code!' };
-    }
-    
-    // 3. Check max claims limit
-    const currentClaims = Number(data.current_claims || 0);
-    const maxClaims = Number(data.max_claims || 0);
-    if (maxClaims > 0 && currentClaims >= maxClaims) {
-      return { success: false, message: 'This promo code has reached its maximum claim limit!' };
-    }
-    
-    // 4. Update promo_codes document in Firestore
-    const newClaimsCount = currentClaims + 1;
-    const updatePayload = {
-      current_claims: increment(1),
-      claimed_by: arrayUnion(String(userId))
-    };
-    if (maxClaims > 0 && newClaimsCount >= maxClaims) {
-      updatePayload.active = false;
-    }
-    await updateDoc(codeRef, updatePayload);
-    
-    // 5. Reward details
-    const rewardAmount = Number(data.reward_amount || 0);
-    const rawType = (data.reward_type || 'apple').toLowerCase();
-    const rewardType = (rawType === 'diamond' || rawType === 'diamonds') ? 'diamond' : 'apple';
-    
+    const result = await runTransaction(db, async (transaction) => {
+      // 1. Fetch promo code document
+      const codeSnap = await transaction.get(codeRef);
+      if (!codeSnap.exists()) {
+        throw new Error('Invalid promo code!');
+      }
+      const promoData = codeSnap.data();
+
+      // 2. Fetch user document to check verification in Firestore database
+      const userSnap = await transaction.get(userRef);
+      if (!userSnap.exists()) {
+        throw new Error('User profile not found in database!');
+      }
+      const userData = userSnap.data();
+
+      // 🔒 Security Check: ONLY verified users can redeem (checked directly from database)
+      if (!userData.isVerified && !userData.verifiedBadge) {
+        throw new Error('Verified Farmers Only! Unlock your Verify Badge to redeem.');
+      }
+
+      // 3. Check if promo code is active
+      if (promoData.active === false) {
+        throw new Error('This promo code is expired or inactive!');
+      }
+
+      // 4. Check if already claimed by this user
+      const claimedBy = Array.isArray(promoData.claimed_by) ? promoData.claimed_by.map(String) : [];
+      if (claimedBy.includes(String(userId))) {
+        throw new Error('You have already redeemed this promo code!');
+      }
+
+      // 5. Check max claims limit
+      const currentClaims = Number(promoData.current_claims || 0);
+      const maxClaims = Number(promoData.max_claims || 0);
+      if (maxClaims > 0 && currentClaims >= maxClaims) {
+        throw new Error('This promo code has reached its maximum claim limit!');
+      }
+
+      // 6. Calculate reward directly from server record
+      const rewardAmount = Number(promoData.reward_amount || 0);
+      const rawType = (promoData.reward_type || 'apple').toLowerCase();
+      const rewardType = (rawType === 'diamond' || rawType === 'diamonds') ? 'diamond' : 'apple';
+
+      // 7. Atomic Writes to DB:
+      // a) Update promo code claims and claimed_by list
+      const newClaims = currentClaims + 1;
+      const isNowMaxed = maxClaims > 0 && newClaims >= maxClaims;
+      transaction.update(codeRef, {
+        current_claims: newClaims,
+        claimed_by: [...claimedBy, String(userId)],
+        active: isNowMaxed ? false : promoData.active
+      });
+
+      // b) Update user balance in Firestore directly on database level
+      if (rewardType === 'diamond') {
+        const nextDiamonds = Number(((userData.diamonds || 0) + rewardAmount).toFixed(2));
+        transaction.update(userRef, { diamonds: nextDiamonds });
+      } else {
+        const nextApples = (userData.apples || 0) + rewardAmount;
+        transaction.update(userRef, { apples: nextApples });
+      }
+
+      return {
+        rewardAmount,
+        rewardType,
+        newApples: rewardType === 'apple' ? (userData.apples || 0) + rewardAmount : userData.apples,
+        newDiamonds: rewardType === 'diamond' ? Number(((userData.diamonds || 0) + rewardAmount).toFixed(2)) : userData.diamonds
+      };
+    });
+
     return {
       success: true,
-      rewardAmount,
-      rewardType,
-      message: `Code Redeemed! +${rewardAmount} ${rewardType === 'diamond' ? 'Diamonds' : 'Apples'}`
+      rewardAmount: result.rewardAmount,
+      rewardType: result.rewardType,
+      newApples: result.newApples,
+      newDiamonds: result.newDiamonds,
+      message: `Code Redeemed! +${result.rewardAmount} ${result.rewardType === 'diamond' ? 'Diamonds' : 'Apples'}`
     };
   } catch (err) {
     console.error("redeemPromoCodeInDB error:", err);
