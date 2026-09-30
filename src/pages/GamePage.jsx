@@ -206,8 +206,8 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
       style={{ backgroundImage: `url(${spinBgImg})` }}
       className="relative w-full max-w-md mx-auto min-h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-between select-none font-sans overflow-hidden"
     >
-      {/* 🍃 Farm Falling Leaves Animation */}
-      <FallingLeaves count={8} />
+      {/* 🍃 Farm Falling Leaves Animation (Background Layer - under the wheel) */}
+      <FallingLeaves count={8} zIndex="z-0" />
       
       {/* ----------------- TOP TITLE ----------------- */}
       <div className="pt-2 px-4 z-20 text-center relative">
@@ -242,8 +242,8 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
         </div>
       </div>
 
-      {/* ----------------- LUCKY WHEEL SECTION ----------------- */}
-      <div className="flex-1 flex flex-col items-center justify-center relative px-4">
+      {/* ----------------- LUCKY WHEEL SECTION (z-20 sits on top of falling background) ----------------- */}
+      <div className="flex-1 flex flex-col items-center justify-center relative px-4 z-20">
         
         {/* The Wheel Container */}
         <div className="relative w-72 h-72 flex items-center justify-center">
