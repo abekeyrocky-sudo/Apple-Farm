@@ -39,151 +39,39 @@ try {
 
 export { db };
 
-// 📢 রেফারকারীকে টেলিগ্রামে ফটো ব্যানার ও বাটনসহ নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
+const FUNCTIONS_URL = (import.meta.env.VITE_FUNCTIONS_URL || 'https://api-duztzw2gwa-uc.a.run.app/api').replace(/\/api$/, '');
+
+// 📢 রেফারকারীকে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন (Secure Server-Side API)
 const sendReferralNotificationToTelegram = async (referrerChatId, friendName) => {
   if (!referrerChatId) return;
   try {
-    const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
-    const text = `🎉 *New Referral Joined!* 🍎\n\n` +
-      `👤 *${friendName}* just joined Apple Farm using your invite link!\n\n` +
-      `💰 *Reward:* +500 Apples credited to your balance. 🚀`;
-
-    const inline_keyboard = [
-      [
-        {
-          text: 'Play Apple Farm 🍎',
-          web_app: { url: 'https://apple-farm-plum.vercel.app' },
-          style: 'success'
-        }
-      ],
-      [
-        {
-          text: '👥 Invite More Friends',
-          url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/AppleFarmOfficialBot/App?startapp=${referrerChatId}`)}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`,
-          style: 'primary'
-        }
-      ]
-    ];
-
-    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
-    const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/refer-image.jpg';
-
-    // 1. Try sending photo via CDN
-    let res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    await fetch(`${FUNCTIONS_URL}/api/telegram/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: referrerChatId,
-        photo: photoUrl,
-        caption: text,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard }
+        type: 'referral',
+        chatId: referrerChatId,
+        payload: { friendName }
       })
     });
-
-    let resData = await res.json().catch(() => ({}));
-    if (!resData.ok) {
-      // 2. Fallback photo
-      res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: referrerChatId,
-          photo: fallbackPhotoUrl,
-          caption: text,
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard }
-        })
-      });
-      resData = await res.json().catch(() => ({}));
-    }
-
-    if (!resData.ok) {
-      // 3. Fallback text
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: referrerChatId,
-          text: text,
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard }
-        })
-      });
-    }
   } catch (err) {
     console.warn('Referral Telegram notification error:', err);
   }
 };
 
-// ⚡ ব্যবহারকারী উইথড্র দিলে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন
+// ⚡ ব্যবহারকারী উইথড্র দিলে টেলিগ্রামে নোটিফিকেশন পাঠানোর হেল্পার ফাংশন (Secure Server-Side API)
 export const sendWithdrawNotificationToTelegram = async (userId, withdrawData) => {
   if (!userId) return;
   try {
-    const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
-    const isGram = !!withdrawData.gramAmount;
-    
-    let text = '';
-    if (isGram) {
-      text = `⚡ *GRAM Withdrawal Request Submitted!* 💎\n\n` +
-        `📦 *Amount:* \`${withdrawData.gramAmount} GRAM\`\n` +
-        `🍎 *Cost:* \`${withdrawData.amount || 0} Apples & ${withdrawData.diamonds || 0} Diamonds\`\n` +
-        `👛 *Destination:* \`${withdrawData.account ? withdrawData.account.slice(0, 8) + '...' + withdrawData.account.slice(-6) : 'Connected TON Wallet'}\`\n` +
-        `⏳ *Status:* \`Processing on TON Blockchain...\`\n\n` +
-        `🚀 _Your crypto payout is being broadcasted to the TON network!_`;
-    } else {
-      text = `⚡ *Withdrawal Request Submitted!* 💸\n\n` +
-        `💰 *Amount:* \`${withdrawData.amount} Apples\` (৳${withdrawData.bdtAmount || Math.round(withdrawData.amount / 100)})\n` +
-        `💳 *Method:* \`${withdrawData.method || 'bKash'}\`\n` +
-        `📱 *Account:* \`${withdrawData.account || ''}\`\n` +
-        `⏳ *Status:* \`Pending Approval\`\n\n` +
-        `🔔 _You will receive payout confirmation once processed!_`;
-    }
-
-    const inline_keyboard = [
-      [
-        {
-          text: 'Play Apple Farm 🍎',
-          web_app: { url: 'https://apple-farm-plum.vercel.app' },
-          style: 'success'
-        }
-      ],
-      [
-        {
-          text: '📢 Official Payout Proofs',
-          url: 'https://t.me/AppleFarmPayouts',
-          style: 'primary'
-        }
-      ]
-    ];
-
-    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
-
-    let res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    await fetch(`${FUNCTIONS_URL}/api/telegram/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: userId,
-        photo: photoUrl,
-        caption: text,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard }
+        type: 'withdraw',
+        chatId: userId,
+        payload: withdrawData
       })
     });
-
-    let resData = await res.json().catch(() => ({}));
-    if (!resData.ok) {
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: userId,
-          text: text,
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard }
-        })
-      });
-    }
   } catch (err) {
     console.warn('Withdraw Telegram notification error:', err);
   }

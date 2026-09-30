@@ -2,9 +2,9 @@ import { mnemonicToPrivateKey } from '@ton/crypto';
 import { TonClient, WalletContractV5R1 } from '@ton/ton';
 import { internal, toNano, Address, SendMode } from '@ton/core';
 
-const TONCENTER_API_KEY = process.env.TONCENTER_API_KEY || '339b8826294c4f5a133e0300346947bb92b26d84951b3dad768f4fab85b57522';
-const MASTER_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || 'vessel tornado great just traffic august below exhaust pluck chair series deposit culture forget panther inspire phone love bulb version basket sibling this simple';
-const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const TONCENTER_API_KEY = process.env.TONCENTER_API_KEY || '';
+const MASTER_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
+const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || '';
 
 let tonClientInstance = null;
 
@@ -12,7 +12,7 @@ export function getTonClient() {
   if (!tonClientInstance) {
     tonClientInstance = new TonClient({
       endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-      apiKey: TONCENTER_API_KEY,
+      apiKey: TONCENTER_API_KEY || undefined,
     });
   }
   return tonClientInstance;
@@ -27,6 +27,14 @@ export function getTonClient() {
  */
 export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Apple Farm Payout') {
   try {
+    if (!MASTER_MNEMONIC) {
+      console.error('[TON Auto Payout Security Alert] MASTER_WALLET_MNEMONIC is not set in environment variables!');
+      return {
+        success: false,
+        error: 'Master payout wallet is not configured in server secrets.',
+      };
+    }
+
     const client = getTonClient();
     const mnemonicWords = MASTER_MNEMONIC.trim().split(/\s+/);
     const keyPair = await mnemonicToPrivateKey(mnemonicWords);

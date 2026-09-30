@@ -31,9 +31,13 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.app';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
+
+if (!BOT_TOKEN) {
+  console.warn('[Security Warning] TELEGRAM_BOT_TOKEN is not defined in environment variables!');
+}
 
 // Controllers
 const userCtrl = createUserController(db);
@@ -47,6 +51,106 @@ const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL);
 // Health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Secure Telegram Notification Route (Server-side Bot API)
+app.post(['/telegram/notify', '/api/telegram/notify'], async (req, res) => {
+  try {
+    if (!BOT_TOKEN) {
+      return res.status(500).json({ ok: false, error: 'Telegram Bot Token not configured on server' });
+    }
+
+    const { type, chatId, payload } = req.body;
+    if (!chatId) {
+      return res.status(400).json({ ok: false, error: 'Target chatId is required' });
+    }
+
+    let text = '';
+    let replyMarkup = {};
+    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+
+    if (type === 'referral') {
+      const friendName = payload?.friendName || 'Farmer';
+      text = `🎉 *New Referral Joined!* 🍎\n\n` +
+        `👤 *${friendName}* just joined Apple Farm using your invite link!\n\n` +
+        `💰 *Reward:* +500 Apples credited to your balance. 🚀`;
+
+      replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: 'Play Apple Farm 🍎', web_app: { url: MINI_APP_URL } }
+          ],
+          [
+            {
+              text: '👥 Invite More Friends',
+              url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/AppleFarmOfficialBot/App?startapp=${chatId}`)}&text=${encodeURIComponent('🍎 Join Apple Farm and grow your orchard to earn rewards!')}`
+            }
+          ]
+        ]
+      };
+    } else if (type === 'withdraw') {
+      const isGram = !!payload?.gramAmount;
+      if (isGram) {
+        text = `⚡ *GRAM Withdrawal Request Submitted!* 💎\n\n` +
+          `📦 *Amount:* \`${payload.gramAmount} GRAM\`\n` +
+          `🍎 *Cost:* \`${payload.amount || 0} Apples & ${payload.diamonds || 0} Diamonds\`\n` +
+          `👛 *Destination:* \`${payload.account ? payload.account.slice(0, 8) + '...' + payload.account.slice(-6) : 'Connected TON Wallet'}\`\n` +
+          `⏳ *Status:* \`Processing on TON Blockchain...\`\n\n` +
+          `🚀 _Your crypto payout is being broadcasted to the TON network!_`;
+      } else {
+        text = `⚡ *Withdrawal Request Submitted!* 💸\n\n` +
+          `💰 *Amount:* \`${payload?.amount || 0} Apples\` (৳${payload?.bdtAmount || Math.round((payload?.amount || 0) / 100)})\n` +
+          `💳 *Method:* \`${payload?.method || 'bKash'}\`\n` +
+          `📱 *Account:* \`${payload?.account || ''}\`\n` +
+          `⏳ *Status:* \`Pending Approval\`\n\n` +
+          `🔔 _You will receive payout confirmation once processed!_`;
+      }
+
+      replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: 'Play Apple Farm 🍎', web_app: { url: MINI_APP_URL } }
+          ],
+          [
+            { text: '📢 Official Payout Proofs', url: 'https://t.me/AppleFarmPayouts' }
+          ]
+        ]
+      };
+    } else {
+      return res.status(400).json({ ok: false, error: 'Invalid notification type' });
+    }
+
+    let tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: text,
+        parse_mode: 'Markdown',
+        reply_markup: replyMarkup
+      })
+    });
+
+    let tgData = await tgRes.json().catch(() => ({}));
+    if (!tgData.ok) {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: replyMarkup
+        })
+      });
+    }
+
+    return res.json({ ok: true, status: 'sent' });
+  } catch (err) {
+    console.error('[Telegram Notify Error]:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // GigaPub Postback Callback route

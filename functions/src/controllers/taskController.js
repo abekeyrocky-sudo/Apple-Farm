@@ -6,14 +6,24 @@ export function createTaskController(db, admin) {
       try {
         const tgUser = req.telegramUser || req.body.user;
         const { taskId, rewardAmount } = req.body;
-        const reward = Number(rewardAmount) || 0;
-
-        if (!tgUser?.id || !taskId || reward <= 0) {
-          return res.status(400).json({ error: 'Valid taskId and rewardAmount are required' });
+        
+        // Strict validation: clean taskId and cap reward to legitimate limits
+        if (!tgUser?.id || !taskId || typeof taskId !== 'string') {
+          return res.status(400).json({ error: 'Valid taskId and authenticated user are required' });
         }
 
+        const safeTaskId = taskId.trim().slice(0, 100);
+        const parsedReward = Number(rewardAmount);
+
+        if (!parsedReward || isNaN(parsedReward) || parsedReward <= 0) {
+          return res.status(400).json({ error: 'Invalid reward amount' });
+        }
+
+        // Hard cap: single task reward cannot exceed 5,000 apples to prevent client inflation
+        const reward = Math.min(Math.floor(parsedReward), 5000);
+
         const userRef = db.collection('users').doc(tgUser.id.toString());
-        const taskLogRef = db.collection('users').doc(tgUser.id.toString()).collection('claimedTasks').doc(taskId);
+        const taskLogRef = db.collection('users').doc(tgUser.id.toString()).collection('claimedTasks').doc(safeTaskId);
 
         const result = await db.runTransaction(async (transaction) => {
           const taskDoc = await transaction.get(taskLogRef);

@@ -1,8 +1,7 @@
 // Telegram Channel / Group Membership Verification
 export const OFFICIAL_COMMUNITY_URL = 'https://t.me/AppleFarmCommunity';
 export const OFFICIAL_PAYOUTS_URL = 'https://t.me/AppleFarmPayouts';
-const CLOUD_FUNCTION_URL = 'https://api-duztzw2gwa-uc.a.run.app';
-const BOT_TOKEN = '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+const CLOUD_FUNCTION_URL = (import.meta.env.VITE_FUNCTIONS_URL || 'https://api-duztzw2gwa-uc.a.run.app/api').replace(/\/api$/, '');
 
 /**
  * Checks if a user is a member of a Telegram channel/group/bot
@@ -23,7 +22,7 @@ export async function verifyTelegramMembership(userId, channelLink) {
     };
   }
 
-  // 1. Try Cloud Functions backend endpoint
+  // Secure Cloud Functions backend endpoint
   try {
     const res = await fetch(`${CLOUD_FUNCTION_URL}/api/telegram/verify-member`, {
       method: 'POST',
@@ -53,50 +52,9 @@ export async function verifyTelegramMembership(userId, channelLink) {
         return { verified: false, message: data.error };
       }
     }
+    return { verified: false, message: 'Verification server responded with an error. Please try again.' };
   } catch (err) {
-    console.warn('[Backend Verify Error, trying direct Telegram API fallback]:', err);
-  }
-
-  // 2. Direct Telegram Bot API fallback
-  try {
-    let channel = channelLink.trim()
-      .replace(/^https?:\/\/(www\.)?t\.me\//i, '')
-      .replace(/^t\.me\//i, '')
-      .replace(/^@/, '')
-      .split('/')[0]
-      .split('?')[0];
-
-    if (!channel) return { verified: false, message: 'Invalid channel link' };
-
-    const chatId = `@${channel}`;
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${encodeURIComponent(tgUserId)}`;
-    const tgRes = await fetch(url);
-    const tgData = await tgRes.json();
-
-    if (tgData.ok && tgData.result) {
-      const status = tgData.result.status;
-      const isMember = ['creator', 'administrator', 'member', 'restricted'].includes(status);
-      if (isMember) {
-        return { verified: true, channel: chatId };
-      } else {
-        return { 
-          verified: false, 
-          message: `You have not joined ${chatId} yet. Please click Go and join the channel first.` 
-        };
-      }
-    } else {
-      const desc = tgData.description || '';
-      if (desc.includes('member list is inaccessible') || desc.includes('chat not found') || desc.includes('bot is not a member')) {
-        return {
-          verified: false,
-          notAdmin: true,
-          message: `Bot @AppleFarmOfficialBot must be an Admin in ${chatId} for automatic verification.`
-        };
-      }
-      return { verified: false, message: desc || 'Verification failed. Please make sure you joined.' };
-    }
-  } catch (directErr) {
-    console.error('[Direct Telegram Verify Error]:', directErr);
-    return { verified: false, message: 'Verification error. Please check your internet connection.' };
+    console.warn('[Backend Verify Error]:', err);
+    return { verified: false, message: 'Could not connect to verification server. Please check your internet.' };
   }
 }

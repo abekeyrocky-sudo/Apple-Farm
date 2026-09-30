@@ -38,7 +38,18 @@ export function createSpinController(db, admin) {
           const userDoc = await transaction.get(userRef);
           if (!userDoc.exists) throw new Error('User not found');
 
-          const updatePayload = {};
+          const userData = userDoc.data() || {};
+          const lastSpinTime = userData.lastSpinTimestamp || 0;
+          const now = Date.now();
+
+          // Anti-automation: prevent automated spam clicks (3-second cooldown)
+          if (now - lastSpinTime < 3000) {
+            throw new Error('Please wait a few seconds before spinning again!');
+          }
+
+          const updatePayload = {
+            lastSpinTimestamp: now
+          };
           if (selectedSlice.type === 'diamond') {
             updatePayload.diamonds = admin.firestore.FieldValue.increment(selectedSlice.value);
           } else {

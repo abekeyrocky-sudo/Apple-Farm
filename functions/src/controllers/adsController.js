@@ -1,12 +1,15 @@
 export function createAdsController(db, admin) {
+  const FIXED_AD_REWARD = 50;
+  const MAX_DAILY_ADS = 20;
+
   return {
     claimAdReward: async (req, res) => {
       try {
         const tgUser = req.telegramUser || req.body.user;
-        const rewardApples = Number(req.body.apples) || 50;
+        const rewardApples = FIXED_AD_REWARD; // Enforce server-side constant to prevent client manipulation
 
         if (!tgUser?.id) {
-          return res.status(400).json({ error: 'User ID is required' });
+          return res.status(401).json({ error: 'Valid authenticated user is required' });
         }
 
         const today = new Date().toISOString().split('T')[0];

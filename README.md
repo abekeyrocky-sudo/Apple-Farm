@@ -35,7 +35,7 @@ npm install
 ### 2. Configure Environment Variables
 Create a `.env` file from `.env.example`:
 ```env
-TELEGRAM_BOT_TOKEN=8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw
+TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 MINI_APP_URL=https://your-mini-app-url.vercel.app
 CHANNEL_URL=https://t.me/AppleFarmCommunity
 ```

@@ -249,6 +249,15 @@ export function createBotController(botToken, miniAppUrl, channelUrl) {
   return {
     handleWebhook: async (req, res) => {
       try {
+        const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (webhookSecret) {
+          const incomingSecret = req.headers['x-telegram-bot-api-secret-token'];
+          if (incomingSecret !== webhookSecret) {
+            console.warn('[Bot Webhook Security Notice] Rejected request with invalid or missing secret token');
+            return res.status(403).json({ error: 'Forbidden: Invalid webhook secret token' });
+          }
+        }
+
         const update = req.body;
         if (!update) {
           return res.status(200).send('OK');

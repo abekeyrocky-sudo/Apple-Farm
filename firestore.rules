@@ -3,38 +3,65 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Helper function to check if request is not modifying privileged admin fields
+    function notModifyingPrivilegedFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['role', 'isAdmin', 'admin']);
+    }
+
     // 👤 Users collection
     match /users/{userId} {
       // Allow reading user profiles (needed for leaderboards, user profile loading)
       allow read: if true;
       
-      // Allow user creation or update from client, but strictly disallow deletion
-      allow create, update: if true;
+      // Allow user creation if not injecting admin/tampered initial values
+      allow create: if request.resource.data.id != null
+        && (!('role' in request.resource.data) || request.resource.data.role == 'user')
+        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+
+      // Allow updates to user profile but strictly disallow modifying admin privileges or setting negative balances
+      allow update: if notModifyingPrivilegedFields()
+        && (!('apples' in request.resource.data) || request.resource.data.apples >= 0)
+        && (!('diamonds' in request.resource.data) || request.resource.data.diamonds >= 0);
+      
       allow delete: if false;
 
       // 💳 User subcollections (transactions & commission logs)
       match /transactions/{txId} {
-        allow read, create: if true;
+        allow read: if true;
+        allow create: if request.resource.data.amount != null;
         allow update, delete: if false;
       }
       
       match /commission_logs/{logId} {
-        allow read, create: if true;
+        allow read: if true;
+        allow create: if true;
         allow update, delete: if false;
+      }
+
+      match /claimedTasks/{taskId} {
+        allow read: if true;
+        allow write: if false; // Managed by Cloud Functions
+      }
+
+      match /adLogs/{date} {
+        allow read: if true;
+        allow write: if false; // Managed by Cloud Functions
       }
     }
     
-    // 💸 Withdrawals collection: Users can create and read, but CANNOT tamper or delete once submitted
+    // 💸 Withdrawals collection: Strictly managed by Cloud Functions Admin SDK
     match /withdrawals/{withdrawalId} {
       allow read: if true;
-      allow create: if request.resource.data.apples >= 0;
-      allow update, delete: if false; // Only Cloud Functions Admin SDK can update status to completed/failed
+      allow write: if false; // Only Cloud Functions Admin SDK can create and update payouts
     }
 
-    // 🎯 Partner tasks / Sponsored tasks
+    // 🎯 Partner tasks / Sponsored tasks: Clients may only increment joined count
     match /partner_tasks/{taskId} {
       allow read: if true;
-      allow create, update: if true;
+      allow create: if false; // Managed by Admin/Cloud Functions
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedCount'])
+        && request.resource.data.joinedCount >= resource.data.joinedCount;
       allow delete: if false;
     }
 
@@ -46,7 +73,7 @@ service cloud.firestore {
 
     // 🚫 Root Catch-all: strictly prevent arbitrary wildcard writes
     match /{document=**} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
   }
