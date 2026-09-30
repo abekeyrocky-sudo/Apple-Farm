@@ -15,7 +15,7 @@ const WEBAPP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.a
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 // 👑 Admin Telegram User IDs authorized for /broadcast
-const rawAdminIds = process.env.ADMIN_IDS || process.env.ADMIN_ID || '8067887716,40281,6406305689';
+const rawAdminIds = process.env.ADMIN_IDS || process.env.ADMIN_ID || '8067887716';
 const ADMIN_IDS = rawAdminIds.split(',').map(s => s.trim()).filter(Boolean);
 
 if (!TOKEN || TOKEN === 'YOUR_BOT_TOKEN_HERE') {
