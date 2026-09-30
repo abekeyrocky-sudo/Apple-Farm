@@ -237,17 +237,23 @@ export default function MarketPage({
     },
     {
       id: 4,
-      name: '1h Harvest Stand',
+      name: '105x Spin Voucher',
       category: 'Items',
-      price: 550,
-      currency: 'apple',
-      description: 'Special apple display stand with automated harvest power.',
-      details: 'Sets up a charming roadside market stand that automatically gathers extra apples from visiting villagers for 1 continuous hour.',
-      benefits: ['Automated roadside apple gathering', 'Active for 1 hour', 'Low entry cost in apples'],
+      price: 0.29,
+      priceNano: '290000000', // 0.29 TON/GRAM in nanotons
+      currency: 'gram',
+      voucherSpins: 105,
+      description: 'Get 105 Lucky Wheel spins instantly to win Apples and Diamonds!',
+      details: 'Grants 105 Lucky Wheel spin vouchers instantly to your account. Use them anytime in the Game zone to win mega prizes including thousands of Apples and Diamonds!',
+      benefits: ['105 Lucky Wheel Spin Tickets', 'Directly credited to your balance', 'Never expires until used'],
       icon: (
-        <div className="relative w-16 h-16 flex flex-col items-center justify-center">
-          <img src={appleImg} alt="Apple" className="w-9 h-9 object-contain filter drop-shadow z-10 -mb-1.5" />
-          <div className="w-12 h-4 bg-[#854d0e] rounded-full border border-amber-950 shadow-sm" />
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 via-yellow-300 to-orange-400 border-2 border-amber-500 shadow-md flex flex-col items-center justify-center relative">
+            <Disc className="w-7 h-7 text-amber-950" />
+            <span className="text-[9px] font-black bg-red-500 text-white px-1.5 rounded-full absolute -top-1.5 -right-1 shadow-xs">
+              105x
+            </span>
+          </div>
         </div>
       ),
     },
@@ -561,8 +567,8 @@ export default function MarketPage({
           if (onShowPopup) {
             onShowPopup({
               type: 'reward',
-              title: '50 Spin Vouchers Added!',
-              message: 'You have received 50 Lucky Wheel Spins! Head to the Game page to spin now.',
+              title: `${bonusVouchers} Spin Vouchers Added!`,
+              message: `You have received ${bonusVouchers} Lucky Wheel Spins! Head to the Game page to spin now.`,
               confirmText: 'Spin Now',
               onConfirm: () => onNavigate?.('game')
             });
