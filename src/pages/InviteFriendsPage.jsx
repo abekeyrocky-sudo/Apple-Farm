@@ -257,17 +257,16 @@ export default function InviteFriendsPage({
             Invite Friends
           </h1>
 
-          {/* 💰 Claim Profit Button (Top Right Header - Marked in Red Box) */}
+          {/* Profit Button (Top Right Header - Clean, No Emoji) */}
           <button
             onClick={() => {
               soundManager.playClickSound();
               setIsProfitModalOpen(true);
             }}
-            className="relative px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-black text-xs shadow-[0_3px_10px_rgba(245,158,11,0.35)] flex items-center gap-1 active:scale-95 transition-all border border-amber-300/40 hover:brightness-105"
-            title="Claim 15% Partner Task Profit"
+            className="relative px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-black text-xs shadow-[0_3px_10px_rgba(245,158,11,0.35)] flex items-center justify-center active:scale-95 transition-all border border-amber-300/40 hover:brightness-105"
+            title="Partner Profit"
           >
-            <span className="text-xs">💰</span>
-            <span className="tracking-tight">Claim Profit</span>
+            <span className="tracking-tight">Profit</span>
             {claimablePartnerGram > 0 && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -397,7 +396,7 @@ export default function InviteFriendsPage({
               </div>
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-[#192f52]">Partner Task 15% Profit</span>
+                  <span className="text-xs font-black text-[#192f52]">Partner Profit</span>
                   <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
                     <span>15%</span>
                     <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
@@ -414,7 +413,7 @@ export default function InviteFriendsPage({
                     <>
                       <span>Earn 15%</span>
                       <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
-                      <span>when friends post partner tasks</span>
+                      <span>when friends post</span>
                     </>
                   )}
                 </p>
