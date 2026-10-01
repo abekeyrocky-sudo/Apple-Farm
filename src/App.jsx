@@ -629,7 +629,11 @@ export default function App() {
       return;
     }
 
-    const value = parseFloat(item.label) || 0;
+    const value = item.value !== undefined 
+      ? item.value 
+      : (item.label?.toString().toLowerCase().endsWith('k') 
+          ? parseFloat(item.label) * 1000 
+          : parseFloat(item.label) || 0);
     if (item.type === 'diamond') {
       const nextDiamonds = Number(((user.diamonds || 0) + value).toFixed(2));
       setUser((prev) => ({ ...prev, diamonds: nextDiamonds }));

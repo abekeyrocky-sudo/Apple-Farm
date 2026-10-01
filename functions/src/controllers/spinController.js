@@ -7,7 +7,7 @@ const SLICES = [
   { id: 4, type: 'apple', value: 200, weight: 20 },
   { id: 5, type: 'apple', value: 200, weight: 20 },
   { id: 6, type: 'apple', value: 300, weight: 10 },
-  { id: 7, type: 'apple', value: 500, weight: 5 },
+  { id: 7, type: 'apple', value: 10000, weight: 5 },
 ];
 
 export function createSpinController(db, admin) {

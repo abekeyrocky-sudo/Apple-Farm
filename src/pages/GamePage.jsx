@@ -18,7 +18,7 @@ const SLICES = [
   { id: 4, type: 'apple', label: '1000', color: '#A855F7' },
   { id: 5, type: 'box', label: 'Box', color: '#00D2D3' },
   { id: 6, type: 'apple', label: '300', color: '#EF4444' },
-  { id: 7, type: 'apple', label: '500', color: '#FBBF24' },
+  { id: 7, type: 'apple', label: '10K', value: 10000, color: '#FBBF24' },
 ];
 
 const BASE_SPIN_KEY = 'apple_farm_spin_state_v3';
@@ -128,22 +128,25 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
     }, 140);
 
     // 🎯 Probabilities:
+    // Index 6 (10K Apples): exactly 5%
     // Index 4 (Mystery Box: 100-1000 Apples + 0.1-3 Diamonds): 15%
     // Index 3 (1000 Apples): 20%
     // Index 5 (300 Apples): 15%
-    // Index 2 / 6 (500 Apples): 10% (5% each)
-    // Index 1 (100 Apples): 40% (Base 25% + fallback)
+    // Index 2 (500 Apples): 5%
+    // Index 1 (100 Apples): 40%
     // Index 0 (500 Diamonds): 0%
     const rand = Math.random() * 100;
     let targetIndex;
-    if (rand < 15) {
+    if (rand < 5) {
+      targetIndex = 6; // 10K Apples (5% chance)
+    } else if (rand < 20) {
       targetIndex = 4; // Mystery Box (15%)
-    } else if (rand < 35) {
+    } else if (rand < 40) {
       targetIndex = 3; // 1000 Apples (20%)
-    } else if (rand < 50) {
+    } else if (rand < 55) {
       targetIndex = 5; // 300 Apples (15%)
     } else if (rand < 60) {
-      targetIndex = Math.random() < 0.5 ? 2 : 6; // 500 Apples (10%)
+      targetIndex = 2; // 500 Apples (5%)
     } else {
       targetIndex = 1; // 100 Apples (40%)
     }
