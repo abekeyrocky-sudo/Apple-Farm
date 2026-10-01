@@ -706,20 +706,17 @@ export default function InviteFriendsPage({
                   </div>
                 </div>
 
-                {/* 📊 Target 1.0 GRAM Progress Bar (Light Theme) */}
+                {/* 📊 Target 1.0 GRAM Progress Bar (Light Theme - Clean UI) */}
                 <div className="pt-3 mt-2.5 border-t border-slate-100 text-left space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-black">
-                    <span className="text-slate-600 flex items-center gap-1">
-                      <span>Payout Target</span>
-                      <span className="text-amber-700 font-black inline-flex items-center gap-0.5">
-                        (Min 1.0 <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />)
-                      </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500">
+                      Payout Target
                     </span>
-                    <span className="text-emerald-600 font-black flex items-center gap-0.5">
+                    <div className="text-xs font-black text-emerald-600 flex items-center gap-1">
                       <span>{claimablePartnerGram.toFixed(4)} / 1.0000</span>
-                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />
-                      <span>({progressPercent.toFixed(1)}%)</span>
-                    </span>
+                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain inline" />
+                      <span className="text-[10px] text-slate-400 font-bold">({progressPercent.toFixed(0)}%)</span>
+                    </div>
                   </div>
 
                   {/* The Process Bar Track */}
@@ -734,10 +731,16 @@ export default function InviteFriendsPage({
                     </div>
                   </div>
 
-                  <p className="text-[9.5px] text-slate-500 font-medium leading-tight">
-                    {canClaim 
-                      ? '🎉 1.0 GRAM target achieved! Payout will be sent directly from Master Wallet.'
-                      : `Earn ${(1.0 - claimablePartnerGram).toFixed(4)} more GRAM to unlock automated on-chain TON payout.`}
+                  <p className="text-[9.5px] text-slate-500 font-medium leading-tight flex items-center gap-1 flex-wrap">
+                    {canClaim ? (
+                      '🎉 1.0 target achieved! Payout will be sent directly from Master Wallet.'
+                    ) : (
+                      <>
+                        <span>Earn {(1.0 - claimablePartnerGram).toFixed(4)} more</span>
+                        <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
+                        <span>to unlock automated on-chain TON payout.</span>
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
