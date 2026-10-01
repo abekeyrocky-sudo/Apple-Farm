@@ -397,9 +397,8 @@ export default function InviteFriendsPage({
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-black text-[#192f52]">Partner Profit</span>
-                  <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                    <span>15%</span>
-                    <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
+                  <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded-full">
+                    15%
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
@@ -649,9 +648,8 @@ export default function InviteFriendsPage({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-base font-black text-[#192f52] tracking-tight">Claim Profit</h3>
-                    <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                      <span>15%</span>
-                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain inline" />
+                    <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full shadow-2xs">
+                      15%
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400 font-medium">Partner Section Task Tracking Engine</p>
