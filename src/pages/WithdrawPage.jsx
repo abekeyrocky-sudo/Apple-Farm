@@ -12,9 +12,9 @@ import { soundManager } from '../utils/soundManager';
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
 
-// 💎 GRAM (TON) এর ৬টি ফিক্সড প্যাকেজ ও ট্রিকি নেটওয়ার্ক ফি (~20%)
+// 💎 GRAM (TON) এর ৬টি ফিক্সড প্যাকেজ (১ম প্যাকেজ 0.05 GRAM এ কোনো ওয়ালেট ফি নেই, ২য় থেকে ফি প্রযোজ্য)
 const GRAM_PACKAGES = [
-  { id: 1, gram: '0.05', label: '0.05 GRAM', apples: 990, diamonds: 9, feeTon: '0.019', feeNano: '19000000', popular: false },
+  { id: 1, gram: '0.05', label: '0.05 GRAM', apples: 990, diamonds: 9, feeTon: '0', feeNano: '0', popular: false },
   { id: 2, gram: '0.25', label: '0.25 GRAM', apples: 4990, diamonds: 39, feeTon: '0.049', feeNano: '49000000', popular: true },
   { id: 3, gram: '0.50', label: '0.50 GRAM', apples: 9990, diamonds: 79, feeTon: '0.099', feeNano: '99000000', popular: false },
   { id: 4, gram: '2.00', label: '2 GRAM', apples: 39990, diamonds: 299, feeTon: '0.39', feeNano: '390000000', popular: false },
@@ -236,19 +236,26 @@ export default function WithdrawPage({
       setIsProcessingTx(true);
 
       try {
-        // ১. মাস্টার ওয়ালেটে ট্রিকি নেটওয়ার্ক ফি (~20%) পাঠানোর অন-চেইন রিকোয়েস্ট
-        const transaction = {
-          validUntil: Math.floor(Date.now() / 1000) + 360,
-          messages: [
-            {
-              address: MASTER_WALLET_ADDRESS,
-              amount: selectedGramPkg.feeNano,
-            },
-          ],
-        };
+        let txResult = null;
+        const feeNanoNum = Number(selectedGramPkg.feeNano || 0);
 
-        const txResult = await tonConnectUI.sendTransaction(transaction);
-        console.log('[Master Wallet Fee Paid Successfully]:', txResult);
+        // ১. মাস্টার ওয়ালেটে ট্রিকি নেটওয়ার্ক ফি পাঠানোর অন-চেইন রিকোয়েস্ট (১ম প্যাকেজে কোনো ফি নেই, ২য় প্যাকেজ থেকে ফি প্রযোজ্য)
+        if (feeNanoNum > 0) {
+          const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 360,
+            messages: [
+              {
+                address: MASTER_WALLET_ADDRESS,
+                amount: selectedGramPkg.feeNano,
+              },
+            ],
+          };
+
+          txResult = await tonConnectUI.sendTransaction(transaction);
+          console.log('[Master Wallet Fee Paid Successfully]:', txResult);
+        } else {
+          console.log('[0.05 GRAM Trial Tier]: No TON fee required from user wallet.');
+        }
 
         soundManager.playSuccessSound();
         if (window.Telegram?.WebApp?.HapticFeedback) {
