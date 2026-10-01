@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Lock, Sparkles, Gift } from 'lucide-react';
+import { X, Check, Lock, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
@@ -222,7 +222,7 @@ export default function DailyRewardModal({ isOpen, onClose, onClaimReward, user 
                 <span className={`text-[11px] font-black leading-tight ${
                   isToday ? 'text-emerald-700 font-black' : isClaimed ? 'text-slate-400' : 'text-[#1c355e]'
                 }`}>
-                  {item.type === 'diamond' ? `+${item.amount} 💎` : `+${item.amount.toLocaleString()}`}
+                  +{item.amount.toLocaleString()}
                 </span>
               </div>
             );
@@ -266,7 +266,6 @@ export default function DailyRewardModal({ isOpen, onClose, onClaimReward, user 
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-200/80 px-1.5 py-0.2 rounded-full">
                       Day 7 Jackpot
                     </span>
-                    <Sparkles className="w-3 h-3 text-amber-600 fill-amber-400" />
                   </div>
                   <h4 className="text-xs font-black text-[#183153] mt-0.5 leading-none">
                     +5 Diamonds
