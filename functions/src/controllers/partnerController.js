@@ -1,53 +1,122 @@
 export function createPartnerController(db, admin) {
   return {
-    // ⚡ Claim Partner Commission
+    // ⚡ Claim Partner Commission & Trigger On-Chain TON Transfer from Master Wallet
     claimProfit: async (req, res) => {
       try {
         const tgUser = req.telegramUser || req.body.user;
+        const { walletAddress } = req.body;
+
         if (!tgUser?.id) {
           return res.status(400).json({ error: 'Authenticated user required' });
         }
 
+        if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim().length < 10) {
+          return res.status(400).json({ error: 'Please connect your TON wallet first to receive on-chain payout.' });
+        }
+
+        const cleanWallet = walletAddress.trim();
         const userId = tgUser.id.toString();
         const userRef = db.collection('users').doc(userId);
 
-        const result = await db.runTransaction(async (transaction) => {
+        const { withdrawalRecord, claimable } = await db.runTransaction(async (transaction) => {
           const userDoc = await transaction.get(userRef);
           if (!userDoc.exists) throw new Error('User not found in database');
 
           const userData = userDoc.data();
-          const claimable = Number(userData.claimablePartnerGram || 0);
+          const currentClaimable = Number(userData.claimablePartnerGram || 0);
 
-          if (claimable <= 0) {
-            throw new Error('No partner profit available to claim');
+          // 🛡️ Minimum 1.0 GRAM threshold check
+          if (currentClaimable < 1.0) {
+            throw new Error(`Minimum 1.0000 GRAM required to trigger on-chain payout! Current available: ${currentClaimable.toFixed(4)} GRAM`);
           }
 
           transaction.update(userRef, {
             claimablePartnerGram: 0,
-            claimedPartnerGram: admin.firestore.FieldValue.increment(claimable),
-            gramBalance: admin.firestore.FieldValue.increment(claimable)
+            claimedPartnerGram: admin.firestore.FieldValue.increment(currentClaimable)
           });
 
+          // Create transaction record
           const txRef = userRef.collection('transactions').doc();
           transaction.set(txRef, {
-            title: 'Partner Profit Claimed',
-            subtitle: '15% Partner Task Profit Payout',
-            amount: `+${claimable} GRAM`,
+            title: 'Partner Profit Payout',
+            subtitle: `On-chain transfer to ${cleanWallet.slice(0, 6)}...${cleanWallet.slice(-6)}`,
+            amount: `+${currentClaimable.toFixed(4)} GRAM`,
             currency: 'gram',
             type: 'earn',
-            category: 'partner_claim',
-            status: 'Completed',
+            category: 'partner_payout',
+            status: 'Processing',
+            walletAddress: cleanWallet,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             createdTime: Date.now()
           });
 
-          return {
-            claimedGram: claimable,
-            newGramBalance: (Number(userData.gramBalance || 0) + claimable)
+          // Create withdrawal record
+          const withdrawalRef = db.collection('withdrawals').doc();
+          const record = {
+            id: withdrawalRef.id,
+            userId: Number(userId),
+            userName: userData.name || userData.username || 'Farmer',
+            gramAmount: currentClaimable,
+            method: 'GRAM (TON)',
+            accountNumber: cleanWallet,
+            status: 'processing',
+            type: 'partner_profit_onchain_payout',
+            createdAt: new Date().toISOString()
           };
+          transaction.set(withdrawalRef, record);
+
+          return { withdrawalRecord: record, claimable: currentClaimable };
         });
 
-        return res.json({ success: true, ...result });
+        // 🚀 Execute Real On-Chain Transfer from Master Wallet to User Wallet
+        try {
+          const { sendTonPayout } = await import('../utils/tonPayout.js');
+          const payoutResult = await sendTonPayout(
+            cleanWallet,
+            claimable,
+            `Apple Farm: ${claimable.toFixed(4)} GRAM Partner Profit to ${userId}`
+          );
+
+          if (payoutResult && payoutResult.success) {
+            await db.collection('withdrawals').doc(withdrawalRecord.id).update({
+              status: 'completed',
+              onChainSeqno: payoutResult.txSeqno || payoutResult.seqno || null,
+              completedAt: new Date().toISOString()
+            });
+
+            return res.json({
+              success: true,
+              claimedGram: claimable,
+              walletAddress: cleanWallet,
+              txSeqno: payoutResult.txSeqno || payoutResult.seqno,
+              message: `Successfully sent ${claimable.toFixed(4)} GRAM from Master Wallet to ${cleanWallet}!`
+            });
+          } else {
+            console.warn('[Partner Payout] On-chain transfer queued:', payoutResult?.error);
+            await db.collection('withdrawals').doc(withdrawalRecord.id).update({
+              status: 'payout_queued',
+              payoutError: payoutResult?.error || 'Broadcast pending',
+              updatedAt: new Date().toISOString()
+            });
+
+            return res.json({
+              success: true,
+              claimedGram: claimable,
+              walletAddress: cleanWallet,
+              queued: true,
+              message: `Payout of ${claimable.toFixed(4)} GRAM recorded and queued for on-chain broadcast.`
+            });
+          }
+        } catch (chainErr) {
+          console.error('[Partner Payout OnChain Exception]:', chainErr);
+          return res.json({
+            success: true,
+            claimedGram: claimable,
+            walletAddress: cleanWallet,
+            queued: true,
+            message: `Payout of ${claimable.toFixed(4)} GRAM queued for TON blockchain transfer.`
+          });
+        }
       } catch (err) {
         console.error('partner claimProfit error:', err);
         return res.status(400).json({ error: err.message });

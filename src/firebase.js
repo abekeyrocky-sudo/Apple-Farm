@@ -607,13 +607,44 @@ export const trackPartnerTaskCommission = async ({
   }
 };
 
-// ⚡ ক্লেইম প্রফিট ফাংশন (Atomic & Secure)
-export const claimPartnerProfitInDB = async (userId) => {
+// ⚡ ক্লেইম প্রফিট ফাংশন (Automated On-Chain Payout to Connected TON Wallet)
+export const claimPartnerProfitInDB = async (userId, walletAddress) => {
   if (!db || !userId) {
     return { success: false, message: 'Invalid user id' };
   }
+  if (!walletAddress) {
+    return { success: false, message: 'Please connect your TON wallet first to receive payout.' };
+  }
 
   const userIdStr = userId.toString().trim();
+  const cleanWallet = walletAddress.trim();
+
+  // ১. ক্লাউড ফাংশন এর মাধ্যমে মাস্টার ওয়ালেট থেকে রিয়েল অন-চেইন ট্রান্সফার ট্রাই করা
+  try {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    const res = await fetch(`${FUNCTIONS_URL}/api/partner/claim-profit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-telegram-init-data': initData
+      },
+      body: JSON.stringify({
+        user: { id: userIdStr },
+        walletAddress: cleanWallet
+      })
+    });
+    const cloudData = await res.json();
+    if (res.ok && cloudData.success) {
+      return cloudData;
+    }
+    if (!res.ok && cloudData.error) {
+      return { success: false, message: cloudData.error };
+    }
+  } catch (cloudErr) {
+    console.warn('[Cloud Payout fallback to Firestore]:', cloudErr.message);
+  }
+
+  // ২. ক্লাউড ফাংশন আনরিচেবল হলে সরাসরি ফায়ারস্টোর এটমিক ট্রানজেকশনে উইথড্রল রেকর্ড করা
   const userRef = doc(db, "users", userIdStr);
 
   try {
@@ -626,35 +657,49 @@ export const claimPartnerProfitInDB = async (userId) => {
       const userData = userSnap.data();
       const claimable = Number(userData.claimablePartnerGram || 0);
 
-      if (claimable <= 0) {
-        throw new Error('No partner profit available to claim');
+      if (claimable < 1.0) {
+        throw new Error(`Minimum 1.0000 GRAM required! Current: ${claimable.toFixed(4)} GRAM`);
       }
 
-      // ক্লেইমেবল ০ করা এবং ক্লেইমড ও ব্যালেন্সে ক্রেডিট
+      // ক্লেইমেবল ০ করা এবং ক্লেইমড-এ যোগ করা
       transaction.update(userRef, {
         claimablePartnerGram: 0,
-        claimedPartnerGram: increment(claimable),
-        gramBalance: increment(claimable)
+        claimedPartnerGram: increment(claimable)
       });
 
       // ট্রানজেকশন হিস্ট্রি লগ
       const txRef = doc(collection(db, "users", userIdStr, "transactions"));
       transaction.set(txRef, {
-        title: 'Partner Profit Claimed',
-        subtitle: '15% Partner Task Profit Payout',
-        amount: `+${claimable} GRAM`,
+        title: 'Partner Profit Payout',
+        subtitle: `To: ${cleanWallet.slice(0, 6)}...${cleanWallet.slice(-6)}`,
+        amount: `+${claimable.toFixed(4)} GRAM`,
         currency: 'gram',
         type: 'earn',
-        category: 'partner_claim',
-        status: 'Completed',
+        category: 'partner_payout',
+        status: 'Processing',
+        walletAddress: cleanWallet,
         createdAt: serverTimestamp(),
         timestamp: Date.now()
+      });
+
+      // উইথড্রল কিউতে রেকর্ড
+      const withdrawRef = doc(collection(db, "withdrawals"));
+      transaction.set(withdrawRef, {
+        userId: Number(userIdStr),
+        userName: userData.name || userData.username || 'Farmer',
+        gramAmount: claimable,
+        method: 'GRAM (TON)',
+        accountNumber: cleanWallet,
+        status: 'processing',
+        type: 'partner_profit_onchain_payout',
+        createdAt: new Date().toISOString()
       });
 
       return {
         success: true,
         claimedGram: claimable,
-        newGramBalance: (Number(userData.gramBalance || 0) + claimable)
+        walletAddress: cleanWallet,
+        message: `Successfully requested payout of ${claimable.toFixed(4)} GRAM to ${cleanWallet}!`
       };
     });
 

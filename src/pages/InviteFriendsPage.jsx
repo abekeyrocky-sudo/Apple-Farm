@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Users, CheckCircle2, Sparkles, UserPlus, Coins, X, ChevronRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { Gift, Users, CheckCircle2, Sparkles, UserPlus, Coins, X, ChevronRight, ShieldCheck, Loader2, ArrowRight } from 'lucide-react';
+import { TonConnectUI } from '@tonconnect/ui';
 import confetti from 'canvas-confetti';
 import inviteBannerImg from '../../assets/invite-banner.png';
 import appleImg from '../../assets/apple.png';
@@ -35,11 +36,45 @@ export default function InviteFriendsPage({
   const [profitHistory, setProfitHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // 👛 TonConnect স্টেট
+  const [tonConnectUI, setTonConnectUI] = useState(null);
+  const [connectedWallet, setConnectedWallet] = useState(user?.walletAddress || '');
+
   // পার্টনার প্রফিট ব্যালেন্স ও মেট্টিক
   const claimablePartnerGram = Math.max(0, Number(user?.claimablePartnerGram || 0));
   const totalPartnerGramEarned = Math.max(0, Number(user?.totalPartnerGramEarned || 0));
   const claimedPartnerGram = Math.max(0, Number(user?.claimedPartnerGram || 0));
   const partnerReferralTaskCount = Math.max(0, Number(user?.partnerReferralTaskCount || 0));
+
+  // 🎯 ১.০ GRAM টার্গেট ও প্রোগ্রেস বার ক্যালকুলেশন
+  const MIN_CLAIM_GRAM = 1.0;
+  const progressPercent = Math.min(100, Math.max(0, (claimablePartnerGram / MIN_CLAIM_GRAM) * 100));
+  const canClaim = claimablePartnerGram >= MIN_CLAIM_GRAM;
+
+  // TonConnect ইনিশিয়ালাইজেশন
+  useEffect(() => {
+    try {
+      const manifest = `${window.location.origin}/tonconnect-manifest.json`;
+      const tc = window.__tonConnectUI || new TonConnectUI({ manifestUrl: manifest });
+      window.__tonConnectUI = tc;
+      setTonConnectUI(tc);
+
+      if (tc.wallet?.account?.address) {
+        setConnectedWallet(tc.wallet.account.address);
+      }
+
+      const unsubscribe = tc.onStatusChange((wallet) => {
+        if (wallet?.account?.address) {
+          setConnectedWallet(wallet.account.address);
+        } else {
+          setConnectedWallet('');
+        }
+      });
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn('TonConnect init in InviteFriendsPage:', e);
+    }
+  }, []);
 
   useEffect(() => {
     if (user?.claimedReferMissions) {
@@ -60,25 +95,46 @@ export default function InviteFriendsPage({
     }
   }, [isProfitModalOpen, user?.id]);
 
-  // ⚡ পার্টনার প্রফিট ক্লেইম হ্যান্ডলার (১৫% GRAM প্রফিট)
+  // ⚡ পার্টনার প্রফিট ক্লেইম হ্যান্ডলার (১.০ GRAM মিনিমাম হলে মাস্টার ওয়ালেট থেকে ইউজারের ওয়ালেটে পাঠানো)
   const handleClaimProfit = async () => {
-    if (claimablePartnerGram <= 0 || isClaimingProfit || !user?.id) return;
+    if (isClaimingProfit || !user?.id) return;
+
+    // ১. ওয়ালেট কানেক্টেড আছে কিনা চেক
+    const targetWallet = connectedWallet || tonConnectUI?.wallet?.account?.address || user?.walletAddress;
+    if (!targetWallet) {
+      soundManager.playClickSound();
+      if (tonConnectUI) {
+        tonConnectUI.openModal();
+      } else {
+        alert('Please connect your TON wallet first to receive your payout.');
+      }
+      return;
+    }
+
+    // ২. মিনিমাম ১.০ GRAM ব্যালেন্স চেক
+    if (claimablePartnerGram < MIN_CLAIM_GRAM) {
+      soundManager.playClickSound();
+      alert(`Minimum 1.0000 GRAM required to trigger on-chain payout! Current available: ${claimablePartnerGram.toFixed(4)} GRAM.`);
+      return;
+    }
+
     setIsClaimingProfit(true);
     soundManager.playClickSound();
 
     try {
-      const res = await claimPartnerProfitInDB(user.id);
+      const res = await claimPartnerProfitInDB(user.id, targetWallet);
       if (res && res.success) {
         soundManager.playSuccessSound();
-        confetti({ particleCount: 90, spread: 70, origin: { y: 0.5 } });
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
         if (window.Telegram?.WebApp?.HapticFeedback) {
           window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
         }
         if (onClaimPartnerProfit) {
-          onClaimPartnerProfit(res.claimedGram);
+          onClaimPartnerProfit(res.claimedGram || claimablePartnerGram);
         }
         // হিস্ট্রি রিফ্রেশ
         getPartnerProfitHistoryFromDB(user.id).then(setProfitHistory).catch(() => {});
+        alert(`🎉 Payout Sent! ${Number(res.claimedGram || claimablePartnerGram).toFixed(4)} GRAM has been sent from Master Wallet to your connected wallet!`);
       } else {
         alert(res?.message || 'Failed to claim profit. Please try again.');
       }
@@ -632,30 +688,102 @@ export default function InviteFriendsPage({
                     </div>
                   </div>
                 </div>
+
+                {/* 📊 Target 1.0 GRAM Progress Bar (Process Bar - Red Box) */}
+                <div className="pt-3 mt-2 border-t border-white/10 text-left space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-black">
+                    <span className="text-slate-300 flex items-center gap-1">
+                      <span>Payout Target</span>
+                      <span className="text-amber-300 font-bold">(Min 1.0 GRAM)</span>
+                    </span>
+                    <span className="text-emerald-400 font-black">
+                      {claimablePartnerGram.toFixed(4)} / 1.0000 GRAM ({progressPercent.toFixed(1)}%)
+                    </span>
+                  </div>
+
+                  {/* The Process Bar */}
+                  <div className="w-full h-3 bg-black/45 rounded-full p-0.5 border border-white/10 overflow-hidden relative">
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-500 relative"
+                      style={{ width: `${progressPercent}%` }}
+                    >
+                      {progressPercent > 6 && (
+                        <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/80 rounded-full blur-[1px] animate-pulse" />
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-[9.5px] text-slate-400 leading-tight">
+                    {canClaim 
+                      ? '🎉 1.0 GRAM target achieved! Payout will be sent directly from Master Wallet.'
+                      : `Earn ${(1.0 - claimablePartnerGram).toFixed(4)} more GRAM to unlock automated on-chain TON payout.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* 👛 Connected TON Wallet Recipient Box */}
+              <div className="bg-sky-950/40 border border-sky-500/25 rounded-2xl p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center flex-shrink-0">
+                    <img src={diamondImg} alt="TON" className="w-4 h-4 object-contain" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] text-slate-400 font-bold">Payout Destination (TON Wallet)</div>
+                    <div className="text-xs font-black text-sky-300 truncate">
+                      {connectedWallet 
+                        ? `${connectedWallet.slice(0, 6)}...${connectedWallet.slice(-6)}` 
+                        : 'No Wallet Connected'}
+                    </div>
+                  </div>
+                </div>
+
+                {!connectedWallet ? (
+                  <button
+                    onClick={() => tonConnectUI?.openModal()}
+                    className="px-2.5 py-1 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black text-[10px] active:scale-95 transition-all shadow-sm"
+                  >
+                    Connect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => tonConnectUI?.openModal()}
+                    className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 font-bold text-[9px] active:scale-95 transition-all"
+                  >
+                    Change
+                  </button>
+                )}
               </div>
 
               {/* 2. Main Claim Button */}
               <button
                 onClick={handleClaimProfit}
-                disabled={claimablePartnerGram <= 0 || isClaimingProfit}
+                disabled={isClaimingProfit || (connectedWallet && !canClaim)}
                 className={`w-full py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
-                  claimablePartnerGram > 0 && !isClaimingProfit
-                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white hover:brightness-110 shadow-emerald-500/25 cursor-pointer'
+                  isClaimingProfit
+                    ? 'bg-amber-600/70 text-white cursor-wait'
+                    : !connectedWallet
+                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:brightness-110 shadow-sky-500/25 cursor-pointer'
+                    : canClaim
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white hover:brightness-110 shadow-emerald-500/25 cursor-pointer animate-pulse'
                     : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
                 }`}
               >
                 {isClaimingProfit ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Processing Claim...</span>
+                    <span>Sending On-Chain Payout from Master...</span>
                   </>
-                ) : claimablePartnerGram > 0 ? (
+                ) : !connectedWallet ? (
+                  <>
+                    <span>Connect TON Wallet to Claim</span>
+                  </>
+                ) : canClaim ? (
                   <>
                     <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                    <span>Claim {claimablePartnerGram.toFixed(4)} GRAM Profit</span>
+                    <span>Claim {claimablePartnerGram.toFixed(4)} GRAM to TON Wallet</span>
                   </>
                 ) : (
-                  <span>No Profit to Claim</span>
+                  <span>Need 1.0 GRAM to Claim ({progressPercent.toFixed(0)}%)</span>
                 )}
               </button>
 
