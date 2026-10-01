@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import inviteBannerImg from '../../assets/invite-banner.png';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import gramImg from '../../assets/gram.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { getAvatarSrc } from '../utils/avatars';
@@ -381,35 +382,45 @@ export default function InviteFriendsPage({
 
         </div>
 
-        {/* 2.6 🚀 PARTNER TASK 15% PROFIT FEATURE BANNER */}
+        {/* 2.6 🚀 PARTNER TASK 15% PROFIT FEATURE BANNER (Light Theme) */}
         <div 
           onClick={() => {
             soundManager.playClickSound();
             setIsProfitModalOpen(true);
           }}
-          className="bg-gradient-to-r from-[#17253d] to-[#0f1a2e] rounded-2xl p-3 border border-amber-400/30 shadow-[0_4px_16px_rgba(245,158,11,0.12)] cursor-pointer active:scale-[0.99] transition-all relative overflow-hidden group"
+          className="bg-gradient-to-r from-amber-50/90 via-white to-sky-50/70 rounded-2xl p-3 border border-amber-200/90 shadow-[0_4px_16px_rgba(245,158,11,0.08)] cursor-pointer active:scale-[0.99] transition-all relative overflow-hidden group"
         >
-          <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-amber-500/20 transition-all"></div>
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                <Coins className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-amber-100/80 border border-amber-300/80 flex items-center justify-center text-amber-700 shadow-2xs flex-shrink-0">
+                <img src={gramImg} alt="GRAM" className="w-5 h-5 object-contain" />
               </div>
               <div className="text-left">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-amber-300">Partner Task 15% Profit</span>
-                  <span className="text-[9px] font-black bg-amber-400/20 text-amber-200 border border-amber-400/30 px-1.5 py-0.2 rounded-full">
-                    GRAM
+                  <span className="text-xs font-black text-[#192f52]">Partner Task 15% Profit</span>
+                  <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                    <span>15%</span>
+                    <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-300 font-medium">
-                  {claimablePartnerGram > 0 
-                    ? `${claimablePartnerGram.toFixed(4)} GRAM ready to claim!`
-                    : 'Earn 15% GRAM when friends post partner tasks'}
+                <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                  {claimablePartnerGram > 0 ? (
+                    <>
+                      <span className="text-emerald-600 font-black">{claimablePartnerGram.toFixed(4)}</span>
+                      <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
+                      <span>ready to claim!</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Earn 15%</span>
+                      <img src={gramImg} alt="GRAM" className="w-3 h-3 object-contain inline" />
+                      <span>when friends post partner tasks</span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2 py-1 rounded-xl text-[11px] font-black group-hover:bg-amber-500 group-hover:text-white transition-all">
+            <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-400/30 text-amber-800 px-2 py-1 rounded-xl text-[11px] font-black group-hover:bg-amber-500 group-hover:text-white transition-all shadow-2xs">
               <span>{claimablePartnerGram > 0 ? 'Claim' : 'View'}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -622,98 +633,108 @@ export default function InviteFriendsPage({
         </button>
       </div>
 
-      {/* ================= 💰 CLAIM PROFIT MODAL (15% PARTNER TASK COMMISSION) ================= */}
+      {/* ================= 💰 CLAIM PROFIT MODAL (LIGHT THEME + GRAM ICON) ================= */}
       {isProfitModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#18263e] via-[#101b2d] to-[#0c1424] text-white rounded-3xl p-5 border border-amber-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.7)] flex flex-col max-h-[88vh] overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#f8fbff] via-white to-[#edf5ff] text-[#192f52] rounded-3xl p-5 border border-sky-100 shadow-[0_20px_60px_rgba(0,100,200,0.22)] flex flex-col max-h-[88vh] overflow-hidden">
             
-            {/* Top Glow Accent */}
-            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-24 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+            {/* Top Soft Glow Accent */}
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-24 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10 flex-shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 relative z-10 flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-400 flex items-center justify-center shadow-md">
-                  <Coins className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center shadow-xs">
+                  <img src={gramImg} alt="GRAM" className="w-5 h-5 object-contain" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-base font-black text-white tracking-tight">Claim Profit</h3>
-                    <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 px-1.5 py-0.2 rounded-full">
-                      15% GRAM
+                    <h3 className="text-base font-black text-[#192f52] tracking-tight">Claim Profit</h3>
+                    <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                      <span>15%</span>
+                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain inline" />
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400">Partner Section Task Tracking Engine</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Partner Section Task Tracking Engine</p>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsProfitModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center text-slate-300"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center text-slate-500"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Scrollable Modal Content */}
-            <div className="flex-1 overflow-y-auto space-y-3.5 py-3 pr-0.5 relative z-10">
+            <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-0.5 relative z-10">
               
-              {/* 1. Main Profit Balance Card */}
-              <div className="bg-gradient-to-b from-white/10 to-white/5 rounded-2xl p-4 border border-amber-400/20 text-center relative overflow-hidden">
-                <span className="text-[10px] font-black tracking-wider text-amber-300 uppercase">
+              {/* 1. Main Profit Balance Card (Light Theme) */}
+              <div className="bg-gradient-to-b from-amber-50/80 via-white to-sky-50/50 rounded-2xl p-4 border border-amber-200/90 text-center relative overflow-hidden shadow-[0_4px_16px_rgba(245,158,11,0.08)]">
+                <span className="text-[10px] font-black tracking-wider text-amber-700 uppercase">
                   Available Claimable Profit
                 </span>
-                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-emerald-400 my-1">
-                  {claimablePartnerGram.toFixed(4)} <span className="text-base font-bold text-amber-300">GRAM</span>
+                
+                {/* Available Profit with real GRAM coin icon */}
+                <div className="text-3xl font-black text-[#192f52] my-1 flex items-center justify-center gap-1.5">
+                  <span>{claimablePartnerGram.toFixed(4)}</span>
+                  <img src={gramImg} alt="GRAM" className="w-7 h-7 object-contain inline-block drop-shadow-xs" />
                 </div>
 
                 {/* Micro Stats Row */}
-                <div className="grid grid-cols-3 gap-1.5 pt-2 mt-2 border-t border-white/10 text-center">
-                  <div className="bg-black/25 rounded-xl p-1.5">
+                <div className="grid grid-cols-3 gap-1.5 pt-2 mt-2 border-t border-slate-100 text-center">
+                  <div className="bg-white/90 rounded-xl p-1.5 border border-slate-100 shadow-2xs">
                     <div className="text-[9px] text-slate-400 font-bold">Lifetime Earned</div>
-                    <div className="text-xs font-black text-emerald-400 truncate">
-                      {totalPartnerGramEarned.toFixed(4)} G
+                    <div className="text-xs font-black text-emerald-600 flex items-center justify-center gap-0.5 mt-0.5">
+                      <span>{totalPartnerGramEarned.toFixed(4)}</span>
+                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain inline" />
                     </div>
                   </div>
-                  <div className="bg-black/25 rounded-xl p-1.5">
+                  <div className="bg-white/90 rounded-xl p-1.5 border border-slate-100 shadow-2xs">
                     <div className="text-[9px] text-slate-400 font-bold">Claimed</div>
-                    <div className="text-xs font-black text-sky-400 truncate">
-                      {claimedPartnerGram.toFixed(4)} G
+                    <div className="text-xs font-black text-sky-600 flex items-center justify-center gap-0.5 mt-0.5">
+                      <span>{claimedPartnerGram.toFixed(4)}</span>
+                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 object-contain inline" />
                     </div>
                   </div>
-                  <div className="bg-black/25 rounded-xl p-1.5">
+                  <div className="bg-white/90 rounded-xl p-1.5 border border-slate-100 shadow-2xs">
                     <div className="text-[9px] text-slate-400 font-bold">Partner Tasks</div>
-                    <div className="text-xs font-black text-amber-300 truncate">
+                    <div className="text-xs font-black text-[#192f52] mt-0.5">
                       {partnerReferralTaskCount || profitHistory.length}
                     </div>
                   </div>
                 </div>
 
-                {/* 📊 Target 1.0 GRAM Progress Bar (Process Bar - Red Box) */}
-                <div className="pt-3 mt-2 border-t border-white/10 text-left space-y-1.5">
+                {/* 📊 Target 1.0 GRAM Progress Bar (Light Theme) */}
+                <div className="pt-3 mt-2.5 border-t border-slate-100 text-left space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-black">
-                    <span className="text-slate-300 flex items-center gap-1">
+                    <span className="text-slate-600 flex items-center gap-1">
                       <span>Payout Target</span>
-                      <span className="text-amber-300 font-bold">(Min 1.0 GRAM)</span>
+                      <span className="text-amber-700 font-black inline-flex items-center gap-0.5">
+                        (Min 1.0 <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />)
+                      </span>
                     </span>
-                    <span className="text-emerald-400 font-black">
-                      {claimablePartnerGram.toFixed(4)} / 1.0000 GRAM ({progressPercent.toFixed(1)}%)
+                    <span className="text-emerald-600 font-black flex items-center gap-0.5">
+                      <span>{claimablePartnerGram.toFixed(4)} / 1.0000</span>
+                      <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />
+                      <span>({progressPercent.toFixed(1)}%)</span>
                     </span>
                   </div>
 
-                  {/* The Process Bar */}
-                  <div className="w-full h-3 bg-black/45 rounded-full p-0.5 border border-white/10 overflow-hidden relative">
+                  {/* The Process Bar Track */}
+                  <div className="w-full h-3 bg-slate-100 rounded-full p-0.5 border border-slate-200 overflow-hidden relative shadow-inner">
                     <div 
-                      className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-500 relative"
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-500 transition-all duration-500 relative"
                       style={{ width: `${progressPercent}%` }}
                     >
                       {progressPercent > 6 && (
-                        <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/80 rounded-full blur-[1px] animate-pulse" />
+                        <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/90 rounded-full blur-[1px] animate-pulse" />
                       )}
                     </div>
                   </div>
 
-                  <p className="text-[9.5px] text-slate-400 leading-tight">
+                  <p className="text-[9.5px] text-slate-500 font-medium leading-tight">
                     {canClaim 
                       ? '🎉 1.0 GRAM target achieved! Payout will be sent directly from Master Wallet.'
                       : `Earn ${(1.0 - claimablePartnerGram).toFixed(4)} more GRAM to unlock automated on-chain TON payout.`}
@@ -721,15 +742,15 @@ export default function InviteFriendsPage({
                 </div>
               </div>
 
-              {/* 👛 Connected TON Wallet Recipient Box */}
-              <div className="bg-sky-950/40 border border-sky-500/25 rounded-2xl p-2.5 flex items-center justify-between">
+              {/* 👛 Connected TON Wallet Recipient Box (Light Theme) */}
+              <div className="bg-sky-50/70 border border-sky-200/90 rounded-2xl p-2.5 flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-xl bg-sky-100 border border-sky-300 flex items-center justify-center flex-shrink-0">
                     <img src={diamondImg} alt="TON" className="w-4 h-4 object-contain" />
                   </div>
                   <div className="min-w-0">
                     <div className="text-[10px] text-slate-400 font-bold">Payout Destination (TON Wallet)</div>
-                    <div className="text-xs font-black text-sky-300 truncate">
+                    <div className="text-xs font-black text-[#192f52] truncate">
                       {connectedWallet 
                         ? `${connectedWallet.slice(0, 6)}...${connectedWallet.slice(-6)}` 
                         : 'No Wallet Connected'}
@@ -740,14 +761,14 @@ export default function InviteFriendsPage({
                 {!connectedWallet ? (
                   <button
                     onClick={() => tonConnectUI?.openModal()}
-                    className="px-2.5 py-1 rounded-xl bg-sky-500 hover:bg-sky-400 text-white font-black text-[10px] active:scale-95 transition-all shadow-sm"
+                    className="px-3 py-1 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-black text-[10px] active:scale-95 transition-all shadow-sm"
                   >
                     Connect
                   </button>
                 ) : (
                   <button
                     onClick={() => tonConnectUI?.openModal()}
-                    className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 font-bold text-[9px] active:scale-95 transition-all"
+                    className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-[9px] active:scale-95 transition-all"
                   >
                     Change
                   </button>
@@ -758,14 +779,14 @@ export default function InviteFriendsPage({
               <button
                 onClick={handleClaimProfit}
                 disabled={isClaimingProfit || (connectedWallet && !canClaim)}
-                className={`w-full py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                className={`w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 ${
                   isClaimingProfit
-                    ? 'bg-amber-600/70 text-white cursor-wait'
+                    ? 'bg-amber-600 text-white cursor-wait'
                     : !connectedWallet
-                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:brightness-110 shadow-sky-500/25 cursor-pointer'
+                    ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white hover:brightness-105 shadow-sky-500/20 cursor-pointer'
                     : canClaim
-                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white hover:brightness-110 shadow-emerald-500/25 cursor-pointer animate-pulse'
-                    : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white hover:brightness-105 shadow-emerald-500/25 cursor-pointer animate-pulse'
+                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
                 }`}
               >
                 {isClaimingProfit ? (
@@ -779,57 +800,72 @@ export default function InviteFriendsPage({
                   </>
                 ) : canClaim ? (
                   <>
-                    <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-                    <span>Claim {claimablePartnerGram.toFixed(4)} GRAM to TON Wallet</span>
+                    <Sparkles className="w-4 h-4 text-yellow-200 animate-pulse" />
+                    <span>Claim {claimablePartnerGram.toFixed(4)}</span>
+                    <img src={gramImg} alt="GRAM" className="w-4 h-4 inline object-contain" />
+                    <span>to TON Wallet</span>
                   </>
                 ) : (
-                  <span>Need 1.0 GRAM to Claim ({progressPercent.toFixed(0)}%)</span>
+                  <>
+                    <span>Need 1.0</span>
+                    <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain opacity-50" />
+                    <span>to Claim ({progressPercent.toFixed(0)}%)</span>
+                  </>
                 )}
               </button>
 
-              {/* 3. How Engine Works Explanation Box */}
-              <div className="bg-emerald-950/40 border border-emerald-500/25 rounded-2xl p-3 text-left space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400">
-                  <ShieldCheck className="w-4 h-4" />
+              {/* 3. How Engine Works Explanation Box (Light Theme) */}
+              <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-3 text-left space-y-1.5 shadow-2xs">
+                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-800">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   <span>Automated 15% Profit Tracking Engine</span>
                 </div>
-                <ul className="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                <ul className="text-[11px] text-slate-600 space-y-1 list-disc list-inside font-medium">
                   <li>
                     Share your invite link with channel owners, bot creators & community leaders.
                   </li>
-                  <li>
-                    When any friend joins through your link and posts a task in <strong className="text-amber-300">Task → Partner</strong> section, they pay in GRAM.
+                  <li className="flex items-center gap-1 flex-wrap">
+                    <span>When friends post a task in</span>
+                    <strong className="text-amber-800">Task → Partner</strong>
+                    <span>section, they pay in</span>
+                    <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />
+                    <span>GRAM.</span>
                   </li>
-                  <li>
-                    You automatically receive <strong className="text-emerald-400">15% of that GRAM amount</strong> credited directly into your Claim Profit balance!
+                  <li className="flex items-center gap-1 flex-wrap">
+                    <span>You automatically receive</span>
+                    <strong className="text-emerald-700">15% of that</strong>
+                    <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />
+                    <span>amount credited directly into your Claim Profit balance!</span>
                   </li>
                 </ul>
               </div>
 
-              {/* 4. Referral Partner Campaign History */}
-              <div className="space-y-2">
+              {/* 4. Referral Partner Campaign History (Light Theme) */}
+              <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-300">Recent Partner Tasks History</span>
-                  <span className="text-[10px] text-slate-400 font-bold">{profitHistory.length} Recorded</span>
+                  <span className="text-xs font-black text-[#192f52]">Recent Partner Tasks History</span>
+                  <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">
+                    {profitHistory.length} Recorded
+                  </span>
                 </div>
 
                 {isLoadingHistory ? (
                   <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                     <span>Checking campaign records...</span>
                   </div>
                 ) : profitHistory.length === 0 ? (
-                  <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5 space-y-2">
-                    <div className="w-10 h-10 rounded-full bg-white/5 mx-auto flex items-center justify-center text-slate-400">
-                      <Coins className="w-5 h-5" />
+                  <div className="bg-white rounded-2xl p-4 text-center border border-slate-100 shadow-2xs space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-slate-50 mx-auto flex items-center justify-center text-slate-400">
+                      <Coins className="w-5 h-5 text-slate-400" />
                     </div>
-                    <p className="text-xs font-bold text-slate-300">No partner tasks from your friends yet</p>
+                    <p className="text-xs font-bold text-slate-600">No partner tasks from your friends yet</p>
                     <p className="text-[10px] text-slate-400">
                       Invite channels and users who launch promotional tasks to start receiving 15% GRAM commission!
                     </p>
                     <button
                       onClick={handleShareNow}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500 text-white font-black text-xs active:scale-95 transition-all shadow-sm inline-flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs active:scale-95 transition-all shadow-sm inline-flex items-center gap-1"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
                       <span>Share Invite Link</span>
@@ -840,23 +876,27 @@ export default function InviteFriendsPage({
                     {profitHistory.map((item, idx) => (
                       <div
                         key={item.id || idx}
-                        className="bg-white/5 border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-left"
+                        className="bg-white border border-slate-100 shadow-2xs rounded-xl p-2.5 flex items-center justify-between text-left"
                       >
                         <div className="min-w-0 pr-2">
-                          <div className="text-xs font-black text-white truncate">
+                          <div className="text-xs font-black text-[#192f52] truncate">
                             {item.taskTitle || 'Partner Campaign'}
                           </div>
                           <div className="text-[10px] text-slate-400 flex items-center gap-1">
                             <span>By: {item.creatorName || item.creatorUsername || 'Friend'}</span>
                             <span>•</span>
-                            <span>Cost: {item.taskGramAmount || 0} GRAM</span>
+                            <span className="flex items-center gap-0.5">
+                              <span>Cost: {item.taskGramAmount || 0}</span>
+                              <img src={gramImg} alt="GRAM" className="w-3 h-3 inline object-contain" />
+                            </span>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <div className="text-xs font-black text-emerald-400">
-                            +{Number(item.profitGram || 0).toFixed(4)} G
+                          <div className="text-xs font-black text-emerald-600 flex items-center justify-end gap-0.5">
+                            <span>+{Number(item.profitGram || 0).toFixed(4)}</span>
+                            <img src={gramImg} alt="GRAM" className="w-3.5 h-3.5 inline object-contain" />
                           </div>
-                          <span className="text-[9px] text-emerald-500/80 font-bold bg-emerald-500/10 px-1 rounded">
+                          <span className="text-[9px] text-emerald-700 font-black bg-emerald-50 border border-emerald-200 px-1 rounded">
                             15% Profit
                           </span>
                         </div>
@@ -869,10 +909,10 @@ export default function InviteFriendsPage({
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-2 border-t border-white/10 text-center flex-shrink-0">
+            <div className="pt-2 border-t border-slate-100 text-center flex-shrink-0">
               <button
                 onClick={() => setIsProfitModalOpen(false)}
-                className="text-xs font-bold text-slate-400 hover:text-white transition-colors"
+                className="text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors py-1"
               >
                 Close
               </button>
