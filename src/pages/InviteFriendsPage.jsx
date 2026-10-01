@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Gift, Users, CheckCircle2, Sparkles, UserPlus } from 'lucide-react';
+import { Gift, Users, CheckCircle2, Sparkles, UserPlus, Coins, X, ChevronRight, ShieldCheck, Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import inviteBannerImg from '../../assets/invite-banner.png';
 import appleImg from '../../assets/apple.png';
@@ -7,6 +7,7 @@ import diamondImg from '../../assets/daimond.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { getAvatarSrc } from '../utils/avatars';
+import { claimPartnerProfitInDB, getPartnerProfitHistoryFromDB } from '../firebase';
 
 // 🎁 রেফারেল মিশন ডেটা (Apples reward 5x boosted)
 const REFER_MISSIONS = [
@@ -21,16 +22,73 @@ export default function InviteFriendsPage({
   user = { username: 'Farmer', id: null, invitedFriends: [], claimedReferMissions: {} }, 
   onBack,
   onClaimReward,
-  onClaimCommission
+  onClaimCommission,
+  onClaimPartnerProfit,
+  onShowPopup
 }) {
   const [copied, setCopied] = useState(false);
   const [claimedMissions, setClaimedMissions] = useState(user?.claimedReferMissions || {});
   
+  // ⚡ পার্টনার প্রফিট স্টেট (১৫% GRAM কমিশন)
+  const [isProfitModalOpen, setIsProfitModalOpen] = useState(false);
+  const [isClaimingProfit, setIsClaimingProfit] = useState(false);
+  const [profitHistory, setProfitHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // পার্টনার প্রফিট ব্যালেন্স ও মেট্টিক
+  const claimablePartnerGram = Math.max(0, Number(user?.claimablePartnerGram || 0));
+  const totalPartnerGramEarned = Math.max(0, Number(user?.totalPartnerGramEarned || 0));
+  const claimedPartnerGram = Math.max(0, Number(user?.claimedPartnerGram || 0));
+  const partnerReferralTaskCount = Math.max(0, Number(user?.partnerReferralTaskCount || 0));
+
   useEffect(() => {
     if (user?.claimedReferMissions) {
       setClaimedMissions(user.claimedReferMissions);
     }
   }, [user?.claimedReferMissions]);
+
+  // পার্টনার কমিশন হিস্ট্রি লোড
+  useEffect(() => {
+    if (isProfitModalOpen && user?.id) {
+      setIsLoadingHistory(true);
+      getPartnerProfitHistoryFromDB(user.id)
+        .then((items) => {
+          setProfitHistory(items);
+        })
+        .catch((err) => console.warn('History fetch err:', err))
+        .finally(() => setIsLoadingHistory(false));
+    }
+  }, [isProfitModalOpen, user?.id]);
+
+  // ⚡ পার্টনার প্রফিট ক্লেইম হ্যান্ডলার (১৫% GRAM প্রফিট)
+  const handleClaimProfit = async () => {
+    if (claimablePartnerGram <= 0 || isClaimingProfit || !user?.id) return;
+    setIsClaimingProfit(true);
+    soundManager.playClickSound();
+
+    try {
+      const res = await claimPartnerProfitInDB(user.id);
+      if (res && res.success) {
+        soundManager.playSuccessSound();
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.5 } });
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+        if (onClaimPartnerProfit) {
+          onClaimPartnerProfit(res.claimedGram);
+        }
+        // হিস্ট্রি রিফ্রেশ
+        getPartnerProfitHistoryFromDB(user.id).then(setProfitHistory).catch(() => {});
+      } else {
+        alert(res?.message || 'Failed to claim profit. Please try again.');
+      }
+    } catch (err) {
+      console.error('Profit claim exception:', err);
+      alert('Network error while claiming profit.');
+    } finally {
+      setIsClaimingProfit(false);
+    }
+  };
 
   const botUsername = 'AppleFarmOfficialBot';
   const refCode = user?.id || user?.username || '40281';
@@ -142,7 +200,24 @@ export default function InviteFriendsPage({
             Invite Friends
           </h1>
 
-          <div className="w-9" /> {/* Spacer */}
+          {/* 💰 Claim Profit Button (Top Right Header - Marked in Red Box) */}
+          <button
+            onClick={() => {
+              soundManager.playClickSound();
+              setIsProfitModalOpen(true);
+            }}
+            className="relative px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-black text-xs shadow-[0_3px_10px_rgba(245,158,11,0.35)] flex items-center gap-1 active:scale-95 transition-all border border-amber-300/40 hover:brightness-105"
+            title="Claim 15% Partner Task Profit"
+          >
+            <span className="text-xs">💰</span>
+            <span className="tracking-tight">Claim Profit</span>
+            {claimablePartnerGram > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-white"></span>
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -248,6 +323,41 @@ export default function InviteFriendsPage({
             </button>
           </div>
 
+        </div>
+
+        {/* 2.6 🚀 PARTNER TASK 15% PROFIT FEATURE BANNER */}
+        <div 
+          onClick={() => {
+            soundManager.playClickSound();
+            setIsProfitModalOpen(true);
+          }}
+          className="bg-gradient-to-r from-[#17253d] to-[#0f1a2e] rounded-2xl p-3 border border-amber-400/30 shadow-[0_4px_16px_rgba(245,158,11,0.12)] cursor-pointer active:scale-[0.99] transition-all relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/10 rounded-full blur-xl pointer-events-none group-hover:bg-amber-500/20 transition-all"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                <Coins className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-amber-300">Partner Task 15% Profit</span>
+                  <span className="text-[9px] font-black bg-amber-400/20 text-amber-200 border border-amber-400/30 px-1.5 py-0.2 rounded-full">
+                    GRAM
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-300 font-medium">
+                  {claimablePartnerGram > 0 
+                    ? `${claimablePartnerGram.toFixed(4)} GRAM ready to claim!`
+                    : 'Earn 15% GRAM when friends post partner tasks'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2 py-1 rounded-xl text-[11px] font-black group-hover:bg-amber-500 group-hover:text-white transition-all">
+              <span>{claimablePartnerGram > 0 ? 'Claim' : 'View'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
         </div>
 
         {/* 3. REFERRAL LINK BOX */}
@@ -455,6 +565,194 @@ export default function InviteFriendsPage({
           <span>Share Now</span>
         </button>
       </div>
+
+      {/* ================= 💰 CLAIM PROFIT MODAL (15% PARTNER TASK COMMISSION) ================= */}
+      {isProfitModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in">
+          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#18263e] via-[#101b2d] to-[#0c1424] text-white rounded-3xl p-5 border border-amber-500/30 shadow-[0_25px_60px_rgba(0,0,0,0.7)] flex flex-col max-h-[88vh] overflow-hidden">
+            
+            {/* Top Glow Accent */}
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-24 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 relative z-10 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-400 flex items-center justify-center shadow-md">
+                  <Coins className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-base font-black text-white tracking-tight">Claim Profit</h3>
+                    <span className="text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 px-1.5 py-0.2 rounded-full">
+                      15% GRAM
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Partner Section Task Tracking Engine</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsProfitModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Modal Content */}
+            <div className="flex-1 overflow-y-auto space-y-3.5 py-3 pr-0.5 relative z-10">
+              
+              {/* 1. Main Profit Balance Card */}
+              <div className="bg-gradient-to-b from-white/10 to-white/5 rounded-2xl p-4 border border-amber-400/20 text-center relative overflow-hidden">
+                <span className="text-[10px] font-black tracking-wider text-amber-300 uppercase">
+                  Available Claimable Profit
+                </span>
+                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-emerald-400 my-1">
+                  {claimablePartnerGram.toFixed(4)} <span className="text-base font-bold text-amber-300">GRAM</span>
+                </div>
+
+                {/* Micro Stats Row */}
+                <div className="grid grid-cols-3 gap-1.5 pt-2 mt-2 border-t border-white/10 text-center">
+                  <div className="bg-black/25 rounded-xl p-1.5">
+                    <div className="text-[9px] text-slate-400 font-bold">Lifetime Earned</div>
+                    <div className="text-xs font-black text-emerald-400 truncate">
+                      {totalPartnerGramEarned.toFixed(4)} G
+                    </div>
+                  </div>
+                  <div className="bg-black/25 rounded-xl p-1.5">
+                    <div className="text-[9px] text-slate-400 font-bold">Claimed</div>
+                    <div className="text-xs font-black text-sky-400 truncate">
+                      {claimedPartnerGram.toFixed(4)} G
+                    </div>
+                  </div>
+                  <div className="bg-black/25 rounded-xl p-1.5">
+                    <div className="text-[9px] text-slate-400 font-bold">Partner Tasks</div>
+                    <div className="text-xs font-black text-amber-300 truncate">
+                      {partnerReferralTaskCount || profitHistory.length}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Main Claim Button */}
+              <button
+                onClick={handleClaimProfit}
+                disabled={claimablePartnerGram <= 0 || isClaimingProfit}
+                className={`w-full py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                  claimablePartnerGram > 0 && !isClaimingProfit
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white hover:brightness-110 shadow-emerald-500/25 cursor-pointer'
+                    : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
+                }`}
+              >
+                {isClaimingProfit ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Processing Claim...</span>
+                  </>
+                ) : claimablePartnerGram > 0 ? (
+                  <>
+                    <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+                    <span>Claim {claimablePartnerGram.toFixed(4)} GRAM Profit</span>
+                  </>
+                ) : (
+                  <span>No Profit to Claim</span>
+                )}
+              </button>
+
+              {/* 3. How Engine Works Explanation Box */}
+              <div className="bg-emerald-950/40 border border-emerald-500/25 rounded-2xl p-3 text-left space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Automated 15% Profit Tracking Engine</span>
+                </div>
+                <ul className="text-[11px] text-slate-300 space-y-1 list-disc list-inside">
+                  <li>
+                    Share your invite link with channel owners, bot creators & community leaders.
+                  </li>
+                  <li>
+                    When any friend joins through your link and posts a task in <strong className="text-amber-300">Task → Partner</strong> section, they pay in GRAM.
+                  </li>
+                  <li>
+                    You automatically receive <strong className="text-emerald-400">15% of that GRAM amount</strong> credited directly into your Claim Profit balance!
+                  </li>
+                </ul>
+              </div>
+
+              {/* 4. Referral Partner Campaign History */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-300">Recent Partner Tasks History</span>
+                  <span className="text-[10px] text-slate-400 font-bold">{profitHistory.length} Recorded</span>
+                </div>
+
+                {isLoadingHistory ? (
+                  <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <span>Checking campaign records...</span>
+                  </div>
+                ) : profitHistory.length === 0 ? (
+                  <div className="bg-white/5 rounded-2xl p-4 text-center border border-white/5 space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-white/5 mx-auto flex items-center justify-center text-slate-400">
+                      <Coins className="w-5 h-5" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-300">No partner tasks from your friends yet</p>
+                    <p className="text-[10px] text-slate-400">
+                      Invite channels and users who launch promotional tasks to start receiving 15% GRAM commission!
+                    </p>
+                    <button
+                      onClick={handleShareNow}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 text-white font-black text-xs active:scale-95 transition-all shadow-sm inline-flex items-center gap-1"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Share Invite Link</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                    {profitHistory.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        className="bg-white/5 border border-white/10 rounded-xl p-2.5 flex items-center justify-between text-left"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="text-xs font-black text-white truncate">
+                            {item.taskTitle || 'Partner Campaign'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <span>By: {item.creatorName || item.creatorUsername || 'Friend'}</span>
+                            <span>•</span>
+                            <span>Cost: {item.taskGramAmount || 0} GRAM</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-xs font-black text-emerald-400">
+                            +{Number(item.profitGram || 0).toFixed(4)} G
+                          </div>
+                          <span className="text-[9px] text-emerald-500/80 font-bold bg-emerald-500/10 px-1 rounded">
+                            15% Profit
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-2 border-t border-white/10 text-center flex-shrink-0">
+              <button
+                onClick={() => setIsProfitModalOpen(false)}
+                className="text-xs font-bold text-slate-400 hover:text-white transition-colors"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

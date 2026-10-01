@@ -964,6 +964,9 @@ export default function TaskPage({
         status: 'Go',
         isMyTask: true,
         creatorId: user?.id || null,
+        creatorName: user?.firstName || user?.name || user?.username || 'Farmer',
+        creatorUsername: user?.username || '',
+        creatorReferredBy: user?.referredBy || null,
         totalPaidGram: totalPayableGram,
       };
 

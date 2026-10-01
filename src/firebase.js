@@ -11,6 +11,7 @@ import {
   addDoc,
   getDocs,
   query,
+  where,
   orderBy,
   limit,
   serverTimestamp,
@@ -291,6 +292,11 @@ export const listenToUserCommissions = (userId, onCommissionUpdate) => {
         onCommissionUpdate({
           referralApplesCommission: Number(data.referralApplesCommission || 0),
           referralDiamondsCommission: Number(data.referralDiamondsCommission || 0),
+          claimablePartnerGram: Number(data.claimablePartnerGram || 0),
+          totalPartnerGramEarned: Number(data.totalPartnerGramEarned || 0),
+          claimedPartnerGram: Number(data.claimedPartnerGram || 0),
+          partnerReferralTaskCount: Number(data.partnerReferralTaskCount || 0),
+          gramBalance: Number(data.gramBalance || 0),
           invitedFriends: Array.isArray(data.invitedFriends) ? data.invitedFriends : [],
           referralsCount: Number(data.referralsCount || (Array.isArray(data.invitedFriends) ? data.invitedFriends.length : 0))
         });
@@ -433,7 +439,7 @@ export const getPartnerTasksFromDB = async () => {
   }
 };
 
-// 💎 নতুন পার্টনার টাস্ক ফায়ারস্টোর ডাটাবেসে সেভ করা
+// 💎 নতুন পার্টনার টাস্ক ফায়ারস্টোর ডাটাবেসে সেভ করা & রেফারেল ট্র্যাকিং
 export const savePartnerTaskToDB = async (taskData) => {
   if (!db) return null;
   try {
@@ -446,10 +452,240 @@ export const savePartnerTaskToDB = async (taskData) => {
       createdTime: Date.now(),
       createdAt: serverTimestamp()
     });
-    return docRef.id;
+
+    const savedId = docRef.id;
+
+    // ⚡ ১৫% পার্টনার টাস্ক রেফারেল প্রফিট ট্র্যাকিং ইঞ্জিন এক্সিকিউট করা
+    if (taskData.creatorId && Number(taskData.totalPaidGram) > 0) {
+      try {
+        await trackPartnerTaskCommission({
+          taskId: savedId,
+          creatorId: taskData.creatorId,
+          creatorName: taskData.creatorName || taskData.creatorUsername || 'Friend',
+          creatorUsername: taskData.creatorUsername || '',
+          taskTitle: taskData.title,
+          totalPaidGram: taskData.totalPaidGram,
+          creatorReferredBy: taskData.creatorReferredBy
+        });
+      } catch (trackErr) {
+        console.warn('trackPartnerTaskCommission failed:', trackErr);
+      }
+    }
+
+    return savedId;
   } catch (err) {
     console.error("Firebase savePartnerTask error:", err);
     return null;
+  }
+};
+
+// ⚡ পার্টনার টাস্ক কমিশন ট্র্যাকিং ইঞ্জিন (১৫% লাইফটাইম GRAM কমিশন)
+export const trackPartnerTaskCommission = async ({
+  taskId,
+  creatorId,
+  creatorName = 'Friend',
+  creatorUsername = '',
+  taskTitle = 'Partner Campaign',
+  totalPaidGram = 0,
+  creatorReferredBy = null
+}) => {
+  if (!db || !taskId || !creatorId) return null;
+  const gramAmount = Number(totalPaidGram) || 0;
+  if (gramAmount <= 0) return null;
+
+  try {
+    const creatorIdStr = creatorId.toString().trim();
+    let referrerIdStr = creatorReferredBy ? creatorReferredBy.toString().trim() : null;
+
+    // ১. সিকিউরিটি চেক: যদি creatorReferredBy ক্লায়েন্ট স্টেটে না থাকে, সরাসরি ফায়ারস্টোর থেকে ভেরিফাই করা
+    if (!referrerIdStr) {
+      const creatorDocSnap = await getDoc(doc(db, "users", creatorIdStr));
+      if (creatorDocSnap.exists()) {
+        const creatorData = creatorDocSnap.data();
+        referrerIdStr = creatorData.referredBy ? creatorData.referredBy.toString().trim() : null;
+      }
+    }
+
+    // ২. রেফারার নেই অথবা নিজেকে নিজে রেফার করেছে
+    if (!referrerIdStr || referrerIdStr === creatorIdStr) {
+      console.log(`[Partner Commission Engine] No valid referrer for user ${creatorIdStr}`);
+      return null;
+    }
+
+    // ৩. ১৫% কমিশন হিসেব (Strict rounding to 4 decimals)
+    const commissionGram = Number((gramAmount * 0.15).toFixed(4));
+    if (commissionGram <= 0) return null;
+
+    // ৪. ডাবল ট্র্যাকিং রোধ (Idempotent Atomic Transaction)
+    const commDocId = `comm_${taskId}`;
+    const commRef = doc(db, "partner_task_commissions", commDocId);
+    const referrerRef = doc(db, "users", referrerIdStr);
+
+    await runTransaction(db, async (transaction) => {
+      // চেক করি আগেই এই টাস্কের কমিশন রেকর্ড হয়েছে কিনা
+      const commDocSnap = await transaction.get(commRef);
+      if (commDocSnap.exists()) {
+        console.warn(`[Partner Commission Engine] Commission already recorded for task ${taskId}`);
+        return;
+      }
+
+      // রেফারার ডকুমেন্ট চেক
+      const refDocSnap = await transaction.get(referrerRef);
+      if (!refDocSnap.exists()) {
+        console.warn(`[Partner Commission Engine] Referrer document ${referrerIdStr} does not exist`);
+        return;
+      }
+
+      // ১. কমিশন রেকর্ড তৈরি
+      transaction.set(commRef, {
+        id: commDocId,
+        taskId: taskId.toString(),
+        taskTitle: taskTitle || 'Partner Task',
+        creatorId: creatorIdStr,
+        creatorName: creatorName || 'Friend',
+        creatorUsername: creatorUsername || '',
+        referrerId: referrerIdStr,
+        taskGramAmount: gramAmount,
+        commissionRate: 0.15,
+        profitGram: commissionGram,
+        claimed: false,
+        createdAt: serverTimestamp(),
+        timestamp: Date.now()
+      });
+
+      // ২. রেফারারের একাউন্টে ক্লেইমেবল প্রফিট যোগ
+      transaction.update(referrerRef, {
+        claimablePartnerGram: increment(commissionGram),
+        totalPartnerGramEarned: increment(commissionGram),
+        partnerReferralTaskCount: increment(1)
+      });
+
+      // ৩. রেফারারের ট্রানজেকশন হিস্ট্রিতে রেকর্ড
+      const userTxRef = doc(collection(db, "users", referrerIdStr, "transactions"));
+      transaction.set(userTxRef, {
+        title: 'Partner 15% Profit',
+        subtitle: `${creatorName} launched: ${taskTitle}`,
+        amount: `+${commissionGram} GRAM`,
+        currency: 'gram',
+        type: 'earn',
+        category: 'partner_commission',
+        status: 'Completed',
+        createdAt: serverTimestamp(),
+        timestamp: Date.now()
+      });
+    });
+
+    console.log(`[Partner Commission Engine] 🚀 Successfully credited +${commissionGram} GRAM (15%) to Referrer ${referrerIdStr} for task ${taskId}`);
+
+    // ৫. বট থেকে রেফারারকে টেলিগ্রামে ইনস্ট্যান্ট নোটিফিকেশন পাঠানো
+    try {
+      await fetch(`${FUNCTIONS_URL}/api/telegram/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'partner_profit',
+          chatId: referrerIdStr,
+          payload: {
+            friendName: creatorName,
+            taskTitle: taskTitle,
+            profitGram: commissionGram
+          }
+        })
+      });
+    } catch (notifyErr) {
+      console.warn('Telegram notify error for partner profit:', notifyErr);
+    }
+
+    return {
+      success: true,
+      referrerId: referrerIdStr,
+      commissionGram
+    };
+  } catch (err) {
+    console.error("[Partner Commission Engine Error]:", err);
+    return null;
+  }
+};
+
+// ⚡ ক্লেইম প্রফিট ফাংশন (Atomic & Secure)
+export const claimPartnerProfitInDB = async (userId) => {
+  if (!db || !userId) {
+    return { success: false, message: 'Invalid user id' };
+  }
+
+  const userIdStr = userId.toString().trim();
+  const userRef = doc(db, "users", userIdStr);
+
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const userSnap = await transaction.get(userRef);
+      if (!userSnap.exists()) {
+        throw new Error('User not found in database');
+      }
+
+      const userData = userSnap.data();
+      const claimable = Number(userData.claimablePartnerGram || 0);
+
+      if (claimable <= 0) {
+        throw new Error('No partner profit available to claim');
+      }
+
+      // ক্লেইমেবল ০ করা এবং ক্লেইমড ও ব্যালেন্সে ক্রেডিট
+      transaction.update(userRef, {
+        claimablePartnerGram: 0,
+        claimedPartnerGram: increment(claimable),
+        gramBalance: increment(claimable)
+      });
+
+      // ট্রানজেকশন হিস্ট্রি লগ
+      const txRef = doc(collection(db, "users", userIdStr, "transactions"));
+      transaction.set(txRef, {
+        title: 'Partner Profit Claimed',
+        subtitle: '15% Partner Task Profit Payout',
+        amount: `+${claimable} GRAM`,
+        currency: 'gram',
+        type: 'earn',
+        category: 'partner_claim',
+        status: 'Completed',
+        createdAt: serverTimestamp(),
+        timestamp: Date.now()
+      });
+
+      return {
+        success: true,
+        claimedGram: claimable,
+        newGramBalance: (Number(userData.gramBalance || 0) + claimable)
+      };
+    });
+
+    return result;
+  } catch (err) {
+    console.error("[claimPartnerProfitInDB error]:", err);
+    return { success: false, message: err.message };
+  }
+};
+
+// ⚡ রেফারেল পার্টনার টাস্ক হিস্ট্রি রিড করা
+export const getPartnerProfitHistoryFromDB = async (userId) => {
+  if (!db || !userId) return [];
+  try {
+    const userIdStr = userId.toString().trim();
+    const commsRef = collection(db, "partner_task_commissions");
+    const q = query(
+      commsRef,
+      where("referrerId", "==", userIdStr),
+      limit(50)
+    );
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach((d) => {
+      list.push({ id: d.id, ...d.data() });
+    });
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return list;
+  } catch (err) {
+    console.warn("getPartnerProfitHistoryFromDB error:", err);
+    return [];
   }
 };
 

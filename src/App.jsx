@@ -186,6 +186,11 @@ export default function App() {
           ...prev,
           referralApplesCommission: commData.referralApplesCommission,
           referralDiamondsCommission: commData.referralDiamondsCommission,
+          claimablePartnerGram: commData.claimablePartnerGram !== undefined ? commData.claimablePartnerGram : (prev.claimablePartnerGram || 0),
+          totalPartnerGramEarned: commData.totalPartnerGramEarned !== undefined ? commData.totalPartnerGramEarned : (prev.totalPartnerGramEarned || 0),
+          claimedPartnerGram: commData.claimedPartnerGram !== undefined ? commData.claimedPartnerGram : (prev.claimedPartnerGram || 0),
+          partnerReferralTaskCount: commData.partnerReferralTaskCount !== undefined ? commData.partnerReferralTaskCount : (prev.partnerReferralTaskCount || 0),
+          gramBalance: commData.gramBalance !== undefined ? commData.gramBalance : (prev.gramBalance || 0),
           invitedFriends: commData.invitedFriends && commData.invitedFriends.length > 0 ? commData.invitedFriends : (prev.invitedFriends || []),
           referralsCount: commData.referralsCount !== undefined ? commData.referralsCount : (prev.referralsCount || 0)
         }));
@@ -942,6 +947,24 @@ export default function App() {
     }
   };
 
+  // ⚡ পার্টনার টাস্ক প্রফিট ক্লেইম হ্যান্ডলার (১৫% GRAM প্রফিট)
+  const handleClaimPartnerProfit = (claimedGram) => {
+    if (!claimedGram || claimedGram <= 0) return;
+    setUser((prev) => ({
+      ...prev,
+      claimablePartnerGram: 0,
+      claimedPartnerGram: Number(((prev.claimedPartnerGram || 0) + claimedGram).toFixed(4)),
+      gramBalance: Number(((prev.gramBalance || 0) + claimedGram).toFixed(4))
+    }));
+    showPopupModal({
+      type: 'reward',
+      title: 'Partner Profit Claimed!',
+      message: `🎉 Success! +${claimedGram.toFixed(4)} GRAM has been credited to your balance from referral partner tasks.`,
+      rewardAmount: claimedGram,
+      rewardType: 'diamond'
+    });
+  };
+
   const [taskInitialTab, setTaskInitialTab] = useState('All');
   const [marketInitialTab, setMarketInitialTab] = useState('Auto-Bot');
 
@@ -1065,6 +1088,7 @@ export default function App() {
             onBack={() => setCurrentTab('home')}
             onClaimReward={handleClaimReferReward}
             onClaimCommission={handleClaimCommission}
+            onClaimPartnerProfit={handleClaimPartnerProfit}
             onShowPopup={showPopupModal}
           />
         );

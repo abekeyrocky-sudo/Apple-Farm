@@ -14,6 +14,7 @@ import { createTaskController } from './src/controllers/taskController.js';
 import { createAdsController } from './src/controllers/adsController.js';
 import { createBotController } from './src/controllers/botController.js';
 import { createReferralMissionController } from './src/controllers/referralMissionController.js';
+import { createPartnerController } from './src/controllers/partnerController.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ const taskCtrl = createTaskController(db, adminHelper);
 const adsCtrl = createAdsController(db, adminHelper);
 const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL, db);
 const referralMissionCtrl = createReferralMissionController(db, adminHelper);
+const partnerCtrl = createPartnerController(db, adminHelper);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -115,6 +117,29 @@ app.post(['/telegram/notify', '/api/telegram/notify'], async (req, res) => {
           ],
           [
             { text: '📢 Official Payout Proofs', url: 'https://t.me/AppleFarmPayouts' }
+          ]
+        ]
+      };
+    } else if (type === 'partner_profit') {
+      const friendName = payload?.friendName || 'Friend';
+      const taskTitle = payload?.taskTitle || 'Partner Campaign';
+      const profitGram = payload?.profitGram || '0.00';
+      text = `🎉 *Partner Task Commission Received!* 💎\n\n` +
+        `👤 *${friendName}* just posted a campaign in the *Partner Section*:\n` +
+        `📌 *${taskTitle}*\n\n` +
+        `💰 *Your Profit (15%):* \`+${profitGram} GRAM\` 🚀\n` +
+        `Go to *Invite Friends -> Claim Profit* to claim your reward!`;
+
+      replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: '💰 Claim Profit Now', web_app: { url: MINI_APP_URL } }
+          ],
+          [
+            {
+              text: '👥 Invite More Partners',
+              url: `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/AppleFarmOfficialBot/App?startapp=${chatId}`)}&text=${encodeURIComponent('🍎 Join Apple Farm! Grow apples, launch partner campaigns, and earn crypto together!')}`
+            }
           ]
         ]
       };
@@ -245,6 +270,9 @@ apiRouter.post('/tasks/claim', taskCtrl.claimTask);
 apiRouter.post('/ads/claim', adsCtrl.claimAdReward);
 apiRouter.post('/withdraw/submit', withdrawCtrl.submitWithdraw);
 apiRouter.post('/referral/claim-mission', referralMissionCtrl.claimMission);
+apiRouter.post('/partner/claim-profit', partnerCtrl.claimProfit);
+
+app.post(['/partner/track-commission', '/api/partner/track-commission'], partnerCtrl.trackCommission);
 
 app.use('/api', apiRouter);
 
