@@ -238,24 +238,30 @@ export default function App() {
     }
 
     try {
-      // ১. কমিউনিটি চ্যানেল মেম্বারশিপ চেক
-      const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
-      if (!commRes.verified) {
-        try {
-          const key = `apple_farm_std_task_states_${user.id}`;
-          const states = JSON.parse(localStorage.getItem(key) || '{}');
-          states['task_community'] = 'Go';
-          localStorage.setItem(key, JSON.stringify(states));
-        } catch (e) {}
+      const taskStateKey = `apple_farm_std_task_states_${user.id}`;
+      const states = JSON.parse(localStorage.getItem(taskStateKey) || '{}');
+
+      // ১. কমিউনিটি চ্যানেল মেম্বারশিপ চেক (যদি টাস্ক অলরেডি ক্লেইমড থাকে তবে বাইপাস)
+      const isCommunityTaskClaimed = states['task_community'] === 'Claimed';
+      let isCommunityVerified = isCommunityTaskClaimed;
+
+      if (!isCommunityVerified) {
+        const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
+        isCommunityVerified = !!commRes.verified;
+      }
+
+      if (!isCommunityVerified) {
+        states['task_community'] = 'Go';
+        try { localStorage.setItem(taskStateKey, JSON.stringify(states)); } catch (e) {}
 
         showPopupModal({
           type: 'warn',
           title: 'Join Our Community',
           message: 'You must be a member of our official Telegram channel to play and earn rewards in Apple Farm.',
           confirmText: 'Join Channel',
-          cancelText: null,
-          hideClose: true,
-          isMandatory: true,
+          cancelText: "I've Joined",
+          hideClose: false,
+          isMandatory: false,
           onConfirm: () => {
             try {
               if (window.Telegram?.WebApp?.openTelegramLink) {
@@ -269,32 +275,39 @@ export default function App() {
               window.open(OFFICIAL_COMMUNITY_URL, '_blank');
             }
 
+            // চ্যানেল খোলার পর ক্যাশে সেভ এবং ২ সেকেন্ড পর রি-ভেরিফাই
             setTimeout(() => {
+              try {
+                localStorage.setItem(`apple_farm_tg_verified_${user.id}_applefarmcommunity`, 'true');
+              } catch (e) {}
               checkCommunityMembership();
-            }, 3000);
+            }, 2500);
           }
         });
         return;
       }
 
       // ২. পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ চেক
-      const payoutRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
-      if (!payoutRes.verified) {
-        try {
-          const key = `apple_farm_std_task_states_${user.id}`;
-          const states = JSON.parse(localStorage.getItem(key) || '{}');
-          states['task_payout_channel'] = 'Go';
-          localStorage.setItem(key, JSON.stringify(states));
-        } catch (e) {}
+      const isPayoutTaskClaimed = states['task_payout_channel'] === 'Claimed';
+      let isPayoutVerified = isPayoutTaskClaimed;
+
+      if (!isPayoutVerified) {
+        const payoutRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
+        isPayoutVerified = !!payoutRes.verified;
+      }
+
+      if (!isPayoutVerified) {
+        states['task_payout_channel'] = 'Go';
+        try { localStorage.setItem(taskStateKey, JSON.stringify(states)); } catch (e) {}
 
         showPopupModal({
           type: 'warn',
           title: 'Join Payment Channel',
           message: 'You must be a member of our official payment proofs channel to play and earn rewards in Apple Farm.',
           confirmText: 'Join Channel',
-          cancelText: null,
-          hideClose: true,
-          isMandatory: true,
+          cancelText: "I've Joined",
+          hideClose: false,
+          isMandatory: false,
           onConfirm: () => {
             try {
               if (window.Telegram?.WebApp?.openTelegramLink) {
@@ -309,15 +322,18 @@ export default function App() {
             }
 
             setTimeout(() => {
+              try {
+                localStorage.setItem(`apple_farm_tg_verified_${user.id}_applefarmpayouts`, 'true');
+              } catch (e) {}
               checkCommunityMembership();
-            }, 3000);
+            }, 2500);
           }
         });
         return;
       }
 
-      // উভয় চ্যানেলে জয়েন থাকলে ম্যান্ডাটরি পপআপ ক্লোজ
-      setModalConfig((prev) => (prev.isMandatory ? { ...prev, isOpen: false } : prev));
+      // উভয় চ্যানেলে জয়েন থাকলে বা ভেরিফাইড হলে ম্যান্ডাটরি পপআপ ক্লোজ
+      setModalConfig((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
     } catch (err) {
       console.warn('Auto channels verify check error:', err);
     }
