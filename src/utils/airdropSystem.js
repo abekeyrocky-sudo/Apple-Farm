@@ -22,7 +22,7 @@ export const AIRDROP_CONFIG = {
   tonscanUrl: 'https://tonscan.org/token/EQDz-8DoxesPcoqzU9FJmOEdYf4ri9rDwaVTtDVEB_rZ4GHC#events',
   
   // Master Verification Address for 0.19 TON Anti-Bot Wallet Verification
-  masterWalletAddress: 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c',
+  masterWalletAddress: 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL',
   walletVerifyFeeNano: '190000000', // 0.19 TON in nanotons
 };
 

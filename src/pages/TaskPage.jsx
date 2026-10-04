@@ -54,7 +54,7 @@ const YoutubeIcon = ({ className = "w-5 h-5" }) => (
 );
 
 // 💎 Master Wallet Address (যেখানে বিজ্ঞাপনের ১০% ফি + বাজেট জমা হবে)
-const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const MASTER_WALLET_ADDRESS = 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL';
 
 // প্ল্যাটফর্ম ক্যাটাগরি কনফিগারেশন
 const PLATFORM_TYPES = [

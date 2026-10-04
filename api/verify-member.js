@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'User ID and channel link are required' });
     }
 
-    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8995359366:AAFdsDniKILYpWVlPJUHN5MIUcvbcseG8Bw';
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 
     // Clean channel username
     let channel = channelLink.trim()

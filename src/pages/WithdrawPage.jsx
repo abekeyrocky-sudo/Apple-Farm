@@ -10,7 +10,7 @@ import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { soundManager } from '../utils/soundManager';
 
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
-const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const MASTER_WALLET_ADDRESS = 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL';
 
 // 💎 GRAM (TON) এর ৬টি ফিক্সড প্যাকেজ (১ম প্যাকেজ 0.05 GRAM এ কোনো ওয়ালেট ফি নেই, ২য় থেকে ফি প্রযোজ্য)
 const GRAM_PACKAGES = [

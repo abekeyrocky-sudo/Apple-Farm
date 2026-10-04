@@ -14,7 +14,7 @@ import { beginCell, toNano, Address } from '@ton/core';
 import { AIRDROP_CONFIG } from '../utils/airdropSystem';
 
 // Master Staking Vault Address (অন-চেইন স্ট্যাকিং রিসিভ অ্যাড্রেস)
-const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const MASTER_WALLET_ADDRESS = 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL';
 const STONFI_SWAP_URL = 'https://app.ston.fi/swap';
 
 // 🔍 Helper: Resolve user's Jetton Wallet address for $APPLE Jetton

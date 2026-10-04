@@ -18,7 +18,7 @@ import {
 } from '../utils/autoBotManager';
 
 // Master Wallet Address (ফি ও ফান্ডস রিসিভ করার অ্যাড্রেস)
-const MASTER_WALLET_ADDRESS = 'UQC576HcthVEI8QtkfQ80iHPDz1iz8VfEWsZPi3c3ihnrN5c';
+const MASTER_WALLET_ADDRESS = 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL';
 
 export default function MarketPage({ 
   user = { apples: 0, diamonds: 0.0 }, 
