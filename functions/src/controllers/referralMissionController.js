@@ -7,6 +7,9 @@ export const SERVER_REFER_MISSIONS = {
   3: { id: 3, target: 5, title: 'Invite 5 Friends', apples: 12500, diamonds: 3 },
   4: { id: 4, target: 10, title: 'Invite 10 Friends', apples: 30000, diamonds: 8 },
   5: { id: 5, target: 25, title: 'Invite 25 Friends', apples: 100000, diamonds: 25 },
+  6: { id: 6, target: 50, title: 'Invite 50 Friends', apples: 250000, diamonds: 60 },
+  7: { id: 7, target: 100, title: 'Invite 100 Friends', apples: 600000, diamonds: 150 },
+  8: { id: 8, target: 500, title: 'Invite 500 Friends', apples: 3500000, diamonds: 800 },
 };
 
 export function createReferralMissionController(db, admin) {
@@ -36,7 +39,7 @@ export function createReferralMissionController(db, admin) {
 
           const userData = userDoc.data();
           const invitedFriends = Array.isArray(userData.invitedFriends) ? userData.invitedFriends : [];
-          const actualInvitedCount = invitedFriends.length;
+          const actualInvitedCount = Math.max(invitedFriends.length, Number(userData.referralsCount || 0));
 
           // 1. 🛡️ Server-Side Verification of Real Friend Count
           if (actualInvitedCount < mission.target) {

@@ -7,6 +7,7 @@ import bg549Img from '../../assets/549-bg-image.jpg';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
+import { updateUserInDB } from '../firebase';
 
 const getNextMidnightRemaining = () => {
   const now = new Date();
@@ -44,6 +45,8 @@ const JACKPOT_SECTORS = [
 
 const BASE_ADS_STORAGE_KEY = 'apple_farm_watch_ads_v2';
 const BASE_JACKPOT_STORAGE_KEY = 'apple_farm_jackpot_v3';
+const BASE_LIFETIME_ADS_KEY = 'apple_farm_lifetime_ads_v1';
+const BASE_449_CLAIMED_KEY = 'apple_farm_449_claimed_v1';
 
 export default function WatchAdsPage({ 
   user = { id: null, username: 'Farmer', apples: 0, diamonds: 0, invitedFriends: [] }, 
@@ -68,6 +71,23 @@ export default function WatchAdsPage({
     return saved;
   });
 
+  // 🌟 লাইফটাইম টোটাল অ্যাড কাউন্টার (যা কোনো দিনই রিসেট হবে না)
+  const [lifetimeAds, setLifetimeAds] = useState(() => {
+    if (typeof user?.lifetimeAdsWatched === 'number') {
+      return user.lifetimeAdsWatched;
+    }
+    const saved = getStoredJson(BASE_LIFETIME_ADS_KEY, user?.id, 0);
+    return typeof saved === 'number' ? saved : 0;
+  });
+
+  // 🌟 ৪৪৯ অ্যাড মেগা রিওয়ার্ড ক্লেইম স্ট্যাটাস
+  const [is449Claimed, setIs449Claimed] = useState(() => {
+    if (typeof user?.is449Claimed === 'boolean') {
+      return user.is449Claimed;
+    }
+    return getStoredJson(BASE_449_CLAIMED_KEY, user?.id, false);
+  });
+
   // 🎡 549 Diamond জ্যাকপট স্টেট (Default 0.0, 1 Free Spin on 1st visit)
   const [jackpotState, setJackpotState] = useState(() => {
     const initial = getStoredJson(BASE_JACKPOT_STORAGE_KEY, user?.id, {
@@ -84,6 +104,10 @@ export default function WatchAdsPage({
     if (initial.lastFreeSpinDate !== today && initial.totalSpinsDone > 0) {
       initial.spinsLeft += 1;
       initial.lastFreeSpinDate = today;
+    }
+
+    if (initial.eventPot > 546.85) {
+      initial.eventPot = 546.85;
     }
 
     return initial;
@@ -133,6 +157,16 @@ export default function WatchAdsPage({
       setAdState(savedAds);
     }
 
+    // লাইফটাইম অ্যাড ও ৪৪৯ ক্লেইম সিঙ্ক
+    if (typeof user?.lifetimeAdsWatched === 'number' && user.lifetimeAdsWatched > lifetimeAds) {
+      setLifetimeAds(user.lifetimeAdsWatched);
+      setStoredJson(BASE_LIFETIME_ADS_KEY, user.id, user.lifetimeAdsWatched);
+    }
+    if (user?.is449Claimed) {
+      setIs449Claimed(true);
+      setStoredJson(BASE_449_CLAIMED_KEY, user.id, true);
+    }
+
     const savedJackpot = getStoredJson(BASE_JACKPOT_STORAGE_KEY, user.id, {
       eventPot: 0.0,
       targetPot: 549.0,
@@ -147,6 +181,10 @@ export default function WatchAdsPage({
     if (savedJackpot.lastFreeSpinDate !== today && savedJackpot.totalSpinsDone > 0) {
       savedJackpot.spinsLeft += 1;
       savedJackpot.lastFreeSpinDate = today;
+    }
+
+    if (savedJackpot.eventPot > 546.85) {
+      savedJackpot.eventPot = 546.85;
     }
 
     // ২. পার রেফার = ১ স্পিন সিঙ্ক (Unlimited spins per referral)
@@ -212,34 +250,52 @@ export default function WatchAdsPage({
       wonDiamondsAdd = 7.5;
       resultMessage = 'Mystery Box Opened! +7.5 Diamonds added to Pot!';
     } else if (currentSpinsDone === 4) {
-      // ৫ম স্পিন: Box -> +4.2 Diamonds
+      // ৫ম স্পিন: Box -> +4.2 Diamonds (পৌঁছে যায় ৫৪৫.৭ এ)
       targetSectorIndex = 3; // Box
       wonDiamondsAdd = 4.2;
       resultMessage = 'Mystery Box Opened! +4.2 Diamonds added to Pot!';
     } else if (currentSpinsDone === 5) {
-      // ৬ষ্ঠ স্পিন: Box -> +1.8 Diamonds
+      // ৬ষ্ঠ স্পিন: 25 Apples (৫০০ ডায়মন্ডের ঠিক পাশে Near Miss!)
+      targetSectorIndex = 1; // 25 Apples
+      wonApplesAdd = 25;
+      resultMessage = 'So close! Won 25 Apples to Balance!';
+    } else if (currentSpinsDone === 6) {
+      // ৭ম স্পিন: Box -> +0.5 Diamonds (পৌঁছে যায় ৫৪৬.২ এ)
       targetSectorIndex = 0; // Box
-      wonDiamondsAdd = 1.8;
-      resultMessage = 'Mystery Box Opened! +1.8 Diamonds added to Pot!';
+      wonDiamondsAdd = 0.5;
+      resultMessage = 'Mystery Box Opened! +0.5 Diamonds added to Pot!';
+    } else if (currentSpinsDone === 7) {
+      // ৮ম স্পিন: 40 Apples
+      targetSectorIndex = 5; // 40 Apples
+      wonApplesAdd = 40;
+      resultMessage = 'Won 40 Apples to Balance!';
     } else {
-      // পরবর্তী স্পিনগুলো:
+      // পরবর্তী সব স্পিন (Spins 8+):
+      // ব্যবহারকারী শত শত স্পিন করলেও কোনোভাবেই ৫৪৯ এ পৌঁছাতে পারবে না!
       const rand = Math.random();
-      if (rand < 0.4) {
-        targetSectorIndex = 0; // Box
-        wonDiamondsAdd = 0.05;
-        resultMessage = 'Mystery Box! +0.05 Diamonds added to Pot!';
-      } else if (rand < 0.7) {
-        targetSectorIndex = 1; // 25 Apples
+      if (rand < 0.60) {
+        // ৬০% চান্স: ২৫ অ্যাপেল (সেক্টর ১ - ৫০০ ডায়মন্ডের ঠিক পাশে Near-miss)
+        targetSectorIndex = 1;
         wonApplesAdd = 25;
-        resultMessage = 'Won 25 Apples to Balance!';
-      } else if (rand < 0.9) {
-        targetSectorIndex = 5; // 40 Apples
+        resultMessage = 'Almost Jackpot! Won 25 Apples to Balance!';
+      } else if (rand < 0.90) {
+        // ৩০% চান্স: ৪০ অ্যাপেল (সেক্টর ৫)
+        targetSectorIndex = 5;
         wonApplesAdd = 40;
         resultMessage = 'Won 40 Apples to Balance!';
       } else {
-        targetSectorIndex = 3; // Box
-        wonDiamondsAdd = 0.02;
-        resultMessage = 'Mystery Box! +0.02 Diamonds added to Pot!';
+        // ১০% চান্স: বক্স (সেক্টর ০ বা ৩)
+        targetSectorIndex = Math.random() < 0.5 ? 0 : 3;
+        // যদি এখনও ৫৪৬.৭ এর নিচে থাকে তবে অতি ক্ষুদ্র ০.০১ যোগ হবে
+        if (jackpotState.eventPot < 546.7) {
+          wonDiamondsAdd = 0.02;
+          resultMessage = 'Mystery Box! +0.02 Diamonds added to Pot!';
+        } else {
+          // ৫৪৬.৭ ছুঁয়ে ফেললে বক্সে শুধুই অ্যাপেল বোনাস পাবে, কোনো ডায়মন্ড বাড়বে না
+          wonApplesAdd = 15;
+          wonDiamondsAdd = 0;
+          resultMessage = 'Mystery Box Surprise! +15 Apples added to Balance!';
+        }
       }
     }
 
@@ -273,9 +329,11 @@ export default function WatchAdsPage({
         window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
       }
 
+      // 🔒 HARD CEILING: পোট সর্বোচ্চ ৫৪৬.৮৫ পর্যন্ত যেতে পারে, কোনোভাবেই ৫৪৯ স্পর্শ করবে না
+      const MAX_JACKPOT_CEILING = 546.85;
       let nextPot = jackpotState.eventPot;
       if (wonDiamondsAdd > 0) {
-        nextPot = Math.min(548.95, Math.round((jackpotState.eventPot + wonDiamondsAdd) * 100) / 100);
+        nextPot = Math.min(MAX_JACKPOT_CEILING, Math.round((jackpotState.eventPot + wonDiamondsAdd) * 100) / 100);
       }
       if (wonApplesAdd > 0 && onRewardEarned) {
         onRewardEarned(wonApplesAdd);
@@ -346,6 +404,32 @@ export default function WatchAdsPage({
     setStoredJson(BASE_JACKPOT_STORAGE_KEY, user?.id, resetJackpot);
   };
 
+  // 🎁 449 Ads Mega Reward ক্লেইম হ্যান্ডলার (২৫০ ডায়মন্ড)
+  const handleClaim449MegaReward = () => {
+    if (lifetimeAds < 449 || is449Claimed) return;
+    soundManager.playSuccessSound();
+    confetti({ particleCount: 200, spread: 100, origin: { y: 0.4 } });
+
+    if (onWinReward) {
+      onWinReward({ type: 'diamond', label: '250', amount: 250, name: '250 Diamonds' });
+    }
+
+    setIs449Claimed(true);
+    setStoredJson(BASE_449_CLAIMED_KEY, user?.id, true);
+    if (user?.id) {
+      updateUserInDB(user.id, { is449Claimed: true });
+    }
+
+    if (onShowPopup) {
+      onShowPopup({
+        type: 'success',
+        title: 'Mega Reward Claimed! 💎',
+        message: 'Congratulations! You received 250 Diamonds for completing 449 Ads!',
+        confirmText: 'Awesome!'
+      });
+    }
+  };
+
   // অ্যাড দেখা হ্যান্ডলার (GigaPub + Monetag Dual Ad Networks)
   const handleWatchAd = () => {
     if (adsWatched >= maxDailyAds || isWatching) return;
@@ -357,6 +441,13 @@ export default function WatchAdsPage({
 
     const grantAdReward = () => {
       const nextWatched = adsWatched + 1;
+      const nextLifetime = lifetimeAds + 1;
+      setLifetimeAds(nextLifetime);
+      setStoredJson(BASE_LIFETIME_ADS_KEY, user?.id, nextLifetime);
+      if (user?.id) {
+        updateUserInDB(user.id, { lifetimeAdsWatched: nextLifetime });
+      }
+
       const nextState = {
         ...adState,
         date: today,
@@ -954,36 +1045,58 @@ export default function WatchAdsPage({
               <div className="flex items-center justify-between text-xs font-black mb-2">
                 <span className="text-[#567396]">Total Progress</span>
                 <span className="text-emerald-600 font-black">
-                  {adsWatched} / 449 Ads
+                  {lifetimeAds} / 449 Ads
                 </span>
               </div>
               <div className="w-full h-3.5 bg-[#e2ecf5] rounded-full p-0.5 overflow-hidden shadow-inner">
                 <div 
                   style={{
-                    width: `${Math.min(100, (adsWatched / 449) * 100)}%`
+                    width: `${Math.min(100, (lifetimeAds / 449) * 100)}%`
                   }}
                   className="h-full bg-gradient-to-r from-[#2ecc71] via-[#27ae60] to-[#1abc9c] rounded-full transition-all duration-500 shadow-sm"
                 />
               </div>
               <div className="text-[11px] font-bold text-[#7895b6] text-center mt-2">
-                Remaining: {Math.max(0, 449 - adsWatched)} more ads needed
+                {is449Claimed
+                  ? '✅ 250 Diamonds Reward Claimed!'
+                  : lifetimeAds >= 449
+                    ? '🎉 449 Ads Completed! Ready to claim reward!'
+                    : `Remaining: ${Math.max(0, 449 - lifetimeAds)} more ads needed`}
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="w-full space-y-2">
-              <button
-                onClick={() => {
-                  setActiveMissionModal(null);
-                  if (!isDailyAdsCompleted && !isWatching) {
-                    handleWatchAd();
-                  }
-                }}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32] border-t border-emerald-300 font-black text-xs text-white cursor-pointer transition-all flex items-center justify-center gap-2"
-              >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>{isDailyAdsCompleted ? 'Got It' : 'Watch Daily Ads Now'}</span>
-              </button>
+              {is449Claimed ? (
+                <button
+                  disabled
+                  className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-500 font-black text-xs flex items-center justify-center gap-2 cursor-not-allowed"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Reward Claimed (250 Diamonds)</span>
+                </button>
+              ) : lifetimeAds >= 449 ? (
+                <button
+                  onClick={handleClaim449MegaReward}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-b from-[#f39c12] to-[#d35400] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#963900] border-t border-amber-300 font-black text-xs text-white cursor-pointer transition-all flex items-center justify-center gap-2 animate-pulse"
+                >
+                  <Gift className="w-4 h-4 fill-white" />
+                  <span>Claim 250 Diamonds Reward!</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setActiveMissionModal(null);
+                    if (!isDailyAdsCompleted && !isWatching) {
+                      handleWatchAd();
+                    }
+                  }}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32] border-t border-emerald-300 font-black text-xs text-white cursor-pointer transition-all flex items-center justify-center gap-2"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>{isDailyAdsCompleted ? 'Daily Limit Reached (Come Back Tomorrow)' : 'Watch Daily Ads Now'}</span>
+                </button>
+              )}
             </div>
 
           </div>

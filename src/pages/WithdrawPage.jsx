@@ -468,10 +468,12 @@ export default function WithdrawPage({
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl font-black shadow-sm">
                   ✓
                 </div>
-                <h4 className="font-black text-emerald-800 text-base">Withdrawal Submitted</h4>
+                <h4 className="font-black text-emerald-800 text-base">
+                  {selectedMethod.isGram ? 'Payout Successful! 🎉' : 'Withdrawal Submitted'}
+                </h4>
                 <p className="text-xs font-bold text-slate-500 px-4">
                   {selectedMethod.isGram 
-                    ? `${selectedGramPkg.label} payout request placed to ${shortAddress}.`
+                    ? `${selectedGramPkg.label} has been instantly transferred to ${shortAddress}.`
                     : `${amountInput} Apples payout request placed successfully.`
                   }
                 </p>
@@ -782,11 +784,12 @@ export default function WithdrawPage({
         </div>
       )}
 
-      {/* ----------------- TRANSACTION HISTORY MODAL ----------------- */}
+      {/* ----------------- DEDICATED WITHDRAWAL HISTORY MODAL ----------------- */}
       <TransactionHistoryModal
         isOpen={showHistoryModal}
         userId={user?.id}
         onClose={() => setShowHistoryModal(false)}
+        mode="withdraw"
       />
 
     </div>

@@ -777,9 +777,9 @@ export default function App() {
 
     showPopupModal({
       type: 'success',
-      title: 'Withdrawal Submitted',
+      title: isGram ? 'Payout Successful! 🎉' : 'Withdrawal Submitted',
       message: isGram 
-        ? `Your request for ${data.gramAmount} GRAM (${appleDeduct} Apples & ${diamondDeduct} Diamonds) has been sent to TON network.`
+        ? `${data.gramAmount} GRAM has been instantly sent to your connected TON wallet!`
         : `Your withdrawal request of ${appleDeduct} Apples has been placed successfully via ${data.method}.`,
       confirmText: 'Done'
     });
@@ -872,7 +872,7 @@ export default function App() {
           userId: user.id,
           title: 'Referral Milestone',
           subtitle: mission.title,
-          amount: `+${applesReward.toLocaleString()}`,
+          amount: `+${applesReward.toLocaleString()} 🍎${diamondsReward > 0 ? `, +${diamondsReward} 💎` : ''}`,
           currency: 'apple',
           type: 'earn',
           category: 'invite',
@@ -884,7 +884,7 @@ export default function App() {
     showPopupModal({
       type: 'reward',
       title: 'Mission Reward Claimed',
-      message: `You earned +${applesReward} Apples${diamondsReward > 0 ? ` & +${diamondsReward} Diamonds` : ''} for ${mission.title}.`,
+      message: `You earned +${applesReward.toLocaleString()} Apples${diamondsReward > 0 ? ` & +${diamondsReward} Diamonds` : ''} for ${mission.title}.`,
       rewardAmount: applesReward,
       rewardType: 'apple'
     });

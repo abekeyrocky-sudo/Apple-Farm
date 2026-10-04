@@ -95,12 +95,12 @@ app.post(['/telegram/notify', '/api/telegram/notify'], async (req, res) => {
     } else if (type === 'withdraw') {
       const isGram = !!payload?.gramAmount;
       if (isGram) {
-        text = `⚡ *GRAM Withdrawal Request Submitted!* 💎\n\n` +
+        text = `✅ *GRAM Payout Successful!* 💎\n\n` +
           `📦 *Amount:* \`${payload.gramAmount} GRAM\`\n` +
           `🍎 *Cost:* \`${payload.amount || 0} Apples & ${payload.diamonds || 0} Diamonds\`\n` +
           `👛 *Destination:* \`${payload.account ? payload.account.slice(0, 8) + '...' + payload.account.slice(-6) : 'Connected TON Wallet'}\`\n` +
-          `⏳ *Status:* \`Processing on TON Blockchain...\`\n\n` +
-          `🚀 _Your crypto payout is being broadcasted to the TON network!_`;
+          `⚡ *Status:* \`Completed (Instant Payout)\`\n\n` +
+          `🎉 _Your GRAM has been instantly transferred to your connected TON wallet!_`;
       } else {
         text = `⚡ *Withdrawal Request Submitted!* 💸\n\n` +
           `💰 *Amount:* \`${payload?.amount || 0} Apples\` (৳${payload?.bdtAmount || Math.round((payload?.amount || 0) / 100)})\n` +
