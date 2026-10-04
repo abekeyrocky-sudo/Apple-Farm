@@ -51,10 +51,11 @@ function deriveTonkeeper12Key(mnemonicWords) {
 let tonClientInstance = null;
 
 export function getTonClient() {
+  const currentApiKey = (process.env.TONCENTER_API_KEY || TONCENTER_API_KEY || '').trim();
   if (!tonClientInstance) {
     tonClientInstance = new TonClient({
       endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-      apiKey: TONCENTER_API_KEY || undefined,
+      apiKey: currentApiKey || undefined,
     });
   }
   return tonClientInstance;
@@ -126,10 +127,13 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
 
     console.log(`[TON Auto Payout] Sending ${amountInTon} TON to ${targetAddress.toString()} with seqno ${seqno}...`);
 
-    // Send transfer (Master Wallet pays all network gas separately so user gets 100% full round amount)
+    // Send transfer with a safe 10-minute timeout buffer to prevent exitcode 136 expiration
+    const safeTimeout = Math.floor(Date.now() / 1000) + 600;
+
     await contract.sendTransfer({
       seqno: seqno,
       secretKey: keyPair.secretKey,
+      timeout: safeTimeout,
       sendMode: SendMode.PAY_GAS_SEPARATELY + SendMode.IGNORE_ERRORS,
       messages: [
         internal({

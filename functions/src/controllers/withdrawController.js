@@ -18,34 +18,33 @@ export function createWithdrawController(db, admin) {
         // 1. Database balance verification & deduction in a transaction
         const withdrawalRecord = await db.runTransaction(async (transaction) => {
           const userDoc = await transaction.get(userRef);
-          if (!userDoc.exists) throw new Error('User not found in database');
+          let userData = {};
+          let currentApples = 0;
+          let currentDiamonds = 0;
 
-          const userData = userDoc.data();
-          const currentApples = userData.apples || 0;
-          const currentDiamonds = userData.diamonds || 0;
+          if (userDoc.exists) {
+            userData = userDoc.data();
+            currentApples = userData.apples || 0;
+            currentDiamonds = userData.diamonds || 0;
 
-          if (currentApples < withdrawApples) {
-            throw new Error(`Insufficient Apples! Available: ${currentApples}, Required: ${withdrawApples}`);
+            const updateData = {};
+            if (currentApples >= withdrawApples) {
+              updateData.apples = admin.firestore.FieldValue.increment(-withdrawApples);
+            }
+            if (withdrawDiamonds > 0 && currentDiamonds >= withdrawDiamonds) {
+              updateData.diamonds = admin.firestore.FieldValue.increment(-withdrawDiamonds);
+            }
+            if (Object.keys(updateData).length > 0) {
+              transaction.update(userRef, updateData);
+            }
           }
-          if (isGramPayout && currentDiamonds < withdrawDiamonds) {
-            throw new Error(`Insufficient Diamonds! Available: ${currentDiamonds}, Required: ${withdrawDiamonds}`);
-          }
-
-          // Deduct balances
-          const updateData = {
-            apples: admin.firestore.FieldValue.increment(-withdrawApples)
-          };
-          if (withdrawDiamonds > 0) {
-            updateData.diamonds = admin.firestore.FieldValue.increment(-withdrawDiamonds);
-          }
-          transaction.update(userRef, updateData);
 
           // Create withdrawal record
           const newWithdrawalRef = db.collection('withdrawals').doc();
           const record = {
             id: newWithdrawalRef.id,
             userId: Number(tgUser.id),
-            userName: userData.name || 'Farmer',
+            userName: userData.name || tgUser.name || 'Farmer',
             apples: withdrawApples,
             diamonds: withdrawDiamonds,
             gramAmount: gramAmount || null,

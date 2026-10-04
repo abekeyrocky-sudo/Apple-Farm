@@ -728,14 +728,9 @@ export default function App() {
     }));
 
     if (user.id) {
-      const updatePayload = {
-        apples: Math.max(0, (user.apples || 0) - appleDeduct),
-        diamonds: Math.max(0, (user.diamonds || 0) - diamondDeduct)
-      };
       if (isGram) {
-        updatePayload.gramWithdrawStep = nextGramStep;
+        updateUserInDB(user.id, { gramWithdrawStep: nextGramStep });
       }
-      updateUserInDB(user.id, updatePayload);
       addTransaction({
         userId: user.id,
         title: isGram ? `${data.gramAmount} GRAM Payout` : 'Withdrawal Request',
