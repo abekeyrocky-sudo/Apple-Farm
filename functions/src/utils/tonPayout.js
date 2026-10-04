@@ -1,10 +1,52 @@
-import { mnemonicToPrivateKey } from '@ton/crypto';
+import crypto from 'crypto';
+import { mnemonicToPrivateKey, keyPairFromSeed } from '@ton/crypto';
 import { TonClient, WalletContractV5R1 } from '@ton/ton';
 import { internal, toNano, Address, SendMode } from '@ton/core';
 
 const TONCENTER_API_KEY = process.env.TONCENTER_API_KEY || '';
 const MASTER_MNEMONIC = process.env.MASTER_WALLET_MNEMONIC || '';
 const MASTER_WALLET_ADDRESS = process.env.MASTER_WALLET_ADDRESS || '';
+
+function deriveTonkeeper12Key(mnemonicWords) {
+  const ED25519_CURVE = 'ed25519 seed';
+  const HARDENED_OFFSET = 0x80000000;
+  const bip39Seed = crypto.pbkdf2Sync(
+    mnemonicWords.join(' ').normalize('NFKD'),
+    'mnemonic',
+    2048,
+    64,
+    'sha512'
+  );
+
+  const getMasterKeyFromSeed = (seed) => {
+    const hmac = crypto.createHmac('sha512', ED25519_CURVE);
+    const I = hmac.update(seed).digest();
+    return {
+      key: I.subarray(0, 32),
+      chainCode: I.subarray(32)
+    };
+  };
+
+  const CKDPriv = ({ key, chainCode }, index) => {
+    const indexBuffer = Buffer.allocUnsafe(4);
+    indexBuffer.writeUInt32BE(index, 0);
+    const data = Buffer.concat([Buffer.alloc(1, 0), key, indexBuffer]);
+    const I = crypto.createHmac('sha512', chainCode).update(data).digest();
+    return {
+      key: I.subarray(0, 32),
+      chainCode: I.subarray(32)
+    };
+  };
+
+  const { key, chainCode } = getMasterKeyFromSeed(bip39Seed);
+  const segments = [44, 607, 0];
+  const derived = segments.reduce((parent, seg) => CKDPriv(parent, seg + HARDENED_OFFSET), {
+    key,
+    chainCode
+  });
+
+  return keyPairFromSeed(derived.key);
+}
 
 let tonClientInstance = null;
 
@@ -38,7 +80,11 @@ export async function sendTonPayout(recipientAddress, amountInTon, comment = 'Ap
 
     const client = getTonClient();
     const mnemonicWords = cleanMnemonic.split(/\s+/);
-    const keyPair = await mnemonicToPrivateKey(mnemonicWords);
+    
+    // Tonkeeper 12-word wallets use BIP-39 + m/44'/607'/0', while traditional TON 24-word wallets use standard TON KDF
+    const keyPair = mnemonicWords.length === 12 
+      ? deriveTonkeeper12Key(mnemonicWords)
+      : await mnemonicToPrivateKey(mnemonicWords);
 
     const wallet = WalletContractV5R1.create({
       workchain: 0,
