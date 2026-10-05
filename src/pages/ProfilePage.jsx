@@ -33,6 +33,7 @@ export default function ProfilePage({
   const [redeemError, setRedeemError] = useState('');
   const [redeemSuccessMsg, setRedeemSuccessMsg] = useState('');
   const [copiedId, setCopiedId] = useState(false);
+  const [copiedFarmerId, setCopiedFarmerId] = useState(false);
 
   // সাউন্ড ও হ্যাপটিক সেটিংস স্টেট
   const [isSoundMuted, setIsSoundMuted] = useState(soundManager.isMuted);
@@ -95,6 +96,32 @@ export default function ProfilePage({
       }
       setTimeout(() => setCopiedId(false), 2000);
     } catch (e) {}
+  };
+
+  const handleCopyFarmerId = (e) => {
+    if (e) e.stopPropagation();
+    const idToCopy = `Farmer ID: ${telegramId}`;
+    try {
+      navigator.clipboard.writeText(idToCopy);
+      setCopiedFarmerId(true);
+      soundManager.playClickSound();
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+      setTimeout(() => setCopiedFarmerId(false), 2000);
+    } catch (e) {
+      console.warn('Copy farmer ID failed:', e);
+    }
+  };
+
+  const handleOpenSupportBot = () => {
+    soundManager.playClickSound();
+    const supportUrl = 'https://t.me/AppleFarm_Support_bot';
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      window.Telegram.WebApp.openTelegramLink(supportUrl);
+    } else {
+      window.open(supportUrl, '_blank');
+    }
   };
 
   // মেনু আইটেমের তালিকা
@@ -777,22 +804,23 @@ export default function ProfilePage({
                   <h4 className="font-black text-amber-950 text-xs">Direct VIP Support Channel</h4>
                   <p className="text-[11px] text-amber-800 leading-snug">As a Verified Farmer, your support requests are routed with top priority.</p>
                   <button
-                    onClick={() => window.open('https://t.me/AppleFarmCommunity', '_blank')}
+                    onClick={handleOpenSupportBot}
                     className="mt-1 w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-105 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <span>⚡ Contact VIP Support Group</span>
+                    <span>⚡ Contact VIP Support Bot</span>
                   </button>
                 </div>
               )}
 
               <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 space-y-1">
-                <h4 className="font-black text-sky-900">💬 Community Telegram Support</h4>
-                <p className="text-[11px] text-sky-700">Join our 24/7 community group for quick help, announcements, and guides.</p>
+                <h4 className="font-black text-sky-900">💬 Telegram Support Bot</h4>
+                <p className="text-[11px] text-sky-700">Need help or have questions? Contact our official 24/7 support bot directly.</p>
                 <button
-                  onClick={() => window.open('https://t.me/AppleFarmCommunity', '_blank')}
-                  className="mt-2 w-full py-2 bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                  onClick={handleOpenSupportBot}
+                  className="mt-2 w-full py-2.5 bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>Open Telegram Support Group</span>
+                  <Bot className="w-4 h-4" />
+                  <span>Start Support Bot</span>
                 </button>
               </div>
             </div>
@@ -935,9 +963,23 @@ export default function ProfilePage({
                 <span className="text-xs font-black uppercase tracking-wider text-[#192f52]">
                   Farmer Passport
                 </span>
-                <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
-                  ID: #{telegramId}
-                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyFarmerId}
+                  className={`text-[9px] font-black px-2 py-0.5 rounded-full border transition-all duration-200 flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs ${
+                    copiedFarmerId
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border-emerald-300'
+                  }`}
+                  title="Click to copy Farmer ID"
+                >
+                  <span>{copiedFarmerId ? 'Copied!' : `ID: #${telegramId}`}</span>
+                  {copiedFarmerId ? (
+                    <CheckCheck className="w-2.5 h-2.5 text-white stroke-[2.5]" />
+                  ) : (
+                    <Copy className="w-2.5 h-2.5 text-emerald-700 stroke-[2.5]" />
+                  )}
+                </button>
               </div>
               <button 
                 onClick={() => setShowMyProfileModal(false)}
@@ -1068,7 +1110,7 @@ export default function ProfilePage({
                   <span>Diamonds</span>
                 </span>
                 <p className="text-xs font-black text-[#0284c7] mt-0.5">
-                  {Number(user.diamonds || 0).toFixed(1)} 💎
+                  {Number(user.diamonds || 0).toFixed(1)}
                 </p>
               </div>
 

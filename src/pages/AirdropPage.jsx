@@ -693,7 +693,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                       {tasks.wallet 
                         ? 'Connected & Verified' 
                         : first4TasksDone 
-                        ? (isWalletConnected ? 'Tap to Verify (0.19 TON)' : 'Connect Wallet to Verify') 
+                        ? (isWalletConnected ? 'Tap to Verify On-Chain' : 'Connect Wallet to Verify') 
                         : 'Complete 4 tasks above first'}
                     </p>
                   </div>
