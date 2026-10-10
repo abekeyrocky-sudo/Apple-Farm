@@ -12,6 +12,7 @@ import { getAvatarSrc } from '../utils/avatars';
 import { soundManager } from '../utils/soundManager';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
 import { getAutoBotState, updateLastActiveTime, formatBotTimeRemaining } from '../utils/autoBotManager';
+import { formatApples } from '../utils/formatNumber';
 
 // 🍎 Tree Apples Coordinates & Sizes
 const TREE_APPLES = [
@@ -329,7 +330,7 @@ export default function HomePage({
             />
             <div>
               <p className="text-[11px] font-bold text-[#5c4a32] tracking-wide">Apple Balance</p>
-              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{(user.apples || 0).toLocaleString()}</h1>
+              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{formatApples(user.apples)}</h1>
             </div>
           </div>
 

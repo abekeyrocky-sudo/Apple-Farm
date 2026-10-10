@@ -5,6 +5,7 @@ import diamondImg from '../../assets/daimond.png';
 import homeBgImg from '../../assets/home-page-background.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
+import { formatApples } from '../utils/formatNumber';
 
 export default function MinePage({ 
   user = { apples: 0, diamonds: 0.0, level: 1, name: 'Farmer' }, 
@@ -89,7 +90,7 @@ export default function MinePage({
             />
             <div>
               <p className="text-[11px] font-bold text-[#5c4a32] tracking-wide">Apple Balance</p>
-              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{(user.apples || 0).toLocaleString()}</h1>
+              <h1 className="text-2xl font-black text-[#12284c] tracking-tight">{formatApples(user.apples)}</h1>
             </div>
           </div>
 

@@ -184,6 +184,34 @@ class SoundManager {
     }
   }
 
+  // 💥 Bust / Rotten Apple / Lose Sound (Descending buzzer)
+  playBustSound() {
+    if (this.isMuted) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.35);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGainNode);
+
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {
+      console.warn('Audio play error:', e);
+    }
+  }
+
   // 🌾 Ambient Country Farm Music (Peaceful Procedural Farm Acoustic Soundtrack)
   startBackgroundMusic() {
     if (this.isBgmPlaying) return;

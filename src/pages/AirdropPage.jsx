@@ -33,6 +33,7 @@ import appleJettonImg from '../../assets/apple-jetton.png';
 import verifyBadgeImg from '../../assets/verify-badge.png';
 import { soundManager } from '../utils/soundManager';
 import { verifyTelegramMembership, OFFICIAL_COMMUNITY_URL } from '../utils/telegramVerify';
+import { formatApples } from '../utils/formatNumber';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
 import { 
   AIRDROP_CONFIG, 
@@ -586,7 +587,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                     <div>
                       <h3 className="text-sm font-black text-[#192f52] leading-tight">Reach 50,000 APPLE</h3>
                       <p className={`text-xs font-bold ${is50kReached ? 'text-emerald-600' : 'text-[#567396]'}`}>
-                        {is50kReached ? 'Completed' : `${currentApples.toLocaleString()} / 50,000`}
+                        {is50kReached ? 'Completed' : `${formatApples(currentApples)} / 50,000`}
                       </p>
                     </div>
                   </div>

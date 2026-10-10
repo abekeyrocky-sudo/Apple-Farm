@@ -10,6 +10,7 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { getAvatarSrc } from '../utils/avatars';
 import { claimPartnerProfitInDB, getPartnerProfitHistoryFromDB } from '../firebase';
+import { formatApples } from '../utils/formatNumber';
 
 // 🎁 রেফারেল মিশন ডেটা (Apples reward 5x boosted)
 const REFER_MISSIONS = [
@@ -327,7 +328,7 @@ export default function InviteFriendsPage({
             <div className="my-2 text-left">
               <div className="text-base font-black text-[#192f52] flex items-center gap-1">
                 <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain inline" />
-                <span>{applesCommission.toLocaleString()}</span>
+                <span>{formatApples(applesCommission)}</span>
               </div>
               <span className="text-[9px] font-bold text-slate-400">Available to Claim</span>
             </div>

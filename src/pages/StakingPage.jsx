@@ -9,6 +9,7 @@ import appleJettonImg from '../../assets/apple-jetton.png';
 import gramImg from '../../assets/gram.png';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
+import { formatApples } from '../utils/formatNumber';
 
 import { beginCell, toNano, Address } from '@ton/core';
 import { AIRDROP_CONFIG } from '../utils/airdropSystem';
@@ -743,7 +744,7 @@ export default function StakingPage({
                   </span>
                   <div className="flex items-center gap-1.5 font-black text-[#1c324f] text-sm">
                     <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-                    <span>{m.staked.toLocaleString()}</span>
+                    <span>{formatApples(m.staked)}</span>
                   </div>
                 </div>
 
@@ -865,7 +866,7 @@ export default function StakingPage({
                   </span>
                   <div className="flex items-center gap-1.5 font-black text-[#1c324f] text-sm">
                     <img src={appleJettonImg} alt="$APPLE" className="w-4 h-4 object-contain" />
-                    <span>{m.staked.toLocaleString()}</span>
+                    <span>{formatApples(m.staked)}</span>
                   </div>
                 </div>
 
@@ -974,8 +975,8 @@ export default function StakingPage({
               </span>
               <span className="font-black text-xs">
                 {activePoolConfig.isOnChain 
-                  ? (walletAppleBalance !== null ? `${walletAppleBalance.toLocaleString()} $APPLE` : (walletAddress ? 'Loading...' : 'Not Connected')) 
-                  : (user.apples || 0).toLocaleString()}
+                  ? (walletAppleBalance !== null ? `${formatApples(walletAppleBalance)} $APPLE` : (walletAddress ? 'Loading...' : 'Not Connected')) 
+                  : formatApples(user.apples)}
               </span>
             </div>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import appleImg from '../../assets/apple.png';
 import diamondImg from '../../assets/daimond.png';
+import { formatApples } from '../utils/formatNumber';
 
 export default function Header({ user, onWithdrawClick }) {
   return (
@@ -27,7 +28,7 @@ export default function Header({ user, onWithdrawClick }) {
 
         <div className="flex items-center gap-1.5 bg-red-50 pl-2 pr-1 py-1 rounded-full border border-red-200">
           <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-          <span className="text-xs font-bold text-red-700">{(user.apples || 0).toLocaleString()}</span>
+          <span className="text-xs font-bold text-red-700">{formatApples(user.apples)}</span>
           <button 
             onClick={onWithdrawClick}
             className="ml-1 bg-farm-light-green hover:bg-farm-green text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm active:scale-95 transition-all">

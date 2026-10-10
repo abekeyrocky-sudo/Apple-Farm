@@ -9,6 +9,7 @@ import verifyBadgeImg from '../../assets/verify-badge.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { soundManager } from '../utils/soundManager';
 import { addTransaction } from '../utils/transactionHistory';
+import { formatApples } from '../utils/formatNumber';
 import { updateUserInDB } from '../firebase';
 import { 
   BOT_PACKAGES, 
@@ -672,7 +673,7 @@ export default function MarketPage({
           <div className="flex items-center gap-2 bg-white/90 px-2.5 py-1 rounded-full border border-sky-100 shadow-sm text-xs font-black text-[#192f52]">
             <div className="flex items-center gap-1">
               <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
-              <span>{(user.apples || 0).toLocaleString()}</span>
+              <span>{formatApples(user.apples)}</span>
             </div>
             <span className="text-slate-300">|</span>
             <div className="flex items-center gap-1">

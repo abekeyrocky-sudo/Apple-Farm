@@ -13,6 +13,7 @@ import diamondImg from '../../assets/daimond.png';
 import gramImg from '../../assets/gram.png';
 import bksImg from '../../assets/bks.png';
 import { getTransactions, fetchUserTransactions } from '../utils/transactionHistory';
+import { formatApples } from '../utils/formatNumber';
 
 export default function TransactionHistoryModal({ isOpen, onClose, userId, mode = 'all' }) {
   const isWithdrawMode = mode === 'withdraw';
@@ -168,7 +169,7 @@ export default function TransactionHistoryModal({ isOpen, onClose, userId, mode 
                 <div className="flex items-center gap-1.5 mt-1">
                   <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
                   <span className="text-base font-black text-[#192f52]">
-                    -{totalSpentApples.toLocaleString()}
+                    -{formatApples(totalSpentApples)}
                   </span>
                 </div>
               </div>
@@ -201,7 +202,7 @@ export default function TransactionHistoryModal({ isOpen, onClose, userId, mode 
                 <div className="flex items-center gap-1.5 mt-1">
                   <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
                   <span className="text-base font-black text-emerald-600">
-                    +{totalEarnedApples.toLocaleString()}
+                    +{formatApples(totalEarnedApples)}
                   </span>
                 </div>
               </div>
@@ -217,7 +218,7 @@ export default function TransactionHistoryModal({ isOpen, onClose, userId, mode 
                 <div className="flex items-center gap-1.5 mt-1">
                   <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
                   <span className="text-base font-black text-[#192f52]">
-                    -{totalSpentApples.toLocaleString()}
+                    -{formatApples(totalSpentApples)}
                   </span>
                 </div>
               </div>

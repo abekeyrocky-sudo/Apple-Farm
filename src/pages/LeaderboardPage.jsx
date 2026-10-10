@@ -7,6 +7,7 @@ import { getAvatarSrc } from '../utils/avatars';
 import CustomTitleBar from '../components/CustomTitleBar';
 import { getLeaderboardFromDB } from '../firebase';
 import { calculateLevel } from '../utils/levelSystem';
+import { formatApples } from '../utils/formatNumber';
 
 export default function LeaderboardPage({ 
   user = { name: 'Farmer', apples: 0, level: 1, id: null, avatar: 'avatar-1' }, 
@@ -114,7 +115,7 @@ export default function LeaderboardPage({
                   <span className="text-base font-black text-white drop-shadow">2nd</span>
                   <div className="mt-2 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-full">
                     <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
-                    <span className="text-[11px] font-black text-white">{(secondPlace.apples || 0).toLocaleString()}</span>
+                    <span className="text-[11px] font-black text-white">{formatApples(secondPlace.apples)}</span>
                   </div>
                 </div>
               </>
@@ -145,7 +146,7 @@ export default function LeaderboardPage({
                   <span className="text-xl font-black text-white drop-shadow-md">1st</span>
                   <div className="mt-3 flex items-center gap-1 bg-black/25 px-2.5 py-0.5 rounded-full shadow-inner">
                     <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-                    <span className="text-xs font-black text-white">{(firstPlace.apples || 0).toLocaleString()}</span>
+                    <span className="text-xs font-black text-white">{formatApples(firstPlace.apples)}</span>
                   </div>
                 </div>
               </>
@@ -175,7 +176,7 @@ export default function LeaderboardPage({
                   <span className="text-base font-black text-white drop-shadow">3rd</span>
                   <div className="mt-1.5 flex items-center gap-1 bg-black/20 px-2 py-0.5 rounded-full">
                     <img src={appleImg} alt="Apple" className="w-3.5 h-3.5 object-contain" />
-                    <span className="text-[11px] font-black text-white">{(thirdPlace.apples || 0).toLocaleString()}</span>
+                    <span className="text-[11px] font-black text-white">{formatApples(thirdPlace.apples)}</span>
                   </div>
                 </div>
               </>
@@ -241,7 +242,7 @@ export default function LeaderboardPage({
                 {/* Apple Score */}
                 <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-xl border border-gray-100 shadow-xs">
                   <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-                  <span className="text-sm font-black text-[#1c324f]">{(item.apples || 0).toLocaleString()}</span>
+                  <span className="text-sm font-black text-[#1c324f]">{formatApples(item.apples)}</span>
                 </div>
               </div>
             ))
@@ -274,7 +275,7 @@ export default function LeaderboardPage({
           <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-sm border border-amber-200">
             <img src={appleImg} alt="Apple" className="w-5 h-5 object-contain filter drop-shadow-sm" />
             <span className="text-base font-black text-[#12284c]">
-              {(user.apples || 0).toLocaleString()}
+              {formatApples(user.apples)}
             </span>
           </div>
         </div>

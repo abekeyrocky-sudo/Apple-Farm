@@ -3,6 +3,7 @@ import { Bot, Sparkles, Check, Clock, Zap } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import appleImg from '../../assets/apple.png';
 import { soundManager } from '../utils/soundManager';
+import { formatApples } from '../utils/formatNumber';
 
 export default function AutoBotClaimModal({ 
   isOpen, 
@@ -91,7 +92,7 @@ export default function AutoBotClaimModal({
             <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl shadow-xs">
               <img src={appleImg} alt="Apples" className="w-5 h-5 object-contain filter drop-shadow-xs" />
               <span className="text-base font-black text-emerald-600">
-                +{offlineHarvest.pendingApples.toLocaleString()}
+                +{formatApples(offlineHarvest.pendingApples)}
               </span>
             </div>
           </div>

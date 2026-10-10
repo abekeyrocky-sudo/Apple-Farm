@@ -8,6 +8,7 @@ import CustomTitleBar from '../components/CustomTitleBar';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { getTransactions, fetchUserTransactions } from '../utils/transactionHistory';
 import { soundManager } from '../utils/soundManager';
+import { formatApples } from '../utils/formatNumber';
 
 export default function WalletPage({
   user = { apples: 0, diamonds: 0.0, id: null },
@@ -62,7 +63,7 @@ export default function WalletPage({
             <div className="flex items-center gap-2">
               <img src={appleImg} alt="Apple" className="w-8 h-8 object-contain filter drop-shadow" />
               <span className="text-2xl font-black text-[#192f52] tracking-tight">
-                {(user.apples || 0).toLocaleString()}
+                {formatApples(user.apples)}
               </span>
             </div>
 
@@ -119,7 +120,7 @@ export default function WalletPage({
             </div>
             <div className="flex items-center gap-1.5">
               <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain" />
-              <span className="text-base font-black text-[#192f52]">{(user.apples || 0).toLocaleString()}</span>
+              <span className="text-base font-black text-[#192f52]">{formatApples(user.apples)}</span>
             </div>
           </div>
 

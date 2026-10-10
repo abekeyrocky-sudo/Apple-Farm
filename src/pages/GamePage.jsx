@@ -7,6 +7,7 @@ import diamondImg from '../../assets/daimond.png';
 import BottomNav from '../components/BottomNav';
 import CustomTitleBar from '../components/CustomTitleBar';
 import FallingLeaves from '../components/FallingLeaves';
+import AppleTreeClimberView from '../components/AppleTreeClimberView';
 import { soundManager } from '../utils/soundManager';
 import { getStoredJson, setStoredJson } from '../utils/userStorage';
 
@@ -27,6 +28,7 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winMessage, setWinMessage] = useState(null);
+  const [gameMode, setGameMode] = useState('spin'); // 'spin' | 'climber'
 
   // স্পিন স্টেট লোড
   const [spinData, setSpinData] = useState(() => {
@@ -211,10 +213,23 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
     >
       {/* 🍃 Farm Falling Leaves Animation (Background Layer - under the wheel) */}
       <FallingLeaves count={8} zIndex="z-0" />
-      
-      {/* ----------------- TOP TITLE ----------------- */}
-      <div className="pt-2 px-4 z-20 text-center relative">
-        <CustomTitleBar title="Apple Farm" darkText={true} />
+
+      {gameMode === 'climber' ? (
+        <div className="flex-1 flex flex-col justify-between z-20">
+          <div className="pt-2 px-4 text-center relative">
+            <CustomTitleBar title="Apple Farm" darkText={true} />
+          </div>
+          <AppleTreeClimberView
+            user={user}
+            onUpdateUser={onUpdateUser}
+            onBackToSpin={() => setGameMode('spin')}
+          />
+        </div>
+      ) : (
+        <>
+          {/* ----------------- TOP TITLE ----------------- */}
+          <div className="pt-2 px-4 z-20 text-center relative">
+            <CustomTitleBar title="Apple Farm" darkText={true} />
         <h1 className="text-xl font-black text-[#192f52] tracking-tight drop-shadow-sm mt-1">
           Spin & Win
         </h1>
@@ -243,6 +258,37 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
             </>
           )}
         </div>
+
+        {/* 🔥 Compact 100X Button (Top Right Cloud area) */}
+        <button
+          onClick={() => {
+            soundManager.playClickSound();
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+              window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+            }
+            setGameMode('climber');
+          }}
+          className="absolute right-3.5 bottom-0 flex items-center group cursor-pointer active:scale-90 transition-transform z-30"
+          title="100X Climber Game"
+        >
+          <div className="relative">
+            {/* Glow Ring */}
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-400 via-rose-500 to-amber-400 rounded-full blur-xs opacity-80 group-hover:opacity-100 animate-pulse" />
+            
+            {/* Compact 3D Button */}
+            <div className="relative w-10 h-10 rounded-full bg-gradient-to-b from-amber-300 via-orange-500 to-rose-600 border-2 border-yellow-200 shadow-[0_3px_10px_rgba(234,88,12,0.45)] flex flex-col items-center justify-center p-0.5">
+              <span className="text-[11px] leading-none">🔥</span>
+              <span className="text-[9px] font-black text-white tracking-tighter drop-shadow-xs leading-none mt-0.5">
+                100X
+              </span>
+            </div>
+
+            {/* NEW Micro Badge */}
+            <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-600 to-rose-500 text-white font-black text-[7px] px-1 py-0.2 rounded-full border border-white shadow-xs uppercase tracking-wider animate-bounce">
+              NEW
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* ----------------- LUCKY WHEEL SECTION (z-20 sits on top of falling background) ----------------- */}
@@ -380,34 +426,37 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
           </div>
         )}
 
-        {/* Large Action Button Below Wheel */}
-        <button
-          onClick={handleSpin}
-          disabled={spinning}
-          className={`mt-6 px-12 py-3.5 rounded-2xl font-black text-sm text-white shadow-[0_4px_0_rgba(0,0,0,0.25)] border-t border-white/40 transition-all flex items-center justify-center cursor-pointer ${
-            spinning
-              ? 'bg-gray-400 cursor-not-allowed'
-              : isFreeAvailable
-              ? 'bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32]'
-              : voucherSpins > 0
-              ? 'bg-gradient-to-b from-[#f59e0b] via-[#ea580c] to-[#c2410c] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#9a3412]'
-              : hasSpins
-              ? 'bg-gradient-to-b from-[#3b82f6] to-[#1d4ed8] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#1e3a8a]'
-              : 'bg-gradient-to-b from-[#0098EA] to-[#0077c2] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#005b94]'
-          }`}
-        >
-          {spinning ? (
-            'SPINNING...'
-          ) : isFreeAvailable ? (
-            'FREE SPIN'
-          ) : voucherSpins > 0 ? (
-            `SPIN (${voucherSpins} Voucher${voucherSpins > 1 ? 's' : ''} Left)`
-          ) : hasSpins ? (
-            `SPIN (${availableInviteSpins} Left)`
-          ) : (
-            'Get 50x Spin Voucher'
-          )}
-        </button>
+        {/* Action Row Below Wheel */}
+        <div className="w-full flex items-center justify-center mt-6">
+          {/* Large Action Button Below Wheel */}
+          <button
+            onClick={handleSpin}
+            disabled={spinning}
+            className={`px-12 py-3.5 rounded-2xl font-black text-sm text-white shadow-[0_4px_0_rgba(0,0,0,0.25)] border-t border-white/40 transition-all flex items-center justify-center cursor-pointer ${
+              spinning
+                ? 'bg-gray-400 cursor-not-allowed'
+                : isFreeAvailable
+                ? 'bg-gradient-to-b from-[#2ecc71] via-[#27ae60] to-[#1e8a4a] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#145a32]'
+                : voucherSpins > 0
+                ? 'bg-gradient-to-b from-[#f59e0b] via-[#ea580c] to-[#c2410c] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#9a3412]'
+                : hasSpins
+                ? 'bg-gradient-to-b from-[#3b82f6] to-[#1d4ed8] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#1e3a8a]'
+                : 'bg-gradient-to-b from-[#0098EA] to-[#0077c2] hover:brightness-105 active:scale-95 shadow-[0_4px_0_#005b94]'
+            }`}
+          >
+            {spinning ? (
+              'SPINNING...'
+            ) : isFreeAvailable ? (
+              'FREE SPIN'
+            ) : voucherSpins > 0 ? (
+              `SPIN (${voucherSpins} Voucher${voucherSpins > 1 ? 's' : ''} Left)`
+            ) : hasSpins ? (
+              `SPIN (${availableInviteSpins} Left)`
+            ) : (
+              'Get 50x Spin Voucher'
+            )}
+          </button>
+        </div>
 
         {/* ----------------- 50x VOUCHER & INVITE BANNER ----------------- */}
         <div 
@@ -448,6 +497,8 @@ export default function GamePage({ user, onNavigate, onWinReward, onUpdateUser, 
         </div>
 
       </div>
+      </>
+    )}
 
       {/* ----------------- BOTTOM NAVIGATION BAR ----------------- */}
       <BottomNav currentTab="game" onNavigate={onNavigate} />

@@ -10,6 +10,7 @@ import { soundManager } from '../utils/soundManager';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { addTransaction } from '../utils/transactionHistory';
 import { redeemPromoCodeInDB } from '../firebase';
+import { formatApples } from '../utils/formatNumber';
 
 export default function ProfilePage({ 
   user = { name: 'Farmer', id: null, level: 1, apples: 0, avatar: 'avatar-1' }, 
@@ -371,7 +372,7 @@ export default function ProfilePage({
                 <p className="text-[10px] font-bold text-slate-400 mt-1">
                   {progress.level >= 20 
                     ? 'Maximum Level Reached' 
-                    : `Next: ${progress.maxApples.toLocaleString()} Apples`}
+                    : `Next: ${formatApples(progress.maxApples)} Apples`}
                 </p>
               </div>
             </div>
@@ -869,7 +870,7 @@ export default function ProfilePage({
               <p className="text-[10px] font-bold opacity-90 mt-1">
                 {progress.level >= 20 
                   ? 'You have achieved the ultimate Immortal God rank!' 
-                  : `${progress.applesNeeded.toLocaleString()} more Apples needed for Lv.${progress.level + 1}`}
+                  : `${formatApples(progress.applesNeeded)} more Apples needed for Lv.${progress.level + 1}`}
               </p>
             </div>
 
@@ -912,7 +913,7 @@ export default function ProfilePage({
                           )}
                         </div>
                         <p className="text-[10px] font-bold text-slate-400">
-                          {tier.required.toLocaleString()} Apples Required
+                          {formatApples(tier.required)} Apples Required
                         </p>
                       </div>
                     </div>
@@ -1099,7 +1100,7 @@ export default function ProfilePage({
                   <span>Apples Harvested</span>
                 </span>
                 <p className="text-xs font-black text-[#1c324f] mt-0.5">
-                  {(user.apples || 0).toLocaleString()}
+                  {formatApples(user.apples)}
                 </p>
               </div>
 

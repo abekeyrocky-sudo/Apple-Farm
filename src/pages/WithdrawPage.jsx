@@ -8,6 +8,7 @@ import gramImg from '../../assets/gram.png';
 import CustomTitleBar from '../components/CustomTitleBar';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
 import { soundManager } from '../utils/soundManager';
+import { formatApples } from '../utils/formatNumber';
 
 // 💎 Master Wallet Address (ফি রিসিভ করার অ্যাড্রেস)
 const MASTER_WALLET_ADDRESS = 'UQBXibkz_KJhBejKDiHy13QD3_9Hi3FvMX3A1_Ei0H0UdnNL';
@@ -300,11 +301,16 @@ export default function WithdrawPage({
         return;
       }
       if (userApples < appleNum) {
-        setTxError(`Insufficient Apples. You have ${userApples.toLocaleString()} Apples.`);
+        setTxError(`Insufficient Apples. You have ${formatApples(userApples)} Apples.`);
         return;
       }
       if (userDiamonds < 199) {
         setTxError(`Diamond Requirement: 199 Diamonds needed.`);
+        return;
+      }
+      const userLevel = Number(user?.level || 1);
+      if (userLevel < 20) {
+        setTxError(`Farmer Rank Lv.20 required for Mobile Banking Payouts! (Current: Lv.${userLevel})`);
         return;
       }
 
@@ -366,7 +372,7 @@ export default function WithdrawPage({
             <div className="flex items-center gap-2.5">
               <img src={appleImg} alt="Apple" className="w-8 h-8 object-contain filter drop-shadow" />
               <span className="text-2xl font-black text-[#192f52] tracking-tight">
-                {userApples.toLocaleString()}
+                {formatApples(userApples)}
               </span>
             </div>
 
@@ -725,7 +731,7 @@ export default function WithdrawPage({
                     {userApples < requestedApples && (
                       <div className="pt-1 text-rose-500 font-bold text-[11px] flex items-center gap-1.5 bg-rose-50/70 p-2 rounded-xl border border-rose-100">
                         <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span>Insufficient Apples (You have {userApples.toLocaleString()})</span>
+                        <span>Insufficient Apples (You have {formatApples(userApples)})</span>
                       </div>
                     )}
 
