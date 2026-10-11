@@ -34,7 +34,7 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://apple-farm.world';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://www.apple-farm.world';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 if (!BOT_TOKEN) {

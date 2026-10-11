@@ -83,47 +83,33 @@ export default function App() {
     // টেলিগ্রাম ইনিশিয়ালাইজেশন ও ফুলস্ক্রিন এক্সপান্ড
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      
-      // Request Fullscreen for Telegram WebApp Bot API 7.7+ & 8.0+
-      try {
-        if (typeof tg.requestFullscreen === 'function') {
-          tg.requestFullscreen();
+      const applyTgConfig = () => {
+        try {
+          tg.ready();
+          tg.expand();
+          if (typeof tg.requestFullscreen === 'function') {
+            tg.requestFullscreen();
+          }
+          if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
+          }
+          if (typeof tg.enableClosingConfirmation === 'function') {
+            tg.enableClosingConfirmation();
+          }
+          if (typeof tg.setHeaderColor === 'function') {
+            tg.setHeaderColor('#5ec228');
+          }
+          if (typeof tg.setBackgroundColor === 'function') {
+            tg.setBackgroundColor('#5ec228');
+          }
+        } catch (err) {
+          console.warn('applyTgConfig error:', err);
         }
-      } catch (err) {
-        console.warn('Telegram requestFullscreen not supported or blocked:', err);
-      }
+      };
 
-      // Disable vertical swipes to prevent accidental closing on touch drag
-      try {
-        if (typeof tg.disableVerticalSwipes === 'function') {
-          tg.disableVerticalSwipes();
-        }
-      } catch (err) {
-        console.warn('disableVerticalSwipes error:', err);
-      }
-
-      // Enable closing confirmation to prevent accidental exit
-      try {
-        if (typeof tg.enableClosingConfirmation === 'function') {
-          tg.enableClosingConfirmation();
-        }
-      } catch (err) {
-        console.warn('enableClosingConfirmation error:', err);
-      }
-
-      // Set header color & background color to blend smoothly
-      try {
-        if (typeof tg.setHeaderColor === 'function') {
-          tg.setHeaderColor('#5ec228');
-        }
-        if (typeof tg.setBackgroundColor === 'function') {
-          tg.setBackgroundColor('#5ec228');
-        }
-      } catch (err) {
-        console.warn('Theme color setup error:', err);
-      }
+      applyTgConfig();
+      setTimeout(applyTgConfig, 250);
+      setTimeout(applyTgConfig, 800);
       
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {
