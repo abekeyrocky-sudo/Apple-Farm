@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBAPP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.app';
+const WEBAPP_URL = process.env.MINI_APP_URL || 'https://apple-farm.world';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 // 👑 Admin Telegram User IDs authorized for /broadcast
@@ -394,7 +394,7 @@ async function handleStartCommand(message, param) {
       ]
     ];
 
-    const referPrimaryPhoto = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+    const referPrimaryPhoto = `${WEBAPP_URL}/refer-image.jpg`;
     const referFallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/refer-image.jpg';
 
     callTelegram('sendPhoto', {
@@ -459,7 +459,7 @@ async function handleStartCommand(message, param) {
     ]
   ];
 
-  const primaryPhotoUrl = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+  const primaryPhotoUrl = `${WEBAPP_URL}/start-image.jpg`;
   const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
 
   let result = await callTelegram('sendPhoto', {
@@ -528,7 +528,7 @@ async function handleHelpCommand(message) {
     ]
   ];
 
-  const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+  const primaryPhoto = `${WEBAPP_URL}/help-image.jpg`;
   const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
   let res = await callTelegram('sendPhoto', {
@@ -622,7 +622,7 @@ async function handleCallbackQuery(cq) {
       ]
     ];
 
-    const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+    const primaryPhoto = `${WEBAPP_URL}/help-image.jpg`;
     const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
     let res = await callTelegram('sendPhoto', {

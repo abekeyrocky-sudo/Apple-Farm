@@ -34,7 +34,7 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://apple-farm-plum.vercel.app';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://apple-farm.world';
 const CHANNEL_URL = process.env.CHANNEL_URL || 'https://t.me/AppleFarmCommunity';
 
 if (!BOT_TOKEN) {
@@ -71,7 +71,7 @@ app.post(['/telegram/notify', '/api/telegram/notify'], async (req, res) => {
 
     let text = '';
     let replyMarkup = {};
-    const photoUrl = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+    const photoUrl = `${MINI_APP_URL}/refer-image.jpg`;
 
     if (type === 'referral') {
       const friendName = payload?.friendName || 'Farmer';

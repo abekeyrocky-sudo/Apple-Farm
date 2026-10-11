@@ -403,7 +403,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
         ]
       ];
 
-      const referPrimaryPhoto = 'https://apple-farm-plum.vercel.app/refer-image.jpg';
+      const referPrimaryPhoto = `${miniAppUrl}/refer-image.jpg`;
       const referFallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/refer-image.jpg';
 
       callTelegram('sendPhoto', {
@@ -468,7 +468,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
       ]
     ];
 
-    const primaryPhotoUrl = 'https://apple-farm-plum.vercel.app/start-image.jpg';
+    const primaryPhotoUrl = `${miniAppUrl}/start-image.jpg`;
     const fallbackPhotoUrl = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/start-image.jpg';
 
     // 1. Try sending via primary Vercel CDN image
@@ -521,7 +521,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
       ]
     ];
 
-    const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+    const primaryPhoto = `${miniAppUrl}/help-image.jpg`;
     const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
     let res = await callTelegram('sendPhoto', {
@@ -614,7 +614,7 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
         ]
       ];
 
-      const primaryPhoto = 'https://apple-farm-plum.vercel.app/help-image.jpg';
+      const primaryPhoto = `${miniAppUrl}/help-image.jpg`;
       const fallbackPhoto = 'https://raw.githubusercontent.com/abekeyrocky-sudo/Apple-Farm/main/assets/help-image.jpg';
 
       let res = await callTelegram('sendPhoto', {
