@@ -269,7 +269,9 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
         throw new Error('Database instance is not initialized in botController');
       }
 
-      const usersSnap = await db.collection('users').get();
+      // ⚡ FAST & LIGHTWEIGHT: .select() fetches ONLY Document IDs (no heavy payload),
+      // preventing Firestore gRPC timeout (4 DEADLINE_EXCEEDED) when users count is high!
+      const usersSnap = await db.collection('users').select().get();
       const targetIds = new Set();
 
       usersSnap.forEach(d => {
@@ -290,6 +292,12 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
         return;
       }
 
+      await callTelegram('sendMessage', {
+        chat_id: adminChatId,
+        text: `📊 Found *${total}* registered users! Starting optimized dispatch...`,
+        parse_mode: 'Markdown'
+      });
+
       let successCount = 0;
       let failCount = 0;
 
@@ -304,52 +312,58 @@ export function createBotController(botToken, miniAppUrl, channelUrl, db) {
         ]
       };
 
-      for (const uid of targetIds) {
-        try {
-          let res;
-          if (session.photoFileId) {
-            res = await callTelegram('sendPhoto', {
-              chat_id: uid,
-              photo: session.photoFileId,
-              caption: session.text,
-              parse_mode: 'Markdown',
-              reply_markup: broadcastMarkup
-            });
-            if (!res.ok) {
+      const userList = Array.from(targetIds);
+      const BATCH_SIZE = 20;
+
+      for (let i = 0; i < userList.length; i += BATCH_SIZE) {
+        const batch = userList.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (uid) => {
+          try {
+            let res;
+            if (session.photoFileId) {
               res = await callTelegram('sendPhoto', {
                 chat_id: uid,
                 photo: session.photoFileId,
                 caption: session.text,
+                parse_mode: 'Markdown',
                 reply_markup: broadcastMarkup
               });
-            }
-          } else {
-            res = await callTelegram('sendMessage', {
-              chat_id: uid,
-              text: session.text,
-              parse_mode: 'Markdown',
-              reply_markup: broadcastMarkup
-            });
-            if (!res.ok) {
+              if (!res.ok) {
+                res = await callTelegram('sendPhoto', {
+                  chat_id: uid,
+                  photo: session.photoFileId,
+                  caption: session.text,
+                  reply_markup: broadcastMarkup
+                });
+              }
+            } else {
               res = await callTelegram('sendMessage', {
                 chat_id: uid,
                 text: session.text,
+                parse_mode: 'Markdown',
                 reply_markup: broadcastMarkup
               });
+              if (!res.ok) {
+                res = await callTelegram('sendMessage', {
+                  chat_id: uid,
+                  text: session.text,
+                  reply_markup: broadcastMarkup
+                });
+              }
             }
-          }
 
-          if (res.ok) {
-            successCount++;
-          } else {
+            if (res && res.ok) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch (e) {
             failCount++;
           }
-        } catch (e) {
-          failCount++;
-        }
+        }));
 
-        // Safe Telegram rate limiting (approx 22-25 messages/sec)
-        await new Promise(r => setTimeout(r, 45));
+        // Rate limit: 20 messages per 700ms (~28 msgs/sec, safe under Telegram's 30/sec limit)
+        await new Promise(r => setTimeout(r, 700));
       }
 
       await callTelegram('sendMessage', {

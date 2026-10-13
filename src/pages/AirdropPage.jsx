@@ -45,9 +45,9 @@ import {
 // Helper to pad 2 digits
 const pad = (num) => String(num || 0).padStart(2, '0');
 
-// Calculate real remaining time until Snapshot (14 Oct 2026 00:00:00)
+// Calculate real remaining time until Snapshot (29 Oct 2026 00:00:00)
 const getSnapshotTimeLeft = () => {
-  const targetDate = new Date('2026-10-14T00:00:00');
+  const targetDate = new Date('2026-10-29T00:00:00');
   const now = new Date();
   const diff = targetDate.getTime() - now.getTime();
 
@@ -68,7 +68,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
   const [activeTab, setActiveTab] = useState('tasks');
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
 
-  // Live ticking countdown to Snapshot Date (14 Oct 2026)
+  // Live ticking countdown to Snapshot Date (29 Oct 2026)
   const [timeLeft, setTimeLeft] = useState(getSnapshotTimeLeft);
 
   const [copiedContract, setCopiedContract] = useState(false);
@@ -722,7 +722,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
             {/* Countdown & Reserve Slot Button */}
             <div className="bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-slate-100 shadow-sm text-center">
               <p className="text-xs font-bold text-[#567396]">
-                Snapshot Date: <span className="text-[#192f52] font-black">14 Oct</span> • Countdown:{' '}
+                Snapshot Date: <span className="text-[#192f52] font-black">29 Oct</span> • Countdown:{' '}
                 <span className="text-[#e74c3c] font-black text-sm">
                   {timeLeft.days}d {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
                 </span>
@@ -787,7 +787,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                 </div>
 
                 <span className="text-[10px] font-black bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                  16 OCT 2026
+                  30 OCT 2026
                 </span>
               </div>
 
@@ -808,7 +808,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
                   Coming Soon
                 </h2>
                 <p className="text-xs font-bold text-[#567396] mt-1 max-w-[280px] mx-auto leading-relaxed">
-                  Official $APPLE allocation will be calculated on <span className="text-[#192f52] font-black underline decoration-amber-400">16 Oct</span> right after the 14 Oct snapshot.
+                  Official $APPLE allocation will be calculated on <span className="text-[#192f52] font-black underline decoration-amber-400">30 Oct</span> right after the 29 Oct snapshot.
                 </p>
 
                 {/* Info Trigger Pill Button */}
@@ -1110,7 +1110,7 @@ export default function AirdropPage({ user, onBack, onNavigate, onUpdateUser, on
             </div>
 
             <p className="text-xs font-bold text-[#567396] leading-relaxed">
-              Your final $APPLE airdrop allocation on 16 Oct will be determined by 4 key factors:
+              Your final $APPLE airdrop allocation on 30 Oct will be determined by 4 key factors:
             </p>
 
             <div className="space-y-2">

@@ -14,6 +14,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import StakingPage from './pages/StakingPage';
 import MarketPage from './pages/MarketPage';
 import CustomPopupModal from './components/CustomPopupModal';
+import MandatoryChannelGate from './components/MandatoryChannelGate';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
 import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment } from './firebase';
@@ -32,6 +33,7 @@ export default function App() {
   const [isDailyRewardOpen, setIsDailyRewardOpen] = useState(false);
   const [isAutoBotModalOpen, setIsAutoBotModalOpen] = useState(false);
   const [offlineHarvest, setOfflineHarvest] = useState({ pendingApples: 0, offlineMinutes: 0 });
+  const [isGateLocked, setIsGateLocked] = useState(false);
   const [user, setUser] = useState({
     id: null,
     name: 'Farmer',
@@ -209,142 +211,34 @@ export default function App() {
     }
   }, [user?.id, user?.referredBy]);
 
-  // 📢 অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ ব্যাকগ্রাউন্ড ভেরিফিকেশন ও বাধ্যতামূলক পপ-আপ
-  const checkCommunityMembership = async () => {
-    if (!user.id) return;
-    
-    // 🧪 Dev Mode / Localhost এ ম্যান্ডাটরি পপ-আপ বাইপাস করা যাতে নির্বিঘ্নে টেস্টিং করা যায়
-    const isDev = window.location.hostname === 'localhost' || 
-                  window.location.hostname === '127.0.0.1' || 
-                  !window.Telegram?.WebApp?.initDataUnsafe?.user ||
-                  user.id === 40281;
-    if (isDev) {
-      console.log('[Dev Mode] Skipping mandatory channel membership blocking modal');
-      return;
-    }
-
-    try {
-      const taskStateKey = `apple_farm_std_task_states_${user.id}`;
-      const states = JSON.parse(localStorage.getItem(taskStateKey) || '{}');
-
-      // ১. কমিউনিটি চ্যানেল মেম্বারশিপ চেক (যদি টাস্ক অলরেডি ক্লেইমড থাকে তবে বাইপাস)
-      const isCommunityTaskClaimed = states['task_community'] === 'Claimed';
-      let isCommunityVerified = isCommunityTaskClaimed;
-
-      if (!isCommunityVerified) {
-        const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
-        isCommunityVerified = !!commRes.verified;
-      }
-
-      if (!isCommunityVerified) {
-        states['task_community'] = 'Go';
-        try { localStorage.setItem(taskStateKey, JSON.stringify(states)); } catch (e) {}
-
-        showPopupModal({
-          type: 'warn',
-          title: 'Join Our Community',
-          message: 'You must be a member of our official Telegram channel to play and earn rewards in Apple Farm.',
-          confirmText: 'Join Channel',
-          cancelText: "I've Joined",
-          hideClose: false,
-          isMandatory: false,
-          onConfirm: () => {
-            try {
-              if (window.Telegram?.WebApp?.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(OFFICIAL_COMMUNITY_URL);
-              } else if (window.Telegram?.WebApp?.openLink) {
-                window.Telegram.WebApp.openLink(OFFICIAL_COMMUNITY_URL);
-              } else {
-                window.open(OFFICIAL_COMMUNITY_URL, '_blank');
-              }
-            } catch (e) {
-              window.open(OFFICIAL_COMMUNITY_URL, '_blank');
-            }
-
-            // চ্যানেল খোলার পর ক্যাশে সেভ এবং ২ সেকেন্ড পর রি-ভেরিফাই
-            setTimeout(() => {
-              try {
-                localStorage.setItem(`apple_farm_tg_verified_${user.id}_applefarmcommunity`, 'true');
-              } catch (e) {}
-              checkCommunityMembership();
-            }, 2500);
-          }
-        });
-        return;
-      }
-
-      // ২. পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ চেক
-      const isPayoutTaskClaimed = states['task_payout_channel'] === 'Claimed';
-      let isPayoutVerified = isPayoutTaskClaimed;
-
-      if (!isPayoutVerified) {
-        const payoutRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
-        isPayoutVerified = !!payoutRes.verified;
-      }
-
-      if (!isPayoutVerified) {
-        states['task_payout_channel'] = 'Go';
-        try { localStorage.setItem(taskStateKey, JSON.stringify(states)); } catch (e) {}
-
-        showPopupModal({
-          type: 'warn',
-          title: 'Join Payment Channel',
-          message: 'You must be a member of our official payment proofs channel to play and earn rewards in Apple Farm.',
-          confirmText: 'Join Channel',
-          cancelText: "I've Joined",
-          hideClose: false,
-          isMandatory: false,
-          onConfirm: () => {
-            try {
-              if (window.Telegram?.WebApp?.openTelegramLink) {
-                window.Telegram.WebApp.openTelegramLink(OFFICIAL_PAYOUTS_URL);
-              } else if (window.Telegram?.WebApp?.openLink) {
-                window.Telegram.WebApp.openLink(OFFICIAL_PAYOUTS_URL);
-              } else {
-                window.open(OFFICIAL_PAYOUTS_URL, '_blank');
-              }
-            } catch (e) {
-              window.open(OFFICIAL_PAYOUTS_URL, '_blank');
-            }
-
-            setTimeout(() => {
-              try {
-                localStorage.setItem(`apple_farm_tg_verified_${user.id}_applefarmpayouts`, 'true');
-              } catch (e) {}
-              checkCommunityMembership();
-            }, 2500);
-          }
-        });
-        return;
-      }
-
-      // উভয় চ্যানেলে জয়েন থাকলে বা ভেরিফাইড হলে ম্যান্ডাটরি পপআপ ক্লোজ
-      setModalConfig((prev) => (prev.isOpen ? { ...prev, isOpen: false } : prev));
-    } catch (err) {
-      console.warn('Auto channels verify check error:', err);
-    }
-  };
-
+  // 🛡️ অফিসিয়াল টেলিগ্রাম কমিউনিটি ও পেমেন্ট প্রুফ চ্যানেল মেম্বারশিপ চেক ও ম্যান্ডাটরি ফোর্স-গেট (Production Enforced)
   useEffect(() => {
-    if (!user.id) return;
+    if (!user?.id) return;
 
-    const timer = setTimeout(() => {
-      checkCommunityMembership();
-    }, 2000);
+    let isMounted = true;
+    const verifyChannels = async () => {
+      try {
+        const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
+        const payRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
 
-    const handleFocus = () => {
-      checkCommunityMembership();
+        if (isMounted) {
+          if (!commRes?.verified || !payRes?.verified) {
+            setIsGateLocked(true);
+          } else {
+            setIsGateLocked(false);
+          }
+        }
+      } catch (err) {
+        console.warn('Channel verification initial check error:', err);
+      }
     };
 
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleFocus);
+    verifyChannels();
 
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleFocus);
+      isMounted = false;
     };
-  }, [user.id]);
+  }, [user?.id]);
 
   const hasCheckedOfflineRef = React.useRef(false);
   const prevLevelRef = React.useRef(null);
@@ -1168,6 +1062,23 @@ export default function App() {
         {...modalConfig} 
         onClose={closePopupModal} 
       />
+
+      {/* 🛡️ ম্যান্ডাটরি অফিশিয়াল চ্যানেল ফোর্স-গেট (Strict Mandatory Channel Gate) */}
+      {isGateLocked && user?.id && (
+        <MandatoryChannelGate 
+          user={user} 
+          onUnlocked={() => {
+            setIsGateLocked(false);
+            try {
+              const taskStateKey = `apple_farm_std_task_states_${user.id}`;
+              const states = JSON.parse(localStorage.getItem(taskStateKey) || '{}');
+              states['task_community'] = 'Claimed';
+              states['task_payout_channel'] = 'Claimed';
+              localStorage.setItem(taskStateKey, JSON.stringify(states));
+            } catch (e) {}
+          }} 
+        />
+      )}
     </>
   );
 }

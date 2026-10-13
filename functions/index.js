@@ -279,8 +279,8 @@ app.use('/api', apiRouter);
 // Export Cloud Function
 export const api = onRequest({
   region: 'us-central1',
-  memory: '256MiB',
-  timeoutSeconds: 60,
+  memory: '512MiB',
+  timeoutSeconds: 300,
   invoker: 'public',
   cors: true,
 }, app);
