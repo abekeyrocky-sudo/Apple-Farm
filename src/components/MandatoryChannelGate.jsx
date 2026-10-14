@@ -28,12 +28,12 @@ export default function MandatoryChannelGate({ user, onUnlocked }) {
 
     try {
       // 1. Check Community Channel
-      const commRes = await verifyTelegramMembership(tgUserId, OFFICIAL_COMMUNITY_URL, { forceCheck: !isInitial });
+      const commRes = await verifyTelegramMembership(tgUserId, OFFICIAL_COMMUNITY_URL);
       const isCommMember = !!commRes.verified;
       setCommunityVerified(isCommMember);
 
       // 2. Check Payout Proofs Channel
-      const payRes = await verifyTelegramMembership(tgUserId, OFFICIAL_PAYOUTS_URL, { forceCheck: !isInitial });
+      const payRes = await verifyTelegramMembership(tgUserId, OFFICIAL_PAYOUTS_URL);
       const isPayMember = !!payRes.verified;
       setPayoutVerified(isPayMember);
 
