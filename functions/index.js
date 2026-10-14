@@ -15,6 +15,7 @@ import { createAdsController } from './src/controllers/adsController.js';
 import { createBotController } from './src/controllers/botController.js';
 import { createReferralMissionController } from './src/controllers/referralMissionController.js';
 import { createPartnerController } from './src/controllers/partnerController.js';
+import { createHubcoinController } from './src/controllers/hubcoinController.js';
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ const adsCtrl = createAdsController(db, adminHelper);
 const botCtrl = createBotController(BOT_TOKEN, MINI_APP_URL, CHANNEL_URL, db);
 const referralMissionCtrl = createReferralMissionController(db, adminHelper);
 const partnerCtrl = createPartnerController(db, adminHelper);
+const hubcoinCtrl = createHubcoinController(db, adminHelper, BOT_TOKEN, MINI_APP_URL);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -273,6 +275,7 @@ apiRouter.post('/referral/claim-mission', referralMissionCtrl.claimMission);
 apiRouter.post('/partner/claim-profit', partnerCtrl.claimProfit);
 
 app.post(['/partner/track-commission', '/api/partner/track-commission'], partnerCtrl.trackCommission);
+app.post(['/hubcoin/transfer-reward', '/api/hubcoin/transfer-reward'], hubcoinCtrl.receiveTransfer);
 
 app.use('/api', apiRouter);
 
