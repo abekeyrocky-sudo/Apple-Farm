@@ -298,7 +298,8 @@ export const listenToUserCommissions = (userId, onCommissionUpdate) => {
           partnerReferralTaskCount: Number(data.partnerReferralTaskCount || 0),
           gramBalance: Number(data.gramBalance || 0),
           invitedFriends: Array.isArray(data.invitedFriends) ? data.invitedFriends : [],
-          referralsCount: Number(data.referralsCount || (Array.isArray(data.invitedFriends) ? data.invitedFriends.length : 0))
+          referralsCount: Number(data.referralsCount || (Array.isArray(data.invitedFriends) ? data.invitedFriends.length : 0)),
+          pendingHubcoinReward: data.pendingHubcoinReward || null
         });
       }
     }, (err) => {
@@ -840,4 +841,18 @@ export const redeemPromoCodeInDB = async (code, userId) => {
     return { success: false, message: err.message || 'Failed to redeem promo code' };
   }
 };
+
+// 🍏 HubCoin ট্রান্সফার পপআপ দেখা হলে seen: true হিসেবে মার্ক করা
+export const markHubcoinRewardSeen = async (userId) => {
+  if (!db || !userId) return;
+  try {
+    const userRef = doc(db, "users", userId.toString());
+    await updateDoc(userRef, {
+      "pendingHubcoinReward.seen": true
+    });
+  } catch (err) {
+    console.warn("markHubcoinRewardSeen error:", err);
+  }
+};
+
 

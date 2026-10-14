@@ -52,6 +52,14 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           let newDiamonds = 0;
           let isNewUser = false;
 
+          const pendingRewardData = {
+            amount: numAmount,
+            type: rewardType,
+            txId: txId,
+            receivedAt: new Date().toISOString(),
+            seen: false
+          };
+
           if (!userDoc.exists) {
             isNewUser = true;
             newApples = rewardType === 'apple' ? numAmount : 0;
@@ -69,7 +77,8 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
               maxEnergy: 100,
               lastEnergyUpdate: new Date().toISOString(),
               createdAt: new Date().toISOString(),
-              source: 'hubcoin_transfer'
+              source: 'hubcoin_transfer',
+              pendingHubcoinReward: pendingRewardData
             };
             transaction.set(userRef, newUser);
           } else {
@@ -84,14 +93,16 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
 
               transaction.update(userRef, {
                 apples: admin.firestore.FieldValue.increment(numAmount),
-                level: newLevel
+                level: newLevel,
+                pendingHubcoinReward: pendingRewardData
               });
             } else {
               newApples = currentApples;
               newDiamonds = currentDiamonds + numAmount;
 
               transaction.update(userRef, {
-                diamonds: admin.firestore.FieldValue.increment(numAmount)
+                diamonds: admin.firestore.FieldValue.increment(numAmount),
+                pendingHubcoinReward: pendingRewardData
               });
             }
           }

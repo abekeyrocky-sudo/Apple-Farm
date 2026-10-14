@@ -17,7 +17,8 @@ import CustomPopupModal from './components/CustomPopupModal';
 import MandatoryChannelGate from './components/MandatoryChannelGate';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
-import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment } from './firebase';
+import HubcoinRewardModal from './components/HubcoinRewardModal';
+import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment, markHubcoinRewardSeen } from './firebase';
 import { calculateLevel, LEVEL_TIERS } from './utils/levelSystem';
 import confetti from 'canvas-confetti';
 import { soundManager } from './utils/soundManager';
@@ -46,6 +47,7 @@ export default function App() {
   });
 
   // গ্লোবাল কাস্টম পপআপ মডাল স্টেট
+  const [hubcoinRewardModal, setHubcoinRewardModal] = useState(null);
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     type: 'success', // 'success' | 'warn' | 'reward' | 'error' | 'info'
@@ -134,6 +136,11 @@ export default function App() {
               name: fullName,
               avatar: data.avatar || prev.avatar || 'avatar-1',
             }));
+
+            // 🍏 HubCoin ট্রান্সফার রিওয়ার্ড পপআপ চেক
+            if (data.pendingHubcoinReward && !data.pendingHubcoinReward.seen) {
+              setHubcoinRewardModal(data.pendingHubcoinReward);
+            }
           }
         });
       } else {
@@ -160,6 +167,11 @@ export default function App() {
               name: 'Dev Farmer',
               avatar: data.avatar || prev.avatar || 'avatar-1',
             }));
+
+            // 🍏 HubCoin ট্রান্সফার রিওয়ার্ড পপআপ চেক
+            if (data.pendingHubcoinReward && !data.pendingHubcoinReward.seen) {
+              setHubcoinRewardModal(data.pendingHubcoinReward);
+            }
           }
         });
       }
@@ -182,6 +194,10 @@ export default function App() {
           invitedFriends: commData.invitedFriends && commData.invitedFriends.length > 0 ? commData.invitedFriends : (prev.invitedFriends || []),
           referralsCount: commData.referralsCount !== undefined ? commData.referralsCount : (prev.referralsCount || 0)
         }));
+
+        if (commData.pendingHubcoinReward && !commData.pendingHubcoinReward.seen) {
+          setHubcoinRewardModal(commData.pendingHubcoinReward);
+        }
       });
       return () => unsub();
     }
@@ -1062,6 +1078,19 @@ export default function App() {
         {...modalConfig} 
         onClose={closePopupModal} 
       />
+
+      {/* 🍏 HubCoin ট্রান্সফার রিওয়ার্ড পপআপ মডাল */}
+      {hubcoinRewardModal && (
+        <HubcoinRewardModal
+          reward={hubcoinRewardModal}
+          onClaim={() => {
+            if (user?.id) {
+              markHubcoinRewardSeen(user.id);
+            }
+            setHubcoinRewardModal(null);
+          }}
+        />
+      )}
 
       {/* 🛡️ ম্যান্ডাটরি অফিশিয়াল চ্যানেল ফোর্স-গেট (Strict Mandatory Channel Gate) */}
       {isGateLocked && user?.id && (
