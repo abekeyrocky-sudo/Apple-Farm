@@ -148,7 +148,7 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           try {
             const unitIcon = rewardType === 'apple' ? '🍎' : '💎';
             const unitName = rewardType === 'apple' ? `Apples ${unitIcon}` : `Diamonds ${unitIcon}`;
-            const text = `🎉 *Apple Mission Transfer Received!* 🍏💎\n\n` +
+            const text = `*Apple Mission Transfer Received!*\n\n` +
               `👤 *Farmer:* ${userName || 'Farmer'}\n` +
               `💰 *Amount Credited:* \`+${numAmount.toLocaleString()} ${unitName}\`\n` +
               `🧾 *Transaction ID:* \`${txId}\`\n\n` +
@@ -157,10 +157,10 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
             const replyMarkup = {
               inline_keyboard: [
                 [
-                  { text: '🍏 🌾 Play Apple Farm 🍎 ✨', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
+                  { text: 'Play Apple Farm', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
                 ],
                 [
-                  { text: '💎 🌟 View Balance & Harvest 🚀', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
+                  { text: 'View Balance & Harvest', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
                 ]
               ]
             };
