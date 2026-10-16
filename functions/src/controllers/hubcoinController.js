@@ -109,18 +109,18 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
 
           // 4. Record user transaction in users/${userId}/transactions
           const userTxRef = userRef.collection('transactions').doc();
-          const txTitle = rewardType === 'apple' ? 'HubCoin Apples Received' : 'HubCoin Diamonds Received';
+          const txTitle = rewardType === 'apple' ? 'Apple Mission Apples Received' : 'Apple Mission Diamonds Received';
           const rewardLabel = rewardType === 'apple' 
             ? `+${numAmount.toLocaleString()} Apples` 
             : `+${numAmount.toLocaleString()} Diamonds`;
 
           transaction.set(userTxRef, {
             title: txTitle,
-            subtitle: `Transferred from HubCoin Mini App`,
+            subtitle: `Transferred from Apple Mission`,
             amount: rewardLabel,
             currency: rewardType,
             type: 'earn',
-            category: 'hubcoin_transfer',
+            category: 'apple_mission_transfer',
             status: 'Completed',
             txId: txId,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -146,8 +146,9 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
         // 6. Send Celebratory Telegram Bot Message
         if (botToken) {
           try {
-            const unitName = rewardType === 'apple' ? 'Apples 🍎' : 'Diamonds 💎';
-            const text = `🎉 *HubCoin Transfer Received!* 🍏💎\n\n` +
+            const unitIcon = rewardType === 'apple' ? '🍎' : '💎';
+            const unitName = rewardType === 'apple' ? `Apples ${unitIcon}` : `Diamonds ${unitIcon}`;
+            const text = `🎉 *Apple Mission Transfer Received!* 🍏💎\n\n` +
               `👤 *Farmer:* ${userName || 'Farmer'}\n` +
               `💰 *Amount Credited:* \`+${numAmount.toLocaleString()} ${unitName}\`\n` +
               `🧾 *Transaction ID:* \`${txId}\`\n\n` +
@@ -156,7 +157,10 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
             const replyMarkup = {
               inline_keyboard: [
                 [
-                  { text: 'Play Apple Farm 🍎', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
+                  { text: '🍏 🌾 Play Apple Farm 🍎 ✨', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
+                ],
+                [
+                  { text: '💎 🌟 View Balance & Harvest 🚀', web_app: { url: miniAppUrl || 'https://www.apple-farm.world' } }
                 ]
               ]
             };
@@ -172,7 +176,7 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
               })
             }).catch(() => {});
           } catch (botErr) {
-            console.warn('[HubCoin Transfer Bot Notify Error]:', botErr.message);
+            console.warn('[Apple Mission Transfer Bot Notify Error]:', botErr.message);
           }
         }
 

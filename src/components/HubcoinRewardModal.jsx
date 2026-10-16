@@ -19,8 +19,8 @@ export default function HubcoinRewardModal({
     } catch (e) {}
     try {
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 60,
+        spread: 60,
         origin: { y: 0.6 }
       });
     } catch (e) {}
@@ -28,58 +28,74 @@ export default function HubcoinRewardModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
-      <div className="relative w-full max-w-sm bg-gradient-to-b from-[#18392b] via-[#10241b] to-[#0a1811] border border-emerald-500/30 rounded-3xl p-6 text-center shadow-2xl shadow-emerald-950/60 overflow-hidden animate-scale-up">
-        {/* Glow backdrop decoration */}
-        <div className="absolute -top-16 -left-16 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
-        <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-green-500/20 rounded-full blur-2xl pointer-events-none"></div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in select-none">
+      <div 
+        className="relative w-full max-w-xs bg-white/98 backdrop-blur-md rounded-3xl p-6 text-center shadow-2xl border border-emerald-100 space-y-3.5 animate-scale-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top Close Button */}
+        <button
+          onClick={handleClaim}
+          className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center font-bold text-xs active:scale-90 transition-all cursor-pointer"
+          title="Close"
+        >
+          ✕
+        </button>
 
         {/* Top Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 border border-emerald-400/30 rounded-full text-[11px] font-bold text-emerald-300 tracking-wide uppercase mb-3 shadow-sm">
-          <span>⚡</span>
-          <span>HubCoin Mission Transfer</span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-700 tracking-wide uppercase shadow-xs">
+          <span>Apple Mission Transfer</span>
         </div>
 
-        {/* Floating Reward Icon */}
-        <div className="relative my-3 flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-500/20 to-lime-400/20 flex items-center justify-center border border-emerald-400/30 shadow-lg shadow-emerald-500/20">
+        {/* Still Reward Icon (Static, Light Emerald Halo) */}
+        <div className="flex justify-center pt-1">
+          <div className="w-20 h-20 rounded-full bg-emerald-50 ring-8 ring-emerald-50/70 border border-emerald-100 flex items-center justify-center shadow-xs">
             <img
               src={isApple ? '/apple.png' : '/daimond.png'}
               alt={isApple ? 'Apple' : 'Diamond'}
-              className="w-16 h-16 object-contain drop-shadow-[0_8px_16px_rgba(16,185,129,0.4)] animate-bounce"
-              style={{ animationDuration: '2s' }}
+              className="w-13 h-13 object-contain filter drop-shadow-sm"
             />
           </div>
         </div>
 
-        {/* Title & Amount */}
-        <h3 className="text-xl font-black text-white tracking-tight mt-2">
-          Rewards Received!
-        </h3>
+        {/* Title */}
+        <div className="space-y-1 px-1">
+          <h3 className="text-lg font-black text-[#192f52] tracking-tight leading-snug">
+            Rewards Received
+          </h3>
+          <p className="text-xs font-semibold text-[#6483a7] leading-relaxed">
+            Your rewards from the <strong>Apple Mission</strong> have been successfully credited to your Apple Farm orchard.
+          </p>
+        </div>
 
-        <div className="my-2.5 inline-block px-4 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-400/20">
-          <span className="text-2xl font-black bg-gradient-to-r from-emerald-400 via-lime-300 to-green-400 bg-clip-text text-transparent">
+        {/* Reward Counter Badge (Clean Light Green) */}
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 px-4 py-2 rounded-2xl shadow-xs">
+          <img
+            src={isApple ? '/apple.png' : '/daimond.png'}
+            alt="Reward"
+            className="w-5 h-5 object-contain filter drop-shadow-xs"
+          />
+          <span className="text-base font-black text-emerald-700">
             +{amount.toLocaleString()} {isApple ? 'Apples' : 'Diamonds'}
           </span>
         </div>
 
-        <p className="text-xs text-emerald-100/70 leading-relaxed px-2">
-          Your rewards from the <strong>HubCoin Mini App</strong> mission have been successfully credited to your Apple Farm orchard!
-        </p>
-
         {/* Transaction Info Pill */}
-        <div className="mt-3.5 mb-4 px-3 py-1.5 bg-black/30 border border-emerald-500/15 rounded-xl text-[10px] text-emerald-300/60 font-mono">
-          Ref TX: <span className="text-emerald-300/90 font-semibold">{txId}</span>
+        <div>
+          <div className="inline-block px-3 py-1 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-500 font-mono">
+            Ref TX: <span className="text-slate-700 font-semibold">{txId}</span>
+          </div>
         </div>
 
-        {/* Claim / Continue Button */}
-        <button
-          onClick={handleClaim}
-          className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 hover:from-emerald-400 hover:to-green-500 active:scale-95 text-white font-extrabold text-sm tracking-wide shadow-lg shadow-emerald-600/30 transition-all duration-150 flex items-center justify-center gap-2"
-        >
-          <span>Claim to Orchard</span>
-          <span>🍎</span>
-        </button>
+        {/* Claim / Continue Button (Clean, No Emojis, No Bounce) */}
+        <div className="pt-1">
+          <button
+            onClick={handleClaim}
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 active:scale-95 text-white font-black text-xs tracking-wide shadow-lg shadow-emerald-500/25 transition-all cursor-pointer"
+          >
+            Claim to Orchard
+          </button>
+        </div>
       </div>
     </div>
   );

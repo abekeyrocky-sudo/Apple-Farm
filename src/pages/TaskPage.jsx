@@ -167,6 +167,23 @@ export default function TaskPage({
   const [standardTasks, setStandardTasks] = useState(() => {
     const defaultTasks = [
       {
+        id: 'task_apple_mission',
+        title: 'Apple Mission',
+        reward: 'Earn Apples & Diamonds',
+        rewardAmount: 'Bonus',
+        rewardCurrency: 'diamond',
+        type: 'Daily',
+        status: 'Enter',
+        buttonText: 'Enter',
+        iconBg: 'bg-emerald-50 border-emerald-200',
+        actionUrl: 'https://t.me/HubCoin_minerbot/App?startapp',
+        icon: (
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-green-600 flex items-center justify-center text-white shadow-inner">
+            <img src={appleImg} alt="Apple Mission" className="w-5 h-5 object-contain" />
+          </div>
+        ),
+      },
+      {
         id: 'task_offerwall',
         title: 'Offerwall Tasks',
         reward: 'Unlimited Diamonds',
@@ -335,6 +352,9 @@ export default function TaskPage({
     const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
     return defaultTasks.map(t => {
       let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_apple_mission') {
+        status = 'Enter';
+      }
       if (t.id === 'task_1') {
         status = 'Go';
       }
@@ -378,6 +398,9 @@ export default function TaskPage({
     const savedStates = getStoredJson('apple_farm_std_task_states', uid, {});
     setStandardTasks(prev => prev.map(t => {
       let status = savedStates[t.id] || t.status;
+      if (t.id === 'task_apple_mission') {
+        status = 'Enter';
+      }
       if (t.id === 'task_1') {
         status = 'Go';
       }
@@ -483,6 +506,26 @@ export default function TaskPage({
 
   // স্ট্যান্ডার্ড টাস্ক হ্যান্ডলার
   const handleStandardTaskAction = async (task) => {
+    if (task.id === 'task_apple_mission') {
+      soundManager.play('click');
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+      }
+      const targetUrl = task.actionUrl || 'https://t.me/HubCoin_minerbot/App?startapp';
+      try {
+        if (window.Telegram?.WebApp?.openTelegramLink) {
+          window.Telegram.WebApp.openTelegramLink(targetUrl);
+        } else if (window.Telegram?.WebApp?.openLink) {
+          window.Telegram.WebApp.openLink(targetUrl);
+        } else {
+          window.open(targetUrl, '_blank');
+        }
+      } catch (e) {
+        window.open(targetUrl, '_blank');
+      }
+      return;
+    }
+
     if (task.status === 'Claimed') return;
 
     soundManager.play('click');
@@ -1223,7 +1266,7 @@ export default function TaskPage({
   // ফিল্টার করা স্ট্যান্ডার্ড টাস্ক
   const filteredStandardTasks = activeTab === 'All'
     ? standardTasks
-    : standardTasks.filter(t => t.type === activeTab);
+    : standardTasks.filter(t => t.type === activeTab || t.id === 'task_apple_mission');
 
   const myPartnerTasks = partnerTasks.filter(t => t.isMyTask || (user?.id && String(t.creatorId) === String(user.id)));
 
@@ -1588,7 +1631,14 @@ export default function TaskPage({
           filteredStandardTasks.map((task) => (
             <div 
               key={task.id}
-              className="bg-white/95 backdrop-blur-md rounded-2xl p-3 px-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-between"
+              onClick={() => {
+                if (task.id === 'task_apple_mission') {
+                  handleStandardTaskAction(task);
+                }
+              }}
+              className={`bg-white/95 backdrop-blur-md rounded-2xl p-3 px-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-between ${
+                task.id === 'task_apple_mission' ? 'cursor-pointer hover:border-emerald-200 transition-colors' : ''
+              }`}
             >
               {/* Left: Icon & Info */}
               <div className="flex items-center gap-3">
@@ -1608,7 +1658,17 @@ export default function TaskPage({
 
               {/* Right: Action Button */}
               <div>
-                {task.status === 'Claimed' ? (
+                {task.status === 'Enter' || task.buttonText === 'Enter' || task.id === 'task_apple_mission' ? (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStandardTaskAction(task);
+                    }}
+                    className="bg-gradient-to-b from-[#2ecc71] to-[#1e8a4a] hover:brightness-105 active:scale-95 text-white font-black text-xs px-5 py-2 rounded-2xl shadow-[0_3px_0_#145a32] border-t border-emerald-300 transition-all cursor-pointer"
+                  >
+                    Enter
+                  </button>
+                ) : task.status === 'Claimed' ? (
                   <button 
                     disabled
                     className="bg-[#b3c7d6] text-white text-xs font-extrabold px-5 py-2 rounded-2xl cursor-not-allowed shadow-inner"
