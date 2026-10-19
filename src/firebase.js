@@ -384,6 +384,18 @@ export const getUserTransactionsFromDB = async (userId) => {
   }
 };
 
+export const BANNED_USER_IDS = [
+  '8869698832', // Fahim Islam
+  '7505085733', // Sufian Ahmed
+  '7098276899', // ASHA
+  '8550901242', // Tuhin Sorkar
+  '7211238047', // Dghht Fg
+  '7894020110', // Tuhin Akondo
+  '1901822476', // Md. Abdullah
+  '8939932081', // Zannatul Naima
+  '8920592068', // Fahim Kaha
+];
+
 // ডাটাবেস থেকে রিয়েল গ্লোবাল লিডারবোর্ড ফেচ করা
 export const getLeaderboardFromDB = async () => {
   if (!db) return [];
@@ -395,6 +407,9 @@ export const getLeaderboardFromDB = async () => {
     let rank = 1;
     snap.forEach((docSnap) => {
       const data = docSnap.data();
+      if (data.isBanned || data.banned || BANNED_USER_IDS.includes(String(docSnap.id))) {
+        return;
+      }
       list.push({
         id: docSnap.id,
         rank: rank++,

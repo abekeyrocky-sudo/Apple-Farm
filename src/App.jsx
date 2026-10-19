@@ -18,7 +18,8 @@ import MandatoryChannelGate from './components/MandatoryChannelGate';
 import DailyRewardModal, { getDailyRewardStatus } from './components/DailyRewardModal';
 import AutoBotClaimModal from './components/AutoBotClaimModal';
 import HubcoinRewardModal from './components/HubcoinRewardModal';
-import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment, markHubcoinRewardSeen } from './firebase';
+import BannedScreen from './components/BannedScreen';
+import { syncUserWithFirebase, harvestAppleInDB, updateUserInDB, sendWithdrawNotificationToTelegram, distributeReferralCommission, listenToUserCommissions, increment, markHubcoinRewardSeen, BANNED_USER_IDS } from './firebase';
 import { calculateLevel, LEVEL_TIERS } from './utils/levelSystem';
 import confetti from 'canvas-confetti';
 import { soundManager } from './utils/soundManager';
@@ -119,6 +120,21 @@ export default function App() {
       if (tgUser) {
         const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || 'Farmer';
         
+        if (BANNED_USER_IDS.includes(String(tgUser.id))) {
+          setUser({
+            id: tgUser.id,
+            name: fullName,
+            username: tgUser.username || '',
+            isBanned: true,
+            banned: true,
+            banReason: "Permanent Ban: Fraudulent unauthorized balance injection and exploitation.",
+            apples: 0,
+            diamonds: 0
+          });
+          setIsLoading(false);
+          return;
+        }
+
         setUser((prev) => ({
           ...prev,
           id: tgUser.id,
@@ -884,6 +900,17 @@ export default function App() {
       setMarketInitialTab(options?.marketTab || 'Auto-Bot');
     }
   };
+
+  // 0. Banned User Gate (Strict Block: Banned users only see Ban Notice, nothing else)
+  const isUserBanned = !!(
+    user?.isBanned || 
+    user?.banned || 
+    (user?.id && BANNED_USER_IDS.includes(String(user.id)))
+  );
+
+  if (isUserBanned) {
+    return <BannedScreen user={user} />;
+  }
 
   // 1. Initial Cartoon Splash / Loading Screen
   if (isLoading) {

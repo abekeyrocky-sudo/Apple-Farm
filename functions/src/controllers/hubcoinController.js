@@ -1,4 +1,14 @@
-import { calculateLevel } from '../utils/levelSystem.js';
+const BANNED_USER_IDS = [
+  '8869698832', // Fahim Islam
+  '7505085733', // Sufian Ahmed
+  '7098276899', // ASHA
+  '8550901242', // Tuhin Sorkar
+  '7211238047', // Dghht Fg
+  '7894020110', // Tuhin Akondo
+  '1901822476', // Md. Abdullah
+  '8939932081', // Zannatul Naima
+  '8920592068', // Fahim Kaha
+];
 
 export function createHubcoinController(db, admin, botToken, miniAppUrl) {
   return {
@@ -11,9 +21,20 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           return res.status(400).json({ ok: false, error: 'User ID is required' });
         }
 
+        const userIdStr = userId.toString();
+        if (BANNED_USER_IDS.includes(userIdStr)) {
+          return res.status(403).json({ ok: false, error: 'User account is permanently suspended' });
+        }
+
         const numAmount = Number(amount);
         if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
           return res.status(400).json({ ok: false, error: 'Valid positive amount is required' });
+        }
+
+        // Anti-fraud threshold limit (no user legitimately mines > 50,000 at once)
+        if (numAmount > 50000) {
+          console.warn(`[Anti-Fraud Alert]: Blocked huge transfer of ${numAmount} for user ${userIdStr}`);
+          return res.status(400).json({ ok: false, error: 'Amount exceeds maximum permitted single transfer limit' });
         }
 
         const validTypes = ['apple', 'diamond'];
@@ -26,7 +47,6 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           return res.status(400).json({ ok: false, error: 'Transaction ID (txId) is required' });
         }
 
-        const userIdStr = userId.toString();
         const userRef = db.collection('users').doc(userIdStr);
         const transferRef = db.collection('hubcoin_transfers').doc(txId);
 
