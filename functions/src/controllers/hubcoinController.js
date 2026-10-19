@@ -1,3 +1,8 @@
+import { calculateLevel } from '../utils/levelSystem.js';
+
+const DAILY_APPLE_LIMIT = 100000; // 100K Apples max daily per TG ID
+const DAILY_DIAMOND_LIMIT = 5;     // 5 Diamonds max daily per TG ID
+
 const BANNED_USER_IDS = [
   '8869698832', // Fahim Islam
   '7505085733', // Sufian Ahmed
@@ -31,16 +36,27 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           return res.status(400).json({ ok: false, error: 'Valid positive amount is required' });
         }
 
-        // Anti-fraud threshold limit (no user legitimately mines > 50,000 at once)
-        if (numAmount > 50000) {
-          console.warn(`[Anti-Fraud Alert]: Blocked huge transfer of ${numAmount} for user ${userIdStr}`);
-          return res.status(400).json({ ok: false, error: 'Amount exceeds maximum permitted single transfer limit' });
-        }
-
         const validTypes = ['apple', 'diamond'];
         const rewardType = (type || 'apple').toLowerCase();
         if (!validTypes.includes(rewardType)) {
           return res.status(400).json({ ok: false, error: 'Invalid reward type. Must be apple or diamond' });
+        }
+
+        // Anti-fraud single transfer limit check
+        if (rewardType === 'apple' && numAmount > DAILY_APPLE_LIMIT) {
+          console.warn(`[Anti-Fraud Alert]: Blocked huge single Apple transfer of ${numAmount} for user ${userIdStr}`);
+          return res.status(400).json({ 
+            ok: false, 
+            error: `Transfer amount exceeds single transfer limit of ${DAILY_APPLE_LIMIT.toLocaleString()} Apples` 
+          });
+        }
+
+        if (rewardType === 'diamond' && numAmount > DAILY_DIAMOND_LIMIT) {
+          console.warn(`[Anti-Fraud Alert]: Blocked huge single Diamond transfer of ${numAmount} for user ${userIdStr}`);
+          return res.status(400).json({ 
+            ok: false, 
+            error: `Transfer amount exceeds single transfer limit of ${DAILY_DIAMOND_LIMIT} Diamonds` 
+          });
         }
 
         if (!txId) {
@@ -71,6 +87,38 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           let newApples = 0;
           let newDiamonds = 0;
           let isNewUser = false;
+          const todayStr = new Date().toISOString().slice(0, 10);
+
+          let currentDayApples = 0;
+          let currentDayDiamonds = 0;
+
+          if (userDoc.exists) {
+            const currentData = userDoc.data();
+            const daily = currentData.dailyHubcoinTransfer;
+            if (daily && daily.date === todayStr) {
+              currentDayApples = Number(daily.apples || 0);
+              currentDayDiamonds = Number(daily.diamonds || 0);
+            }
+          }
+
+          // Enforce cumulative daily limits per TG ID
+          if (rewardType === 'apple') {
+            if (currentDayApples + numAmount > DAILY_APPLE_LIMIT) {
+              const remaining = Math.max(0, DAILY_APPLE_LIMIT - currentDayApples);
+              throw new Error(`Daily Apple transfer limit reached! Max ${DAILY_APPLE_LIMIT.toLocaleString()} Apples allowed per day. (Remaining limit today: ${remaining.toLocaleString()} Apples)`);
+            }
+          } else if (rewardType === 'diamond') {
+            if (currentDayDiamonds + numAmount > DAILY_DIAMOND_LIMIT) {
+              const remaining = Math.max(0, DAILY_DIAMOND_LIMIT - currentDayDiamonds);
+              throw new Error(`Daily Diamond transfer limit reached! Max ${DAILY_DIAMOND_LIMIT} Diamonds allowed per day. (Remaining limit today: ${remaining} Diamonds)`);
+            }
+          }
+
+          const updatedDailyTransfer = {
+            date: todayStr,
+            apples: currentDayApples + (rewardType === 'apple' ? numAmount : 0),
+            diamonds: currentDayDiamonds + (rewardType === 'diamond' ? numAmount : 0)
+          };
 
           const pendingRewardData = {
             amount: numAmount,
@@ -98,6 +146,7 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
               lastEnergyUpdate: new Date().toISOString(),
               createdAt: new Date().toISOString(),
               source: 'hubcoin_transfer',
+              dailyHubcoinTransfer: updatedDailyTransfer,
               pendingHubcoinReward: pendingRewardData
             };
             transaction.set(userRef, newUser);
@@ -114,6 +163,7 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
               transaction.update(userRef, {
                 apples: admin.firestore.FieldValue.increment(numAmount),
                 level: newLevel,
+                dailyHubcoinTransfer: updatedDailyTransfer,
                 pendingHubcoinReward: pendingRewardData
               });
             } else {
@@ -122,6 +172,7 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
 
               transaction.update(userRef, {
                 diamonds: admin.firestore.FieldValue.increment(numAmount),
+                dailyHubcoinTransfer: updatedDailyTransfer,
                 pendingHubcoinReward: pendingRewardData
               });
             }
@@ -160,7 +211,15 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
             timestamp: Date.now()
           });
 
-          return { newApples, newDiamonds, isNewUser };
+          return { 
+            newApples, 
+            newDiamonds, 
+            isNewUser,
+            dailyTransferredApples: updatedDailyTransfer.apples,
+            dailyTransferredDiamonds: updatedDailyTransfer.diamonds,
+            remainingApplesToday: Math.max(0, DAILY_APPLE_LIMIT - updatedDailyTransfer.apples),
+            remainingDiamondsToday: Math.max(0, DAILY_DIAMOND_LIMIT - updatedDailyTransfer.diamonds)
+          };
         });
 
         // 6. Send Celebratory Telegram Bot Message
@@ -208,12 +267,16 @@ export function createHubcoinController(db, admin, botToken, miniAppUrl) {
           amount: numAmount,
           type: rewardType,
           txId,
+          dailyTransferredApples: result.dailyTransferredApples,
+          dailyTransferredDiamonds: result.dailyTransferredDiamonds,
+          remainingApplesToday: result.remainingApplesToday,
+          remainingDiamondsToday: result.remainingDiamondsToday,
           newApples: result.newApples,
           newDiamonds: result.newDiamonds
         });
       } catch (err) {
-        console.error('[HubCoin Transfer Error]:', err);
-        return res.status(500).json({ ok: false, error: err.message });
+        console.error('[HubCoin Transfer Error]:', err.message);
+        return res.status(400).json({ ok: false, error: err.message });
       }
     }
   };

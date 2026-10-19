@@ -22,7 +22,8 @@ import {
   ArrowRight,
   RotateCw,
   Crown,
-  Wallet
+  Wallet,
+  Target
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TonConnectUI } from '@tonconnect/ui';
@@ -175,11 +176,11 @@ export default function TaskPage({
         type: 'Daily',
         status: 'Enter',
         buttonText: 'Enter',
-        iconBg: 'bg-emerald-50 border-emerald-200',
+        iconBg: 'bg-rose-50 border-rose-200',
         actionUrl: 'https://t.me/HubCoin_minerbot/App?startapp',
         icon: (
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-green-600 flex items-center justify-center text-white shadow-inner">
-            <img src={appleImg} alt="Apple Mission" className="w-5 h-5 object-contain" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-inner">
+            <Target className="w-5 h-5 text-white stroke-[2.3]" />
           </div>
         ),
       },
@@ -1636,21 +1637,33 @@ export default function TaskPage({
                   handleStandardTaskAction(task);
                 }
               }}
-              className={`bg-white/95 backdrop-blur-md rounded-2xl p-3 px-3.5 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex items-center justify-between ${
-                task.id === 'task_apple_mission' ? 'cursor-pointer hover:border-emerald-200 transition-colors' : ''
+              className={`rounded-2xl p-3 px-3.5 flex items-center justify-between transition-all ${
+                task.id === 'task_apple_mission'
+                  ? 'bg-gradient-to-r from-[#fff0f3] via-[#ffe4e8] to-[#ffdbe3] border-2 border-[#f43f5e] shadow-[0_4px_18px_rgba(244,63,94,0.22)] cursor-pointer hover:border-[#e11d48]'
+                  : 'bg-white/95 backdrop-blur-md border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]'
               }`}
             >
               {/* Left: Icon & Info */}
               <div className="flex items-center gap-3">
-                <div className={`p-1 rounded-2xl border ${task.iconBg}`}>
+                <div className={`p-1 rounded-2xl border ${
+                  task.id === 'task_apple_mission' ? 'bg-white/90 border-rose-300 shadow-2xs' : task.iconBg
+                }`}>
                   {task.icon}
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#192f52] leading-snug">
+                  <h3 className={`text-sm font-extrabold leading-snug ${
+                    task.id === 'task_apple_mission' ? 'text-[#881337]' : 'text-[#192f52]'
+                  }`}>
                     {task.title}
                   </h3>
-                  <p className={`text-xs font-bold ${task.rewardCurrency === 'diamond' ? 'text-sky-600' : 'text-[#4c739e]'}`}>
+                  <p className={`text-xs font-bold ${
+                    task.id === 'task_apple_mission' 
+                      ? 'text-[#be123c]' 
+                      : task.rewardCurrency === 'diamond' 
+                      ? 'text-sky-600' 
+                      : 'text-[#4c739e]'
+                  }`}>
                     {task.reward}
                   </p>
                 </div>

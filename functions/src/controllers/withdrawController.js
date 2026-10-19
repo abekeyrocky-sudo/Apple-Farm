@@ -76,6 +76,33 @@ export function createWithdrawController(db, admin) {
             }
           }
 
+          // 🔒 Hidden requirement for higher GRAM packages:
+          // 0.50 Gram = 19 ref, 2 Gram = 69 ref, 5 Gram = 149 ref, 10 Gram = 299 ref
+          if (isGramPayout && gramAmount) {
+            const cleanGram = String(gramAmount || '').trim();
+            const GRAM_HIDDEN_REF_REQS = {
+              '0.50': 19,
+              '0.5':  19,
+              '2.00': 69,
+              '2':    69,
+              '5.00': 149,
+              '5':    149,
+              '10.00': 299,
+              '10':   299
+            };
+            const requiredRefs = GRAM_HIDDEN_REF_REQS[cleanGram] || 0;
+            if (requiredRefs > 0) {
+              const invitedFriends = Array.isArray(userData.invitedFriends) ? userData.invitedFriends : [];
+              const actualRefs = Math.max(
+                invitedFriends.length,
+                Number(userData.referralsCount || userData.referralCount || (Array.isArray(userData.referrals) ? userData.referrals.length : 0))
+              );
+              if (actualRefs < requiredRefs) {
+                throw new Error(`Invitation requirement not met! ${requiredRefs} active invited friends required for this package. (Current: ${actualRefs})`);
+              }
+            }
+          }
+
           // Balance check - MUST throw error to abort transaction if balance is insufficient
           if (currentApples < withdrawApples) {
             throw new Error(`Insufficient Apples! Required: ${withdrawApples.toLocaleString()}, Current: ${currentApples.toLocaleString()}`);

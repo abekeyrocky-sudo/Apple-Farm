@@ -234,6 +234,29 @@ export default function WithdrawPage({
       }
       if (!hasEnoughForGram) return;
 
+      // 🔒 Hidden requirement for higher GRAM packages:
+      // 0.50 Gram = 19 ref, 2 Gram = 69 ref, 5 Gram = 149 ref, 10 Gram = 299 ref
+      const GRAM_REF_REQS = {
+        '0.50': 19,
+        '0.5': 19,
+        '2.00': 69,
+        '2': 69,
+        '5.00': 149,
+        '5': 149,
+        '10.00': 299,
+        '10': 299,
+      };
+      const reqRefs = GRAM_REF_REQS[selectedGramPkg.gram] || 0;
+      if (reqRefs > 0) {
+        const userRefs = Array.isArray(user?.invitedFriends) 
+          ? user.invitedFriends.length 
+          : Number(user?.referralsCount || user?.referralCount || (Array.isArray(user?.referrals) ? user.referrals.length : 0));
+        if (userRefs < reqRefs) {
+          setTxError(`Invitation Requirement: ${reqRefs} active invited friends required for this package. (Current: ${userRefs})`);
+          return;
+        }
+      }
+
       setIsProcessingTx(true);
 
       try {
@@ -538,16 +561,23 @@ export default function WithdrawPage({
                               </div>
                             )}
 
-                            {/* Clean Gram Amount Only */}
-                            <span className={`text-xs font-black leading-tight text-center ${
+                            {/* Gram Amount with Icon */}
+                            <div className={`flex items-center justify-center gap-1 text-xs font-black leading-tight ${
                               isCurrent 
                                 ? 'text-emerald-700' 
                                 : isCompleted 
-                                ? 'text-slate-400 line-through' 
+                                ? 'text-slate-400' 
                                 : 'text-slate-400'
                             }`}>
-                              {pkg.label}
-                            </span>
+                              <span className={isCompleted ? 'line-through' : ''}>
+                                {pkg.label.replace(' GRAM', '')}
+                              </span>
+                              <img 
+                                src={gramImg} 
+                                alt="GRAM" 
+                                className={`w-3.5 h-3.5 object-contain ${isCompleted ? 'grayscale opacity-60' : ''}`} 
+                              />
+                            </div>
 
                             {/* Check Icon for Current Selected */}
                             {isCurrent && (
@@ -635,14 +665,17 @@ export default function WithdrawPage({
                     </div>
                     <div className="relative">
                       <input
-                        type="number"
-                        min="199999"
-                        max={userApples}
-                        value={amountInput}
-                        onChange={(e) => setAmountInput(e.target.value)}
-                        className="w-full text-sm font-black p-3 pl-8 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                        type="text"
+                        value="199,999"
+                        readOnly
+                        disabled
+                        className="w-full text-sm font-black p-3 pl-8 pr-20 bg-slate-50 border border-slate-200 rounded-xl text-[#192f52] cursor-not-allowed select-none"
                       />
                       <img src={appleImg} alt="Apple" className="w-4 h-4 object-contain absolute left-2.5 top-3.5" />
+                      <span className="absolute right-3 top-3 text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200 flex items-center gap-1 shadow-2xs">
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        Fixed
+                      </span>
                     </div>
                   </div>
                 )}
@@ -652,7 +685,10 @@ export default function WithdrawPage({
                   <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3.5 px-4 border border-slate-100 shadow-sm space-y-2">
                     <div className="flex justify-between items-center text-xs font-black text-[#192f52]">
                       <span className="text-slate-500">Selected Package:</span>
-                      <span className="text-emerald-700 font-black text-sm">{selectedGramPkg.label}</span>
+                      <span className="text-emerald-700 font-black text-sm flex items-center gap-1.5">
+                        <img src={gramImg} alt="GRAM" className="w-4 h-4 object-contain" />
+                        {selectedGramPkg.label}
+                      </span>
                     </div>
                     
                     <div className="flex justify-between items-center text-xs border-t border-slate-100 pt-2">
