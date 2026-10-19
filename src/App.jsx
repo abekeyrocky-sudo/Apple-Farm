@@ -160,18 +160,21 @@ export default function App() {
           }
         });
       } else {
-        // 🧪 ব্রাউজার বা লোকাল টেস্টিংয়ের জন্য ফ্যালব্যাক ইউজার
+        // 🧪 ব্রাউজার বা লোকাল টেস্টিংয়ের জন্য অফিশিয়াল এডমিন ইউজার (Admin TG ID: 8067887716)
+        const customDevId = localStorage.getItem('apple_farm_dev_user_id');
+        const adminId = customDevId ? Number(customDevId) : 8067887716;
+
         const devUser = {
-          id: 40281,
-          first_name: 'Dev',
-          last_name: 'Farmer',
-          username: 'dev_farmer'
+          id: adminId,
+          first_name: adminId === 6376523842 ? '404' : 'Rocky',
+          last_name: adminId === 6376523842 ? '️' : '69x',
+          username: adminId === 6376523842 ? 'Crypto_Expert75' : 'Rocky_69x'
         };
         setUser((prev) => ({
           ...prev,
           id: devUser.id,
-          name: 'Dev Farmer',
-          username: 'dev_farmer',
+          name: adminId === 6376523842 ? '404 ️ ' : 'Rocky 69x',
+          username: devUser.username,
         }));
         syncUserWithFirebase(devUser).then((data) => {
           if (data) {
@@ -180,8 +183,8 @@ export default function App() {
               ...prev,
               ...data,
               level: calculatedLvl,
-              name: 'Dev Farmer',
-              avatar: data.avatar || prev.avatar || 'avatar-1',
+              name: data.name || (adminId === 6376523842 ? '404 ️ ' : 'Rocky 69x'),
+              avatar: data.avatar || prev.avatar || 'avatar-3',
             }));
 
             // 🍏 HubCoin ট্রান্সফার রিওয়ার্ড পপআপ চেক
@@ -249,6 +252,14 @@ export default function App() {
 
     let isMounted = true;
     const verifyChannels = async () => {
+      // 🛠️ লোকাল ডেভ মোড (localhost) বা এডমিন অ্যাকাউন্টের জন্য গেট বাইপাস
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isAdmin = user.id === 8067887716 || user.id === '8067887716' || user.id === 6376523842 || user.id === '6376523842';
+      if (isLocalhost || isAdmin) {
+        setIsGateLocked(false);
+        return;
+      }
+
       try {
         const commRes = await verifyTelegramMembership(user.id, OFFICIAL_COMMUNITY_URL);
         const payRes = await verifyTelegramMembership(user.id, OFFICIAL_PAYOUTS_URL);
